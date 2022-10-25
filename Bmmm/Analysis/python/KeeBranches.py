@@ -208,6 +208,39 @@ branches = [
     'k_det_cov'               ,
 ]
 
+
+branches_mc = [
+    'ele1_gen_pt'   ,
+    'ele1_gen_eta'  ,
+    'ele1_gen_phi'  ,
+    'ele1_gen_e'    ,
+    'ele1_gen_match',
+    
+    'ele2_gen_pt'   ,
+    'ele2_gen_eta'  ,
+    'ele2_gen_phi'  ,
+    'ele2_gen_e'    ,
+    'ele2_gen_match',
+
+    'k_gen_pt'      ,
+    'k_gen_eta'     ,
+    'k_gen_phi'     ,
+    'k_gen_e'       ,
+    'k_gen_match'   ,
+
+    'ee_gen_pt'     ,
+    'ee_gen_eta'    ,
+    'ee_gen_phi'    ,
+    'ee_gen_mass'   ,
+
+    'b_gen_pt'      ,
+    'b_gen_eta'     ,
+    'b_gen_phi'     ,
+    'b_gen_mass'    ,
+    'b_gen_q2bin'   ,
+    'b_gen_match'   ,
+]
+
 paths = [
     'HLT_DoubleEle4_eta1p22_mMax6_v1'  ,
     'HLT_DoubleEle4p5_eta1p22_mMax6_v1',

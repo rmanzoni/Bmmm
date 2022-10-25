@@ -16,7 +16,20 @@ xrdcp /scratch/manzoni/Kee_DoubleEleLowMass0to5_Run2022C_11aug22_v9/bd957a0a-bb1
 /ParkingDoubleElectronLowMass4/Run2022C-PromptReco-v1/MINIAOD
 /ParkingDoubleElectronLowMass5/Run2022C-PromptReco-v1/MINIAOD
 
-add adnti D0 cut
+add adnti D0 cut DONE
+
+
+MC
+https://github.com/DiElectronX/BParkingNANO/blob/main/BParkingNano/production/samples_Run3.yml#L40-L51
+
+/BuTOKEE20220826bettersplitting/jodedra-SUMMER22_MINIAOD-d5db235e2a58bcae594a314d29cbde75/USER
+/BuTOjpsiKEE20220831fiftyMbettersplitting/jodedra-SUMMER22_MINIAOD-d5db235e2a58bcae594a314d29cbde75/USER
+/BuTOpsi2sKEE20220831fiftyMbettersplitting/jodedra-SUMMER22_MINIAOD-d5db235e2a58bcae594a314d29cbde75/USER
+
+
+dasgoclient -query="file dataset=/BuTOKEE20220826bettersplitting/jodedra-SUMMER22_MINIAOD-d5db235e2a58bcae594a314d29cbde75/USER            instance=prod/phys03" > files_kee_lowq2.txt
+dasgoclient -query="file dataset=/BuTOjpsiKEE20220831fiftyMbettersplitting/jodedra-SUMMER22_MINIAOD-d5db235e2a58bcae594a314d29cbde75/USER  instance=prod/phys03" > files_kee_jpsi.txt
+dasgoclient -query="file dataset=/BuTOpsi2sKEE20220831fiftyMbettersplitting/jodedra-SUMMER22_MINIAOD-d5db235e2a58bcae594a314d29cbde75/USER instance=prod/phys03" > files_kee_psi2s.txt
 
 '''
 
@@ -32,7 +45,7 @@ from collections import OrderedDict
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
-from Bmmm.Analysis.KeeBranches import branches, paths
+from Bmmm.Analysis.KeeBranches import branches, paths, branches_mc
 from Bmmm.Analysis.KeeCandidate import DiEleCandidate, KeeCandidate, e_mass
 
 parser = argparse.ArgumentParser(description='')
@@ -84,6 +97,9 @@ print("files:", files)
 events = Events(files)
 maxevents = maxevents if maxevents>=0 else events.size() # total number of events in the files
 
+if mc:
+    branches += branches_mc
+
 fout = ROOT.TFile(destination + '/' + fileName + '.root', filemode)
 if filemode=='update':
     ntuple = fout.Get('tree')
@@ -106,8 +122,6 @@ for i, event in enumerate(events):
         print('\t===> processing %d / %d event \t completed %.1f%s \t %.1f ev/s \t ETA %s s' %(i, maxevents, percentage, '%', speed, eta.strftime('%Y-%m-%d %H:%M:%S')))
 
     # reset trees
-    for k, v in tofill.items():
-        tofill[k] = np.nan
     for k, v in tofill.items():
         tofill[k] = np.nan
 
@@ -168,6 +182,49 @@ for i, event in enumerate(events):
     trks = [tk for tk in all_trks if tk.pt()>0.8 and abs(tk.eta())<1.7 and tk.charge!=0 and abs(tk.pdgId()) not in [11, 13] and tk.hasTrackDetails()]
     trks.sort(key = lambda x : x.pt(), reverse = True)
 
+    if mc:
+        bs = [pp for pp in event.genpr if abs(pp.pdgId())==521]
+        for ib in bs:
+            ib.daus = [abs(ib.daughter(idau).pdgId()) for idau in range(ib.numberOfDaughters())]
+            ib.daus = sorted([dau for dau in ib.daus if dau!=22])
+            if ib.daus == [11, 11, 321]: ib.q2bin = 0
+            elif ib.daus == [11, 11, 321]: ib.q2bin = 0 # non resonant
+            elif ib.daus == [321, 443]: ib.q2bin = 1 # jpsi 
+            elif ib.daus == [321, 100443]: ib.q2bin = 2 # psi(2S)
+            else: ib.q2bin = -1
+        
+        bs.sort(key = lambda x : (x.q2bin>=0, x.pt()), reverse = True) 
+        myb = bs[0]
+        
+        myb.eles  = []
+        myb.k     = None 
+        myb.e1    = None 
+        myb.e2    = None
+        myb.jpsi  = None
+        myb.psi2s = None
+        
+        if myb.q2bin==0:
+            myb.eles = [myb.daughter(idau) for idau in range(myb.numberOfDaughters()) if abs(myb.daughter(idau).pdgId())==11]
+
+        elif myb.q2bin==1:
+            myb.jpsi = [myb.daughter(idau) for idau in range(myb.numberOfDaughters()) if abs(myb.daughter(idau).pdgId())==443][0]
+            myb.eles = [myb.jpsi.daughter(idau) for idau in range(myb.jpsi.numberOfDaughters()) if abs(myb.jpsi.daughter(idau).pdgId())==11]
+            
+        elif myb.q2bin==2:
+            myb.psi2s = [myb.daughter(idau) for idau in range(myb.numberOfDaughters()) if abs(myb.daughter(idau).pdgId())==100443][0]
+            myb.eles = [myb.psi2s.daughter(idau) for idau in range(myb.psi2s.numberOfDaughters()) if abs(myb.psi2s.daughter(idau).pdgId())==11]
+                
+        myb.k    = [myb.daughter(idau) for idau in range(myb.numberOfDaughters()) if abs(myb.daughter(idau).pdgId())==321][0]
+        myb.eles = sorted(myb.eles, key = lambda x : x.pt())
+        myb.e1 = myb.eles[1]
+        myb.e2 = myb.eles[0]
+
+        if any([myb.k, myb.e1, myb.e2])==None: 
+            good_gen_matching = False
+            #import pdb ; pdb.set_trace()
+        else:   
+            good_gen_matching = True
+            
     if len(eles)<2:
         continue
 
@@ -459,6 +516,37 @@ for i, event in enumerate(events):
     tofill['k_bs_dxy_sig'    ] = final_cand.trk.bestTrack().dxy(final_cand.bs.position()) / final_cand.trk.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
     tofill['k_cov_pos_def'   ] = final_cand.trk.is_cov_pos_def
     tofill['k_det_cov'       ] = np.linalg.det(final_cand.trk.cov)
+
+    if mc and good_gen_matching:
+        tofill['ele1_gen_pt'   ] = myb.e1.pt()
+        tofill['ele1_gen_eta'  ] = myb.e1.eta()
+        tofill['ele1_gen_phi'  ] = myb.e1.phi()
+        tofill['ele1_gen_e'    ] = myb.e1.energy()
+        tofill['ele1_gen_match'] = deltaR(myb.e1, final_cand.ele1) < 0.2
+
+        tofill['ele2_gen_pt'   ] = myb.e2.pt()
+        tofill['ele2_gen_eta'  ] = myb.e2.eta()
+        tofill['ele2_gen_phi'  ] = myb.e2.phi()
+        tofill['ele2_gen_e'    ] = myb.e2.energy()
+        tofill['ele2_gen_match'] = deltaR(myb.e2, final_cand.ele2) < 0.2
+
+        tofill['k_gen_pt'      ] = myb.k.pt()
+        tofill['k_gen_eta'     ] = myb.k.eta()
+        tofill['k_gen_phi'     ] = myb.k.phi()
+        tofill['k_gen_e'       ] = myb.k.energy()
+        tofill['k_gen_match'   ] = deltaR(myb.k, final_cand.trk) < 0.2
+
+        tofill['ee_gen_pt'     ] = (myb.e1.p4() + myb.e2.p4()).pt()
+        tofill['ee_gen_eta'    ] = (myb.e1.p4() + myb.e2.p4()).eta()
+        tofill['ee_gen_phi'    ] = (myb.e1.p4() + myb.e2.p4()).phi()
+        tofill['ee_gen_mass'   ] = (myb.e1.p4() + myb.e2.p4()).mass()
+
+        tofill['b_gen_pt'      ] = myb.pt()
+        tofill['b_gen_eta'     ] = myb.eta()
+        tofill['b_gen_phi'     ] = myb.phi()
+        tofill['b_gen_mass'    ] = myb.mass()
+        tofill['b_gen_q2bin'   ] = myb.q2bin
+        tofill['b_gen_match'   ] = (tofill['k_gen_match'] and tofill['ele1_gen_match'] and tofill['ele2_gen_match'])
 
     ntuple.Fill(array('f', tofill.values()))
             
