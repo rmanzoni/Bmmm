@@ -52,9 +52,10 @@ filemode    = args.filemode
 mc = False; mc = args.mc
 
 handles_mc = OrderedDict()
-handles_mc['genpr'  ] = ('prunedGenParticles', Handle('std::vector<reco::GenParticle>')     )
-handles_mc['genpk'  ] = ('packedGenParticles', Handle('std::vector<pat::PackedGenParticle>'))
-handles_mc['genInfo'] = ('generator'         , Handle('GenEventInfoProduct')                )
+handles_mc['genpr'  ] = ('prunedGenParticles'  , Handle('std::vector<reco::GenParticle>')     )
+handles_mc['genpk'  ] = ('packedGenParticles'  , Handle('std::vector<pat::PackedGenParticle>'))
+handles_mc['genInfo'] = ('generator'           , Handle('GenEventInfoProduct')                )
+handles_mc['pu'     ] = ('slimmedAddPileupInfo', Handle('std::vector<PileupSummaryInfo>')     )
 
 handles = OrderedDict()
 handles['muons'  ] = ('slimmedMuons'                 , Handle('std::vector<pat::Muon>')                   )
@@ -103,8 +104,6 @@ for i, event in enumerate(events):
     # reset trees
     for k, v in tofill.items():
         tofill[k] = np.nan
-    for k, v in tofill.items():
-        tofill[k] = np.nan
 
     # access the handles
     for k, v in handles.iteritems():
@@ -115,7 +114,11 @@ for i, event in enumerate(events):
         for k, v in handles_mc.iteritems():
             event.getByLabel(v[0], v[1])
             setattr(event, k, v[1].product())
-    
+        
+        pu_at_bx0 = [ipu for ipu in event.pu if ipu.getBunchCrossing()==0][0]
+        tofill['n_pu'      ] = pu_at_bx0.getPU_NumInteractions()
+        tofill['n_true_int'] = pu_at_bx0.getTrueNumInteractions()
+            
     lumi = event.eventAuxiliary().luminosityBlock()
     iev  = event.eventAuxiliary().event()
 

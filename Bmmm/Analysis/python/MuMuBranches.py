@@ -3,6 +3,8 @@ branches = [
     'lumi'              ,
     'event'             ,
     'npv'               ,
+    'n_pu'              ,
+    'n_true_int'        ,
 
     'mass'              ,
     'mcorr'             ,
