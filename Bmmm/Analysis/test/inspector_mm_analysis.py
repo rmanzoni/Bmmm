@@ -8,6 +8,7 @@ ipython -i -- inspector_mm_analysis.py --inputFiles="C1ACDC94-EBC6-1745-A410-359
 '''
 
 from __future__ import print_function
+import re
 import ROOT
 import argparse
 import numpy as np
@@ -21,6 +22,14 @@ from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
 from Bmmm.Analysis.MuMuBranches import branches, paths
 from Bmmm.Analysis.MuMuCandidate import Candidate
+
+def drop_hlt_version(string, pattern=r"_v\d+"):
+    regex = re.compile(pattern + "$")
+    if regex.search(string):
+        match = re.search(r'_v\d+$', string)
+        return string[:match.start()]
+    else:
+        return string
 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--inputFiles'   , dest='inputFiles' , required=True, type=str)
@@ -120,30 +129,37 @@ for i, event in enumerate(events):
     hlt_passed = False
 
     for iname in trg_names.triggerNames():
-        if 'part0' not in iname: continue
-        for ipath in paths:
-            idx = len(trg_names)
-            if iname.startswith(ipath):
+        for ipath in paths.keys():
+            idx = len(trg_names)               
+            if drop_hlt_version(iname)==ipath:
                 idx = trg_names.triggerIndex(iname)
                 tofill[ipath        ] = ( idx < len(trg_names)) * (event.trg_res.accept(idx))
                 tofill[ipath + '_ps'] = event.trg_ps.getPrescaleForIndex(idx)
-                if ipath=='HLT_Mu7_IP4' and event.trg_ps.getPrescaleForIndex(idx)>0 and ( idx < len(trg_names)) * (event.trg_res.accept(idx)):
-                    hlt_passed = True
+                #if ipath=='HLT_Mu7_IP4' and event.trg_ps.getPrescaleForIndex(idx)>0 and ( idx < len(trg_names)) * (event.trg_res.accept(idx)):
+                #    hlt_passed = True
+    
+    triggers = {key:tofill[key] for key in paths.keys()}
 
-    hlt_passed = True
+    hlt_passed = any([vv for vv in triggers.values()])
+    #hlt_passed = True
     if not hlt_passed:
         continue            
     
     # trigger matching
     # these are the filters, MAYBE!! too lazy to check confDB. Or, more appropriately: confDB sucks
     # https://github.com/cms-sw/cmssw/blob/6d2f66057131baacc2fcbdd203588c41c885b42c/Configuration/Skimming/python/pwdgSkimBPark_cfi.py#L11-L18 
-    good_tobjs = []
-    for to in [to for to in event.tobjs if to.pt()>6.5 and abs(to.eta())<2.]:
-        to.unpackFilterLabels(event.object(), event.trg_res)
-        if to.hasFilterLabel('hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered7IP4Q'):
-            good_tobjs.append(to)
-            
-    muons = [mu for mu in event.muons if mu.pt()>4. and abs(mu.eta())<2.5 and mu.isPFMuon() and mu.isGlobalMuon()]
+    good_tobjs = {key:[] for key in paths.keys()}    
+    for to in [to for to in event.tobjs if to.pt()>3. and abs(to.eta())<2.6]:
+        #to.unpackFilterLabels(event.object(), event.trg_res)
+        to.unpackNamesAndLabels(event.object(), event.trg_res)
+        for k, v in paths.items():
+            if triggers[k]!=1: continue
+            for ilabel in v: 
+                if to.hasFilterLabel(ilabel) and to not in good_tobjs[k]:
+                    good_tobjs[k].append(to)
+
+    # muons = [mu for mu in event.muons if mu.pt()>4. and abs(mu.eta())<2.5 and mu.isPFMuon() and mu.isGlobalMuon()]
+    muons = [mu for mu in event.muons if mu.pt()>4. and abs(mu.eta())<2.5]
     muons.sort(key = lambda x : x.pt(), reverse = True)
 
     if len(muons)<2:
@@ -152,8 +168,6 @@ for i, event in enumerate(events):
     # build analysis candidates
 
     cands = []
-    
-    #import pdb ; pdb.set_trace()
     
     for itriplet in combinations(muons, 2): 
 
@@ -233,71 +247,81 @@ for i, event in enumerate(events):
         tofill['lxy_err'] = final_cand.lxy.error()
         tofill['lxy_sig'] = final_cand.lxy.significance()
        
-        tofill['mu1_pt'           ] = final_cand.mu1.pt()
-        tofill['mu1_eta'          ] = final_cand.mu1.eta()
-        tofill['mu1_phi'          ] = final_cand.mu1.phi()
-        tofill['mu1_e'            ] = final_cand.mu1.energy()
-        tofill['mu1_mass'         ] = final_cand.mu1.mass()
-        tofill['mu1_charge'       ] = final_cand.mu1.charge()
-        tofill['mu1_id_loose'     ] = final_cand.mu1.isLooseMuon()
-        tofill['mu1_id_soft'      ] = final_cand.mu1.isMediumMuon()
-        tofill['mu1_id_medium'    ] = final_cand.mu1.isSoftMuon(final_cand.pv)
-        tofill['mu1_id_tight'     ] = final_cand.mu1.isTightMuon(final_cand.pv)
-        tofill['mu1_id_soft_mva'  ] = final_cand.mu1.softMvaValue()
-        tofill['mu1_id_pf'        ] = final_cand.mu1.isPFMuon()
-        tofill['mu1_id_global'    ] = final_cand.mu1.isGlobalMuon()
-        tofill['mu1_id_tracker'   ] = final_cand.mu1.isTrackerMuon()
-        tofill['mu1_id_standalone'] = final_cand.mu1.isStandAloneMuon()
-        
+        tofill['mu1_pt'             ] = final_cand.mu1.pt()
+        tofill['mu1_eta'            ] = final_cand.mu1.eta()
+        tofill['mu1_phi'            ] = final_cand.mu1.phi()
+        tofill['mu1_e'              ] = final_cand.mu1.energy()
+        tofill['mu1_mass'           ] = final_cand.mu1.mass()
+        tofill['mu1_charge'         ] = final_cand.mu1.charge()
+        tofill['mu1_id_loose'       ] = final_cand.mu1.isLooseMuon()
+        tofill['mu1_id_soft'        ] = final_cand.mu1.isMediumMuon()
+        tofill['mu1_id_medium'      ] = final_cand.mu1.isSoftMuon(final_cand.pv)
+        tofill['mu1_id_tight'       ] = final_cand.mu1.isTightMuon(final_cand.pv)
+        tofill['mu1_id_soft_mva_raw'] = final_cand.mu1.softMvaValue()
+        tofill['mu1_id_soft_mva'    ] = final_cand.mu1.passed(ROOT.reco.Muon.SoftMvaId)
+        tofill['mu1_id_pf'          ] = final_cand.mu1.isPFMuon()
+        tofill['mu1_id_global'      ] = final_cand.mu1.isGlobalMuon()
+        tofill['mu1_id_tracker'     ] = final_cand.mu1.isTrackerMuon()
+        tofill['mu1_id_standalone'  ] = final_cand.mu1.isStandAloneMuon()
         iso03 = final_cand.mu1.pfIsolationR03()
         iso04 = final_cand.mu1.pfIsolationR04()
-        tofill['mu1_pfiso03'      ] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0))
-        tofill['mu1_pfiso04'      ] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0))
-        tofill['mu1_pfreliso03'   ] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0)) / final_cand.mu1.pt()
-        tofill['mu1_pfreliso04'   ] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0)) / final_cand.mu1.pt()
-        tofill['mu1_dxy'          ] = final_cand.mu1.bestTrack().dxy(final_cand.pv.position())
-        tofill['mu1_dxy_e'        ] = final_cand.mu1.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
-        tofill['mu1_dxy_sig'      ] = final_cand.mu1.bestTrack().dxy(final_cand.pv.position()) / final_cand.mu1.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
-        tofill['mu1_dz'           ] = final_cand.mu1.bestTrack().dz(final_cand.pv.position())
-        tofill['mu1_dz_e'         ] = final_cand.mu1.bestTrack().dzError()
-        tofill['mu1_dz_sig'       ] = final_cand.mu1.bestTrack().dz(final_cand.pv.position()) / final_cand.mu1.bestTrack().dzError()
-        tofill['mu1_bs_dxy'       ] = final_cand.mu1.bestTrack().dxy(final_cand.bs.position())
-        tofill['mu1_bs_dxy_e'     ] = final_cand.mu1.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
-        tofill['mu1_bs_dxy_sig'   ] = final_cand.mu1.bestTrack().dxy(final_cand.bs.position()) / final_cand.mu1.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
-        tofill['mu1_cov_pos_def'  ] = final_cand.mu1.is_cov_pos_def
-    
-        tofill['mu2_pt'           ] = final_cand.mu2.pt()
-        tofill['mu2_eta'          ] = final_cand.mu2.eta()
-        tofill['mu2_phi'          ] = final_cand.mu2.phi()
-        tofill['mu2_e'            ] = final_cand.mu2.energy()
-        tofill['mu2_mass'         ] = final_cand.mu2.mass()
-        tofill['mu2_charge'       ] = final_cand.mu2.charge()
-        tofill['mu2_id_loose'     ] = final_cand.mu2.isLooseMuon()
-        tofill['mu2_id_soft'      ] = final_cand.mu2.isMediumMuon()
-        tofill['mu2_id_medium'    ] = final_cand.mu2.isSoftMuon(final_cand.pv)
-        tofill['mu2_id_tight'     ] = final_cand.mu2.isTightMuon(final_cand.pv)
-        tofill['mu2_id_soft_mva'  ] = final_cand.mu2.softMvaValue()
-        tofill['mu2_id_pf'        ] = final_cand.mu2.isPFMuon()
-        tofill['mu2_id_global'    ] = final_cand.mu2.isGlobalMuon()
-        tofill['mu2_id_tracker'   ] = final_cand.mu2.isTrackerMuon()
-        tofill['mu2_id_standalone'] = final_cand.mu2.isStandAloneMuon()
+        tofill['mu1_pfiso03'        ] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0))
+        tofill['mu1_pfiso04'        ] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0))
+        tofill['mu1_pfreliso03'     ] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0)) / final_cand.mu1.pt()
+        tofill['mu1_pfreliso04'     ] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0)) / final_cand.mu1.pt()
+        tofill['mu1_dxy'            ] = final_cand.mu1.bestTrack().dxy(final_cand.pv.position())
+        tofill['mu1_dxy_e'          ] = final_cand.mu1.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
+        tofill['mu1_dxy_sig'        ] = final_cand.mu1.bestTrack().dxy(final_cand.pv.position()) / final_cand.mu1.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
+        tofill['mu1_dz'             ] = final_cand.mu1.bestTrack().dz(final_cand.pv.position())
+        tofill['mu1_dz_e'           ] = final_cand.mu1.bestTrack().dzError()
+        tofill['mu1_dz_sig'         ] = final_cand.mu1.bestTrack().dz(final_cand.pv.position()) / final_cand.mu1.bestTrack().dzError()
+        tofill['mu1_bs_dxy'         ] = final_cand.mu1.bestTrack().dxy(final_cand.bs.position())
+        tofill['mu1_bs_dxy_e'       ] = final_cand.mu1.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
+        tofill['mu1_bs_dxy_sig'     ] = final_cand.mu1.bestTrack().dxy(final_cand.bs.position()) / final_cand.mu1.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
+        tofill['mu1_cov_pos_def'    ] = final_cand.mu1.is_cov_pos_def
+              
+        tofill['mu2_pt'             ] = final_cand.mu2.pt()
+        tofill['mu2_eta'            ] = final_cand.mu2.eta()
+        tofill['mu2_phi'            ] = final_cand.mu2.phi()
+        tofill['mu2_e'              ] = final_cand.mu2.energy()
+        tofill['mu2_mass'           ] = final_cand.mu2.mass()
+        tofill['mu2_charge'         ] = final_cand.mu2.charge()
+        tofill['mu2_id_loose'       ] = final_cand.mu2.isLooseMuon()
+        tofill['mu2_id_soft'        ] = final_cand.mu2.isMediumMuon()
+        tofill['mu2_id_medium'      ] = final_cand.mu2.isSoftMuon(final_cand.pv)
+        tofill['mu2_id_tight'       ] = final_cand.mu2.isTightMuon(final_cand.pv)
+        tofill['mu2_id_soft_mva_raw'] = final_cand.mu2.softMvaValue()
+        tofill['mu2_id_soft_mva'    ] = final_cand.mu2.passed(ROOT.reco.Muon.SoftMvaId)
+        tofill['mu2_id_pf'          ] = final_cand.mu2.isPFMuon()
+        tofill['mu2_id_global'      ] = final_cand.mu2.isGlobalMuon()
+        tofill['mu2_id_tracker'     ] = final_cand.mu2.isTrackerMuon()
+        tofill['mu2_id_standalone'  ] = final_cand.mu2.isStandAloneMuon()
         iso03 = final_cand.mu2.pfIsolationR03()
         iso04 = final_cand.mu2.pfIsolationR04()
-        tofill['mu2_pfiso03'      ] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0))
-        tofill['mu2_pfiso04'      ] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0))
-        tofill['mu2_pfreliso03'   ] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0)) / final_cand.mu2.pt()
-        tofill['mu2_pfreliso04'   ] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0)) / final_cand.mu2.pt()
-        tofill['mu2_dxy'          ] = final_cand.mu2.bestTrack().dxy(final_cand.pv.position())
-        tofill['mu2_dxy_e'        ] = final_cand.mu2.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
-        tofill['mu2_dxy_sig'      ] = final_cand.mu2.bestTrack().dxy(final_cand.pv.position()) / final_cand.mu2.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
-        tofill['mu2_dz'           ] = final_cand.mu2.bestTrack().dz(final_cand.pv.position())
-        tofill['mu2_dz_e'         ] = final_cand.mu2.bestTrack().dzError()
-        tofill['mu2_dz_sig'       ] = final_cand.mu2.bestTrack().dz(final_cand.pv.position()) / final_cand.mu2.bestTrack().dzError()
-        tofill['mu2_bs_dxy'       ] = final_cand.mu2.bestTrack().dxy(final_cand.bs.position())
-        tofill['mu2_bs_dxy_e'     ] = final_cand.mu2.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
-        tofill['mu2_bs_dxy_sig'   ] = final_cand.mu2.bestTrack().dxy(final_cand.bs.position()) / final_cand.mu2.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
-        tofill['mu2_cov_pos_def'  ] = final_cand.mu2.is_cov_pos_def
-             
+        tofill['mu2_pfiso03'        ] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0))
+        tofill['mu2_pfiso04'        ] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0))
+        tofill['mu2_pfreliso03'     ] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0)) / final_cand.mu2.pt()
+        tofill['mu2_pfreliso04'     ] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0)) / final_cand.mu2.pt()
+        tofill['mu2_dxy'            ] = final_cand.mu2.bestTrack().dxy(final_cand.pv.position())
+        tofill['mu2_dxy_e'          ] = final_cand.mu2.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
+        tofill['mu2_dxy_sig'        ] = final_cand.mu2.bestTrack().dxy(final_cand.pv.position()) / final_cand.mu2.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
+        tofill['mu2_dz'             ] = final_cand.mu2.bestTrack().dz(final_cand.pv.position())
+        tofill['mu2_dz_e'           ] = final_cand.mu2.bestTrack().dzError()
+        tofill['mu2_dz_sig'         ] = final_cand.mu2.bestTrack().dz(final_cand.pv.position()) / final_cand.mu2.bestTrack().dzError()
+        tofill['mu2_bs_dxy'         ] = final_cand.mu2.bestTrack().dxy(final_cand.bs.position())
+        tofill['mu2_bs_dxy_e'       ] = final_cand.mu2.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
+        tofill['mu2_bs_dxy_sig'     ] = final_cand.mu2.bestTrack().dxy(final_cand.bs.position()) / final_cand.mu2.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
+        tofill['mu2_cov_pos_def'    ] = final_cand.mu2.is_cov_pos_def
+
+        # depends on trigger matching, which depends on the order by which filter labels are defined
+        # the same muon can be both tag & probe
+        for k, v in paths.items():
+            if triggers[k]!=1: continue
+            for idx in [1,2]:
+                to, dr2 = bestMatch(getattr(final_cand, 'mu%d' %idx), good_tobjs[k])
+                tofill['mu%d_%s_tag'   %(idx, k)] = (dr2 < 0.15*0.15 and to.hasFilterLabel(v[0])) 
+                tofill['mu%d_%s_probe' %(idx, k)] = (dr2 < 0.15*0.15 and to.hasFilterLabel(v[1])) if len(v)>1 else True                 
+                
         ntuple.Fill(array('f', tofill.values()))
             
 fout.cd()

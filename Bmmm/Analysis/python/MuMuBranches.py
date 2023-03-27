@@ -47,6 +47,7 @@ branches = [
     'mu1_id_soft'       ,
     'mu1_id_medium'     ,
     'mu1_id_tight'      ,
+    'mu1_id_soft_mva_raw',
     'mu1_id_soft_mva'   ,
     'mu1_id_pf'         ,
     'mu1_id_global'     ,
@@ -77,6 +78,7 @@ branches = [
     'mu2_id_soft'       ,
     'mu2_id_medium'     ,
     'mu2_id_tight'      ,
+    'mu2_id_soft_mva_raw',
     'mu2_id_soft_mva'   ,
     'mu2_id_pf'         ,
     'mu2_id_global'     ,
@@ -98,18 +100,33 @@ branches = [
     'mu2_cov_pos_def'   ,
 ]
 
-paths = [
-    'HLT_Mu7_IP4'     ,
-    'HLT_Mu8_IP3'     ,
-    'HLT_Mu8_IP5'     ,
-    'HLT_Mu8_IP6'     ,
-    'HLT_Mu8p5_IP3p5' ,
-    'HLT_Mu9_IP4'     ,
-    'HLT_Mu9_IP5'     ,
-    'HLT_Mu9_IP6'     ,
-    'HLT_Mu10p5_IP3p5',
-    'HLT_Mu12_IP6'    ,
-]
 
+# paths and filters
+# check online confDB https://hlt-config-editor-confdbv3.app.cern.ch/
+
+paths = dict()
+
+paths['HLT_Mu7p5_Track2_Jpsi'  ] = ['hltL3fLMu7p5TrackL3Filtered7p5', 'hltMu7p5Track2JpsiTrackMassFiltered'  ]
+paths['HLT_Mu7p5_Track3p5_Jpsi'] = ['hltL3fLMu7p5TrackL3Filtered7p5', 'hltMu7p5Track3p5JpsiTrackMassFiltered']
+paths['HLT_Mu7p5_Track7_Jpsi'  ] = ['hltL3fLMu7p5TrackL3Filtered7p5', 'hltMu7p5Track7JpsiTrackMassFiltered'  ]
+paths['HLT_Mu8'                ] = ['hltL3fL1sMu5L1f0L2f5L3Filtered8']
+
+#    'HLT_Mu7_IP4'     ,
+#    'HLT_Mu8_IP3'     ,
+#    'HLT_Mu8_IP5'     ,
+#    'HLT_Mu8_IP6'     ,
+#    'HLT_Mu8p5_IP3p5' ,
+#    'HLT_Mu9_IP4'     ,
+#    'HLT_Mu9_IP5'     ,
+#    'HLT_Mu9_IP6'     ,
+#    'HLT_Mu10p5_IP3p5',
+#    'HLT_Mu12_IP6'    ,
+
+# add branches for T&P
+for k, v in paths.items():
+    for idx in [1,2]:
+        branches.append('mu%d_%s_tag' %(idx, k))
+        branches.append('mu%d_%s_probe' %(idx, k))
+    
 branches += paths
 branches += [path+'_ps' for path in paths]
