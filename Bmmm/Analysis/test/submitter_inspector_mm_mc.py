@@ -12,6 +12,7 @@ old_files = []
 files = []
 
 with open('files_jpsimm_2018UL.txt') as f:
+#with open('files_dyll_2018UL.txt') as f:
     ifiles = f.read().splitlines()
     ifiles = ['root://cms-xrd-global.cern.ch//'+ifile for ifile in ifiles if ifile not in old_files]
     files += ifiles
@@ -29,7 +30,14 @@ queue = 'standard'; time = 720
 # queue = 'short'   ; time = 60
 # queue = 'long'    ; time = 10080
 
-out_dir = 'JpsiMM_Pt8_2018UL_v2'
+#out_dir = 'JpsiMM_Pt8_2018UL_v2'
+#out_dir = 'DYToLL_2018UL_29Mar2023_v1'
+out_dir = 'JpsiMM_Pt8_2018UL_29Mar2023_v1'
+
+out_file_name = 'jpsimm'
+#out_file_name = 'dymm'
+
+cfg = 'inspector_mm_analysis.py'
 
 ##########################################################################################
 ##########################################################################################
@@ -44,7 +52,7 @@ if not os.path.exists(out_dir):
     os.makedirs(out_dir + '/logs')
     os.makedirs(out_dir + '/errs')
 
-os.system('cp inspector_mm_analysis.py %s' %out_dir)
+os.system('cp %s %s' %(cfg, out_dir))
 
 #if resubmit:
 #    import subprocess
@@ -86,17 +94,18 @@ for ijob, ichunk in enumerate(chunks):
     ]).format(
         dir         = '/'.join([os.getcwd(), out_dir]), 
         scratch_dir = out_dir, 
-        cfg         = 'inspector_mm_analysis.py', 
+        cfg         = cfg, 
         ijob        = ijob, 
         infiles     = ','.join(['/scratch/manzoni/{scratch_dir}/{ifile}'.format(scratch_dir=out_dir, ifile=ifile) for ifile in ichunk]),
         se_dir      = out_dir,
         )
         
     for idx, ifile in enumerate(ichunk):
-        to_write += 'ipython -- {dir}/{cfg} --inputFiles={infiles} --logfreq=5000 --destination=/scratch/manzoni/{scratch_dir} --mc --filename=jpsimm_chunk{ijob}_part{idx} \n'.format(
+        to_write += 'ipython -- {dir}/{cfg} --inputFiles={infiles} --logfreq=5000 --destination=/scratch/manzoni/{scratch_dir} --mc --filename={outfile}_chunk{ijob}_part{idx} \n'.format(
             dir         = '/'.join([os.getcwd(), out_dir]), 
             scratch_dir = out_dir, 
-            cfg         = 'inspector_mm_analysis.py', 
+            cfg         = cfg, 
+            outfile     = out_file_name,
             ijob        = ijob, 
             infiles     = ifile,
             se_dir      = out_dir, 
@@ -106,15 +115,16 @@ for ijob, ichunk in enumerate(chunks):
     to_write += '\n'.join([
         '',
         'ls -latrh /scratch/manzoni/{scratch_dir}',
-        'hadd -f -k /scratch/manzoni/{scratch_dir}/jpsimm_chunk{ijob}.root /scratch/manzoni/{scratch_dir}/jpsimm_chunk{ijob}_part*.root',
-        'xrdcp /scratch/manzoni/{scratch_dir}/jpsimm_chunk{ijob}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/manzoni/{se_dir}/jpsimm_chunk{ijob}.root',
-        'rm /scratch/manzoni/{scratch_dir}/jpsimm_chunk{ijob}*.root',
+        'hadd -f -k /scratch/manzoni/{scratch_dir}/{outfile}_chunk{ijob}.root /scratch/manzoni/{scratch_dir}/{outfile}_chunk{ijob}_part*.root',
+        'xrdcp /scratch/manzoni/{scratch_dir}/{outfile}_chunk{ijob}.root root://t3dcachedb.psi.ch:1094///pnfs/psi.ch/cms/trivcat/store/user/manzoni/{se_dir}/{outfile}_chunk{ijob}.root',
+        'rm /scratch/manzoni/{scratch_dir}/{outfile}_chunk{ijob}*.root',
         '',
     ]).format(
         dir         = '/'.join([os.getcwd(), out_dir]), 
         scratch_dir = out_dir, 
-        cfg         = 'inspector_mm_analysis.py', 
+        cfg         = cfg, 
         ijob        = ijob, 
+        outfile     = out_file_name,
         infiles     = ','.join(['/scratch/manzoni/{scratch_dir}/{ifile}'.format(scratch_dir=out_dir, ifile=ifile.split('/')[-1]) for ifile in ichunk]),
         se_dir      = out_dir,
         )
