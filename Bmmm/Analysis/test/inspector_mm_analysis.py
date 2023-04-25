@@ -7,7 +7,23 @@ Example:
 MC
 ipython -i -- inspector_mm_analysis.py --inputFiles="C1ACDC94-EBC6-1745-A410-359FFEAB28BC.root" --filename=signal --mc
 DATI
-ipython -i -- inspector_mm_analysis.py --inputFiles="5EBF575A-A990-CB41-8EC8-28A3F2035C1B.root" --filename=data
+ipython -i -- inspector_mm_analysis.py --inputFiles="5EBF575A-A990-CB41-8EC8-28A3F2035C1B.root" --filename=data --maxevents=1000
+
+
+FIXME!
+- HLT_Mu17 and HLT_Mu19 broken, can't match <=== fixed!
+- add trigger object p4
+
+
+profiler
+https://stackoverflow.com/questions/582336/how-do-i-profile-a-python-script
+https://www.youtube.com/watch?v=QJwVYlDzAXs
+
+then sue pstat to analyse
+
+https://jiffyclub.github.io/snakeviz/
+
+https://docs.python.org/3/library/profile.html
 
 
 
@@ -215,16 +231,16 @@ for i, event in enumerate(events):
     if len(cands)==0:
         continue
 
-    # merge gen particles
-    event.all_genp = [ip for ip in event.genpr] + [ip for ip in event.genpk if bestMatch(ip, event.genpr)[1]>0.01*0.01]
+    if mc:
+        # merge gen particles
+        event.all_genp = [ip for ip in event.genpr] + [ip for ip in event.genpk if bestMatch(ip, event.genpr)[1]>0.01*0.01]
 
     # sort candidates by charge combination and best pointing angle, i.e. cosine closer to 1
     # can implement and use other criteria later
     cands.sort(key = lambda x : (abs(x.charge())==0, x.mu1.pt(), x.mu2.pt()), reverse = True)
     #final_cand = cands[0]
 
-    for final_cand in cands[:1]:
-      
+    for final_cand in cands[:1]:     
         # fill the tree    
         # can make it smarter with lambda functions associated to the def of branches             
         tofill['run'   ] = event.eventAuxiliary().run()
@@ -322,7 +338,7 @@ for i, event in enumerate(events):
                         
             # gen matching
             genp, dr2 = bestMatch(imu, event.all_genp)
-            if dr2<0.3**2:
+            if dr2<0.1**2:
                 tofill['mu%d_gen_pt'   %idx] = genp.pt()
                 tofill['mu%d_gen_eta'  %idx] = genp.eta()
                 tofill['mu%d_gen_phi'  %idx] = genp.phi()

@@ -101,17 +101,35 @@ for idx in [1,2]:
 # check online confDB https://hlt-config-editor-confdbv3.app.cern.ch/
 
 paths = dict()
-
 paths['HLT_Mu7p5_Track2_Jpsi'                     ] = ['hltL3fLMu7p5TrackL3Filtered7p5', 'hltMu7p5Track2JpsiTrackMassFiltered'  ]
 paths['HLT_Mu7p5_Track3p5_Jpsi'                   ] = ['hltL3fLMu7p5TrackL3Filtered7p5', 'hltMu7p5Track3p5JpsiTrackMassFiltered']
 paths['HLT_Mu7p5_Track7_Jpsi'                     ] = ['hltL3fLMu7p5TrackL3Filtered7p5', 'hltMu7p5Track7JpsiTrackMassFiltered'  ]
 paths['HLT_Mu8'                                   ] = ['hltL3fL1sMu5L1f0L2f5L3Filtered8']
-paths['HLT_Mu17'                                  ] = ['hltL3fL1sMu10lqL1f0L2f10L3Filtered17']
-paths['HLT_Mu19'                                  ] = ['hltL3fL1sMu10lqL1f0L2f10L3Filtered19']
+# these filters don't seem to be in our samples... I've taken them from /cdaq/physics/Run2018/2e34/v1.2.3/HLT/V2
+# paths['HLT_Mu17'                                  ] = ['hltL3fL1sMu10lqL1f0L2f10L3Filtered17']
+# paths['HLT_Mu19'                                  ] = ['hltL3fL1sMu10lqL1f0L2f10L3Filtered19']
+# in MC this menu was used
+# hltInfo C1ACDC94-EBC6-1745-A410-359FFEAB28BC.root
+# /frozen/2018/2e34/v3.2/HLT/V1
+# https://hlt-config-editor-confdbv3.app.cern.ch/open?cfg=%2Ffrozen%2F2018%2F2e34%2Fv3.2%2FHLT%2FV1&db=offline-run2 
+# for data (same filters, yay!)
+# hltInfo 5EBF575A-A990-CB41-8EC8-28A3F2035C1B.root
+# /cdaq/physics/Run2018/2e34/v3.6.1/HLT/V2
+# https://hlt-config-editor-confdbv3.app.cern.ch/open?cfg=%2Fcdaq%2Fphysics%2FRun2018%2F2e34%2Fv3.6.1%2FHLT%2FV2&db=online
+paths['HLT_Mu17'                                  ] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered17']
+paths['HLT_Mu19'                                  ] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered19']
 paths['HLT_DoubleMu4_3_Jpsi'                      ] = ['hltmumuFilterDoubleMu43Jpsi', 'hltmumuFilterDoubleMu43Jpsi']
 paths['HLT_Dimuon0_Jpsi_NoVertexing'              ] = ['hltDimuon0JpsiL3Filtered', 'hltDimuon0JpsiL3Filtered']
 paths['HLT_Dimuon0_Jpsi_NoVertexing_L1_4R_0er1p5R'] = ['hltDimuon0JpsiL1s4R0er1p5RL3Filtered', 'hltDimuon0JpsiL1s4R0er1p5RL3Filtered']
 paths['HLT_IsoMu24'                               ] = ['hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p07']
+
+
+# analysis triggers, not straightforward to define T&P filters...
+# paths['HLT_Dimuon0_Jpsi3p5_Muon2'                 ] = ['hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p07']
+# paths['HLT_DoubleMu4_JpsiTrk_Displaced'           ] = ['hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p07']
+
+
+
 
 #    'HLT_Mu7_IP4'     ,
 #    'HLT_Mu8_IP3'     ,

@@ -3,29 +3,42 @@ from itertools import product
 from collections import OrderedDict
 
 ROOT.TH1.SetDefaultSumw2(True)
+ROOT.gROOT.SetBatch(True)
 
-file = ROOT.TFile.Open('jpsimm.root', 'read')
+
+#file = ROOT.TFile.Open('jpsimm.root', 'read')
+file = ROOT.TFile.Open('data_03apr23.root', 'read')
 file.cd()
 tree = file.Get('tree')
 
-h_template = ROOT.TH1F('template', '', 80, 0, 15)
+h_template = ROOT.TH1F('template', '', 50, 0, 15)
 
 tag_trigger = 'HLT_Mu8'
 probe_trigger = 'HLT_Mu8'
+#probe_trigger = 'HLT_DoubleMu4_3_Jpsi'
+#probe_trigger = 'HLT_Dimuon0_Jpsi_NoVertexing'
+#probe_trigger = 'HLT_Dimuon0_Jpsi_NoVertexing_L1_4R_0er1p5R'
 
 # replace tagmu and probemu
 selection = ' & '.join([
-    #'cos2d>0.9'              ,                                         
-    #'vtx_prob>0.1'           ,
+#    'dr_12<1.4'              ,
+    'abs(mu1_dz)<0.2'        ,
+    'abs(mu2_dz)<0.2'        ,
+    'abs(mu1_eta)<1.4'       ,
+    'abs(mu2_eta)<1.4'       ,
+#    'cos2d>0.9'              ,                                         
+#    'vtx_prob>0.1'           ,
+#    'vtx_chi2<999999'        ,
     'abs(tagmu_dz)<0.2'      ,
     'abs(probemu_dz)<0.2'    ,
     'tagtrigger>0.5'         ,
-    'pt>6.9'                 ,
+#    'pt>6.9'                 ,
     'abs(charge)==0 '        ,
     'abs(mass-3.0969)<0.12'  ,
     'tagmu_id_medium>0.5 '   ,
     'tagmu_HLT_Mu8_tag>0.5'  ,
     'probemu_id_soft_mva>0.5',
+    'charge==0'              ,
     #'lxy_sig<3 '             ,
 ]).replace('tagtrigger', tag_trigger)
 
@@ -52,5 +65,7 @@ histos['pass_mu1'].Add(histos['pass_mu2'])
 eff = ROOT.TEfficiency(histos['pass_mu1'], histos['all_mu1'])
 
 eff.Draw()
+
+ROOT.gPad.SaveAs('efficiency_%s.pdf' %probe_trigger)
 
 

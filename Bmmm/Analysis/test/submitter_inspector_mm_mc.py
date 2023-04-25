@@ -11,7 +11,8 @@ resubmit = False
 old_files = []
 files = []
 
-with open('files_jpsimm_2018UL.txt') as f:
+with open('files_HbToMuMuX_UL2018.txt') as f:
+#with open('files_jpsimm_2018UL.txt') as f:
 #with open('files_dyll_2018UL.txt') as f:
     ifiles = f.read().splitlines()
     ifiles = ['root://cms-xrd-global.cern.ch//'+ifile for ifile in ifiles if ifile not in old_files]
@@ -19,7 +20,7 @@ with open('files_jpsimm_2018UL.txt') as f:
 
 # random.shuffle(files)
 
-files_per_job = 2
+files_per_job = 1
 chunks = list(map(list, list(zip(*[iter(files)]*files_per_job))))
 
 if len(files)%files_per_job!=0:
@@ -32,9 +33,11 @@ queue = 'standard'; time = 720
 
 #out_dir = 'JpsiMM_Pt8_2018UL_v2'
 #out_dir = 'DYToLL_2018UL_29Mar2023_v1'
-out_dir = 'JpsiMM_Pt8_2018UL_29Mar2023_v1'
+#out_dir = 'JpsiMM_Pt8_2018UL_29Mar2023_v1'
+out_dir = 'HbToMuMuX_2018UL_03Apr2023_v1'
 
-out_file_name = 'jpsimm'
+out_file_name = 'hbmmx'
+#out_file_name = 'jpsimm'
 #out_file_name = 'dymm'
 
 cfg = 'inspector_mm_analysis.py'
