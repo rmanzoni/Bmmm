@@ -36,9 +36,12 @@ https://github.com/cms-l1-dpg/Legacy-L1Ntuples/blob/6b1d8fce0bd2058d4309af71b913
 '''
 
 from __future__ import print_function
+import os 
 import re
 import ROOT
 import argparse
+import pickle
+import json
 import numpy as np
 from time import time
 from datetime import datetime, timedelta
@@ -96,6 +99,44 @@ handles['bs'     ] = ('offlineBeamSpot'              , Handle('reco::BeamSpot') 
 handles['tobjs'  ] = ('slimmedPatTrigger'            , Handle('std::vector<pat::TriggerObjectStandAlone>'))
 handles['jets'   ] = ('slimmedJets'                  , Handle('std::vector<pat::Jet>')                    )
 
+#handles['gtdigis'] = (("gtDigis"      , ""     ), Handle('L1GlobalTriggerReadoutRecord')             )
+#handles['l1max'  ] = (("patTrigger"   , "l1max"), Handle('pat::PackedTriggerPrescales ')             )
+#handles['l1min'  ] = (("patTrigger"   , "l1min"), Handle('pat::PackedTriggerPrescales ')             )   
+handles['glb_alg'] = (("gtStage2Digis", ""     ), Handle('BXVector<GlobalAlgBlk>')                   )
+#handles['glb_ext'] = (("gtStage2Digis", ""     ), Handle('BXVector<GlobalExtBlk>')                   )
+
+# # CANNOT access L1 seed name, only its bit in the menu...
+# for i in range(event.glb_alg.at(0,0).getAlgoDecisionFinal().size()): print event.glb_alg.at(0,0).getAlgoDecisionFinal(i)
+# https://gitlab.cern.ch/sharper/HLTAnalyserPy
+# L1 menus
+# https://twiki.cern.ch/twiki/bin/view/CMS/GlobalTriggerAvailableMenus
+# https://twiki.cern.ch/twiki/bin/view/CMS/L1KnownIssues#Menu_AN2
+# https://github.com/cms-l1-dpg
+# #include "tmEventSetup/tmEventSetup.hh"
+# https://github.com/cms-l1-dpg/L1Menu2018/tree/master/official/PrescaleTables
+# tmeventsetup::getMmHashN("324ed470-bdf0-4315-a64f-da3b4bc3343c");
+# // returns 571217662
+
+# get prescale column
+# event.glb_alg.at(0,0).getPreScColumn()
+# get minimum and maximum L1 prescale. Why on earth is this info useful in this form, god knows...
+# event.l1max.setTriggerNames(event.object().triggerNames(event.trg_res))
+# event.l1min.setTriggerNames(event.object().triggerNames(event.trg_res))
+# event.l1max.getPrescaleForName('HLT_DoubleMu4_3_Jpsi', True)
+# event.l1min.getPrescaleForName('HLT_DoubleMu4_3_Jpsi', True)
+
+# get prescales
+# https://github.com/cms-sw/cmssw/blob/4b3cfa5cead4e8497f808954dc4281b885a0008c/L1Trigger/L1TGlobal/plugins/GtRecordDump.cc#L190
+
+# BXVector<GlobalAlgBlk>                "gtStage2Digis"             ""                "RECO"
+# BXVector<GlobalExtBlk>                "gtStage2Digis"             ""                "RECO"
+# L1GlobalTriggerReadoutRecord          "gtDigis"                   ""                "RECO"
+# pat::PackedTriggerPrescales           "patTrigger"                ""                "PAT"
+# pat::PackedTriggerPrescales           "patTrigger"                "l1max"           "PAT"
+# pat::PackedTriggerPrescales           "patTrigger"                "l1min"           "PAT"
+# vector<pat::TriggerObjectStandAlone>    "slimmedPatTrigger"         ""                "PAT"
+# vector<string>                        "slimmedPatTrigger"         "filterLabels"    "PAT"
+
 if ('txt' in inputFiles):
     with open(inputFiles) as f:
         files = f.read().splitlines()
@@ -108,6 +149,64 @@ print("files:", files)
 
 events = Events(files)
 maxevents = maxevents if maxevents>=0 else events.size() # total number of events in the files
+
+##########################################################################################
+##########################################################################################
+#  _                    _       __ 
+# | |                  | |     /_ |
+# | |     _____   _____| |______| |
+# | |    / _ \ \ / / _ \ |______| |
+# | |___|  __/\ V /  __/ |      | |
+# |______\___| \_/ \___|_|      |_|
+#                                  
+##########################################################################################
+##########################################################################################
+
+# load L1 prescale files and add them to the branches
+l1_prescales = {}
+
+datadir = '/'.join([
+    os.environ['CMSSW_BASE'],
+    'src',
+    'Bmmm',
+    'Analysis',
+    'data',
+])
+
+for ipath in paths.keys():
+    with open('%s/%s.pickle' %(datadir, ipath), 'rb') as handle:
+        l1_prescales.update(pickle.load(handle))
+
+# create run:L1 menu dictionary
+with open('%s/l1menus/goodRuns2013to2022ByYear.json' %datadir) as f:
+   data = json.load(f)
+
+menus = {}
+for run in data["2018"]:
+    menus.setdefault(run["l1_menu"],[]).append(run["run_number"])
+
+run_menu_dict = {}
+for k, v in menus.items():
+    for irun in v:
+        run_menu_dict[irun] = k
+
+menus = {}
+
+for imenu in ['L1Menu_Collisions2018_v2_1_0',
+              'L1Menu_Collisions2018_v2_0_0',
+              'L1Menu_Collisions2018_v1_0_0',
+              'L1Menu_Collisions2018_v0_0_1']:
+    with open('%s/l1menus/%s.pickle' %(datadir, imenu)) as f:
+       menus[imenu] = pickle.load(f)
+
+for l1 in l1_prescales.keys():
+    branches.append(l1)
+    branches.append(l1 + '_ps')
+#import pdb ; pdb.set_trace()
+
+##########################################################################################
+##########################################################################################
+
 
 fout = ROOT.TFile(destination + '/' + fileName + '.root', filemode)
 if filemode=='update':
@@ -150,7 +249,7 @@ for i, event in enumerate(events):
             
     lumi = event.eventAuxiliary().luminosityBlock()
     iev  = event.eventAuxiliary().event()
-
+        
     ######################################################################################
     #####      RECO PART HERE (GEN PART REMOVED FOR NOW)
     ######################################################################################
@@ -198,7 +297,6 @@ for i, event in enumerate(events):
         continue
 
     # build analysis candidates
-
     cands = []
     
     for itriplet in combinations(muons, 2): 
@@ -356,7 +454,38 @@ for i, event in enumerate(events):
                 to, dr2 = bestMatch(getattr(final_cand, 'mu%d' %idx), good_tobjs[k])
                 tofill['mu%d_%s_tag'   %(idx, k)] = (dr2 < 0.15*0.15 and to.hasFilterLabel(v[0])) 
                 tofill['mu%d_%s_probe' %(idx, k)] = (dr2 < 0.15*0.15 and to.hasFilterLabel(v[1])) if len(v)>1 else True                 
+        
+        #import pdb ; pdb.set_trace() 
+        # add L1 seed prescales:
+        RUN  = event.eventAuxiliary().run()
+        LS   = event.eventAuxiliary().luminosityBlock()
+        MENU = run_menu_dict[RUN]
+        MENU_DICT = menus[MENU]
+        
+        for l1 in l1_prescales.keys():
+            # check max LS in the range
+            if RUN in l1_prescales[l1].keys():
+                max_ls = np.max(l1_prescales[l1][RUN])
+            
+                if LS in l1_prescales[l1][RUN].keys():
+                    my_ls = LS
+                elif LS > max_ls:
+                    my_ls = max_ls
+                else:
+                    import pdb ; pdb.set_trace()
                 
+                tofill['%s_ps' %l1] = l1_prescales[l1][RUN][my_ls]           
+            else:
+                tofill['%s_ps' %l1] = 0           
+        
+            # check id specific L1 was fired
+            #import pdb ; pdb.set_trace()
+            if l1 in MENU_DICT.keys():
+                idx = MENU_DICT[l1]
+                tofill['%s' %l1] = event.glb_alg.at(0,0).getAlgoDecisionFinal(idx)
+            else:
+                tofill['%s' %l1] = 0
+        
         ntuple.Fill(array('f', tofill.values()))
             
 fout.cd()

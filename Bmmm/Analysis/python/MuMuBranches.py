@@ -162,8 +162,8 @@ paths['HLT_DoubleMu4_Jpsi_Displaced'              ] = ['hltDisplacedmumuFilterDo
 ##########################################################################################                                                               
 ##########################################################################################                                                                  
 paths['HLT_Mu8' ] = ['hltL3fL1sMu5L1f0L2f5L3Filtered8'       ] # run 319579 rate Hz 1.51 # L1_SingleMu3 OR L1_SingleMu5 OR L1_SingleMu7
-paths['HLT_Mu17'] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered17'] # run 319579 rate Hz 1.11 # L1_SingleMu15_DQ
-paths['HLT_Mu19'] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered19'] # run 319579 rate Hz 0.75 # L1_SingleMu15_DQ
+# paths['HLT_Mu17'] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered17'] # run 319579 rate Hz 1.11 # L1_SingleMu15_DQ
+# paths['HLT_Mu19'] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered19'] # run 319579 rate Hz 0.75 # L1_SingleMu15_DQ
 
 ########################################################################################################                                                                  
 ########################################################################################################                                                    
