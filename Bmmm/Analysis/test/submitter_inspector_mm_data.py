@@ -12,16 +12,16 @@ old_files = []
 files = []
 
 for period in ['D', 'C', 'B', 'A']:
-    #with open('files_DoubleMuon_Run2018%s-UL2018_MiniAODv2_GT36.txt'%period) as f:
+    with open('files_DoubleMuon_Run2018%s-UL2018_MiniAODv2_GT36.txt'%period) as f:
     #with open('files_SingleMuon_Run2018%s-UL2018_MiniAODv2_GT36.txt'%period) as f:
-    with open('files_Charmonium_Run2018%s-UL2018_MiniAODv2_GT36.txt'%period) as f:
+    #with open('files_Charmonium_Run2018%s-UL2018_MiniAODv2_GT36.txt'%period) as f:
         ifiles = f.read().splitlines()
         ifiles = ['root://cms-xrd-global.cern.ch//'+ifile for ifile in ifiles if ifile not in old_files]
         files += ifiles
     
     # random.shuffle(files)
     
-    files_per_job = 3
+    files_per_job = 2
     chunks = list(map(list, list(zip(*[iter(files)]*files_per_job))))
     
     if len(files)%files_per_job!=0:
@@ -34,7 +34,9 @@ for period in ['D', 'C', 'B', 'A']:
         
     #out_dir = 'DoubleMuon_Run2018%s-UL2018_MiniAODv2_GT36-v1_03Apr2023_v1'%period
     #out_dir = 'SingleMuon_Run2018%s-UL2018_MiniAODv2_GT36-v1_03Apr2023_v1'%period
-    out_dir = 'Charmonium_Run2018%s-UL2018_MiniAODv2_GT36-v1_26Apr2023_v1'%period
+    #out_dir = 'Charmonium_Run2018%s-UL2018_MiniAODv2_GT36-v1_26Apr2023_v1'%period
+
+    out_dir = 'DoubleMuon_Run2018%s-UL2018_MiniAODv2_GT36-v1_09May2023_v1'%period
 
     out_file_name = 'data_mm'
 

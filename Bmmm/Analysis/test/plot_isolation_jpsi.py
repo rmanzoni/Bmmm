@@ -18,13 +18,15 @@ ROOT.gStyle.SetOptStat(0)
 
 #file = ROOT.TFile.Open('jpsimm.root', 'read')
 #file_data = ROOT.TFile.Open('data_doublemu_03apr23.root', 'read')
-file_data = ROOT.TFile.Open('data_doublemu_03apr23_jpsi.root', 'read')
+#file_data = ROOT.TFile.Open('data_doublemu_03apr23_jpsi.root', 'read')
+file_data = ROOT.TFile.Open('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_sf/charmonium_ul2018_HLT_DoubleMu4_3_Jpsi.root', 'read')
 #file_data = ROOT.TFile.Open('data_singlemu_03apr23.root', 'read')
 file_data.cd()
 tree_data = file_data.Get('tree')
 
 #file_mc = ROOT.TFile.Open('jpsimm.root', 'read')
-file_mc = ROOT.TFile.Open('hbtommx.root', 'read')
+#file_mc = ROOT.TFile.Open('hbtommx.root', 'read')
+file_mc = ROOT.TFile.Open('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_sf/hb_HLT_DoubleMu4_3_Jpsi.root', 'read')
 file_mc.cd()
 tree_mc = file_mc.Get('tree')
 
@@ -37,8 +39,9 @@ h_template_abs = ROOT.TH1F('template', '', nbins, 0, 5)
 #tag_trigger = 'HLT_IsoMu24'
 #probe_trigger = 'HLT_IsoMu24'
 
-tag_trigger = 'HLT_Mu8'
-probe_trigger = 'HLT_Mu8'
+tag_trigger = 'HLT_DoubleMu4_3_Jpsi'
+#tag_trigger = 'HLT_Mu8'
+#probe_trigger = 'HLT_Mu8'
 #probe_trigger = 'HLT_DoubleMu4_3_Jpsi'
 #probe_trigger = 'HLT_Dimuon0_Jpsi_NoVertexing'
 #probe_trigger = 'HLT_Dimuon0_Jpsi_NoVertexing_L1_4R_0er1p5R'

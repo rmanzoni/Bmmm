@@ -10,6 +10,10 @@ DATI
 ipython -i -- inspector_mm_analysis.py --inputFiles="5EBF575A-A990-CB41-8EC8-28A3F2035C1B.root" --filename=data --maxevents=1000
 
 
+DEBUG
+ipython -i -- inspector_mm_analysis.py --inputFiles="root://cms-xrd-global.cern.ch///store/data/Run2018D/Charmonium/MINIAOD/UL2018_MiniAODv2_GT36-v1/2820000/CD88CAFB-B897-3F43-AC78-7DFCA16973D8.root" --filename=debug --skip=55000
+
+
 FIXME!
 - HLT_Mu17 and HLT_Mu19 broken, can't match <=== fixed!
 - add trigger object p4
@@ -71,6 +75,7 @@ parser.add_argument('--maxevents'    , dest='maxevents'  , default=-1   , type=i
 parser.add_argument('--mc'           , dest='mc'         , action='store_true')
 parser.add_argument('--logfreq'      , dest='logfreq'    , default=100   , type=int)
 parser.add_argument('--filemode'     , dest='filemode'   , default='recreate', type=str)
+parser.add_argument('--skip'         , dest='skip'       , default=-1    , type=int)
 args = parser.parse_args()
 
 inputFiles  = args.inputFiles
@@ -80,6 +85,7 @@ maxevents   = args.maxevents
 verbose     = args.verbose
 logfreq     = args.logfreq
 filemode    = args.filemode
+skip        = args.skip
 mc = False; mc = args.mc
 
 handles_mc = OrderedDict()
@@ -219,6 +225,9 @@ tofill = OrderedDict(zip(branches, [np.nan]*len(branches)))
 start = time()
 
 for i, event in enumerate(events):
+
+    if i < skip:
+        continue
 
     if (i+1) > maxevents:
         break
@@ -454,29 +463,40 @@ for i, event in enumerate(events):
                 to, dr2 = bestMatch(getattr(final_cand, 'mu%d' %idx), good_tobjs[k])
                 tofill['mu%d_%s_tag'   %(idx, k)] = (dr2 < 0.15*0.15 and to.hasFilterLabel(v[0])) 
                 tofill['mu%d_%s_probe' %(idx, k)] = (dr2 < 0.15*0.15 and to.hasFilterLabel(v[1])) if len(v)>1 else True                 
-        
+                
         #import pdb ; pdb.set_trace() 
         # add L1 seed prescales:
         RUN  = event.eventAuxiliary().run()
         LS   = event.eventAuxiliary().luminosityBlock()
-        MENU = run_menu_dict[RUN]
-        MENU_DICT = menus[MENU]
-        
-        for l1 in l1_prescales.keys():
-            # check max LS in the range
-            if RUN in l1_prescales[l1].keys():
-                max_ls = np.max(l1_prescales[l1][RUN])
-            
-                if LS in l1_prescales[l1][RUN].keys():
-                    my_ls = LS
-                elif LS > max_ls:
-                    my_ls = max_ls
-                else:
-                    import pdb ; pdb.set_trace()
-                
-                tofill['%s_ps' %l1] = l1_prescales[l1][RUN][my_ls]           
+        if mc:
+            MENU_DICT = menus['L1Menu_Collisions2018_v1_0_0']        
+        else:
+            MENU = run_menu_dict[RUN]
+            MENU_DICT = menus[MENU]
+                    
+        ## L1Menu_Collisions2018_v1_0_0-d1_xml
+        ## process HLT (release CMSSW_10_2_16_UL)
+        ##   HLT menu:   '/frozen/2018/2e34/v3.2/HLT/V1'
+        ##   global tag: '102X_upgrade2018_realistic_v15'
+        ## menu_names['L1Menu_Collisions2018_v1_0_0-d1'] = 'L1Menu_Collisions2018_v1_0_0'
+        for l1 in l1_prescales.keys():        
+            if mc:
+                tofill['%s_ps' %l1] = 1        
             else:
-                tofill['%s_ps' %l1] = 0           
+                # check max LS in the range
+                if RUN in l1_prescales[l1].keys():
+                    max_ls = np.max(l1_prescales[l1][RUN].keys())
+                    if LS in l1_prescales[l1][RUN].keys():
+                        my_ls = LS
+                    elif LS > max_ls:
+                        my_ls = max_ls
+                    else:
+                        # SHOULD NEVER END UP HERE, ADD SOME DEBUGGING LOGGING
+                        #import pdb ; pdb.set_trace()
+                        continue
+                    tofill['%s_ps' %l1] = l1_prescales[l1][RUN][my_ls]           
+                else:
+                    tofill['%s_ps' %l1] = 0           
         
             # check id specific L1 was fired
             #import pdb ; pdb.set_trace()
@@ -485,6 +505,10 @@ for i, event in enumerate(events):
                 tofill['%s' %l1] = event.glb_alg.at(0,0).getAlgoDecisionFinal(idx)
             else:
                 tofill['%s' %l1] = 0
+ 
+            #import pdb ; pdb.set_trace()
+
+        #import pdb ; pdb.set_trace() 
         
         ntuple.Fill(array('f', tofill.values()))
             

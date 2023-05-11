@@ -34,7 +34,8 @@ queue = 'standard'; time = 720
 #out_dir = 'JpsiMM_Pt8_2018UL_v2'
 #out_dir = 'DYToLL_2018UL_29Mar2023_v1'
 #out_dir = 'JpsiMM_Pt8_2018UL_29Mar2023_v1'
-out_dir = 'HbToMuMuX_2018UL_03Apr2023_v1'
+#out_dir = 'HbToMuMuX_2018UL_03Apr2023_v1'
+out_dir = 'HbToMuMuX_2018UL_09May2023_v1'
 
 out_file_name = 'hbmmx'
 #out_file_name = 'jpsimm'

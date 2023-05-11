@@ -1,9 +1,16 @@
+'''
+RUN THIS WITH CONDA ROOT!!
+'''
+
 import os
 import ROOT
+import glob
 from itertools import product
 from collections import OrderedDict
 from cmsstyle import CMS_lumi
 from officialStyle import officialStyle
+
+ROOT.EnableImplicitMT()
 
 newdir = 'nonprompt'
 #newdir = 'prompt'
@@ -18,21 +25,40 @@ ROOT.gStyle.SetOptStat(0)
 
 #file = ROOT.TFile.Open('jpsimm.root', 'read')
 #file_data = ROOT.TFile.Open('data_doublemu_03apr23.root', 'read')
-file_data = ROOT.TFile.Open('data_doublemu_03apr23_jpsi.root', 'read')
+#file_data = ROOT.TFile.Open('data_doublemu_03apr23_jpsi.root', 'read')
+#file_data = ROOT.TFile.Open('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_sf/charmonium_ul2018_HLT_DoubleMu4_3_Jpsi.root', 'read')
 #file_data = ROOT.TFile.Open('data_singlemu_03apr23.root', 'read')
-file_data.cd()
-tree_data = file_data.Get('tree')
+#file_data.cd()
+#tree_data = file_data.Get('tree')
 
 #file_mc = ROOT.TFile.Open('jpsimm.root', 'read')
-file_mc = ROOT.TFile.Open('hbtommx.root', 'read')
-file_mc.cd()
-tree_mc = file_mc.Get('tree')
+#file_mc = ROOT.TFile.Open('hbtommx.root', 'read')
+#file_mc = ROOT.TFile.Open('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_sf/hb_HLT_DoubleMu4_3_Jpsi.root', 'read')
+#file_mc.cd()
+#tree_mc = file_mc.Get('tree')
+
+
+
+tree_data = ROOT.TChain('tree')
+files_data = [ifile for ifile in glob.glob('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/Charmonium_Run2018*-UL2018_MiniAODv2_GT36-v1_26Apr2023_v1/*root') if (os.path.getsize(ifile) >> 10) > 900]
+#for ifile in files_data: tree_data.Add(ifile)
+rdf_data = ROOT.RDataFrame('tree', files_data)
+
+tree_mc = ROOT.TChain('tree')
+files_mc = [ifile for ifile in glob.glob('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/HbToMuMuX_2018UL_03Apr2023_v1/*root') if (os.path.getsize(ifile) >> 10) > 500]
+#for ifile in files_mc: tree_mc.Add(ifile)
+rdf_mc = ROOT.RDataFrame('tree', files_mc)
+
+
+
+print('got my trees...')
 
 #tag_trigger = 'HLT_IsoMu24'
 #probe_trigger = 'HLT_IsoMu24'
 
-tag_trigger = 'HLT_Mu8'
-probe_trigger = 'HLT_Mu8'
+#tag_trigger = 'HLT_Mu8'
+tag_trigger = 'HLT_DoubleMu4_3_Jpsi'
+#probe_trigger = 'HLT_Mu8'
 #probe_trigger = 'HLT_DoubleMu4_3_Jpsi'
 #probe_trigger = 'HLT_Dimuon0_Jpsi_NoVertexing'
 #probe_trigger = 'HLT_Dimuon0_Jpsi_NoVertexing_L1_4R_0er1p5R'
@@ -77,32 +103,38 @@ selection_nonprompt =  ' & '.join([
 #selection += ' & ' + selection_prompt
 selection += ' & ' + selection_nonprompt
 
+rdf_data = rdf_data.Filter(selection)
+rdf_mc   = rdf_mc  .Filter(selection)
+
+rdf_data = rdf_data.Define('weight', '(charge==0 - charge!=0)')
+rdf_mc   = rdf_mc  .Define('weight', '(charge==0 - charge!=0)')
+
 if newdir=='prompt'   : nbins=100
 if newdir=='nonprompt': nbins=40
 
 histos = OrderedDict()
 
-histos['abs(mu1_dz)'        ] = ROOT.TH1F('mu1_dz_alt' , '', nbins,  0  ,   0.25)
-histos['abs(mu2_dz)'        ] = ROOT.TH1F('mu2_dz_alt' , '', nbins,  0  ,   0.25)
-histos['abs(mu1_dxy)'       ] = ROOT.TH1F('mu1_dxy_alt', '', nbins,  0  ,   0.06)
-histos['abs(mu2_dxy)'       ] = ROOT.TH1F('mu2_dxy_alt', '', nbins,  0  ,   0.06)
-histos['log10(abs(mu1_dz))' ] = ROOT.TH1F('mu1_dz'     , '', nbins, -5  ,   -0.5)
-histos['log10(abs(mu2_dz))' ] = ROOT.TH1F('mu2_dz'     , '', nbins, -5  ,   -0.5)
-histos['log10(abs(mu1_dxy))'] = ROOT.TH1F('mu1_dxy'    , '', nbins, -5  ,   -1)
-histos['log10(abs(mu2_dxy))'] = ROOT.TH1F('mu2_dxy'    , '', nbins, -5  ,   -1)
-histos['mu1_pt'             ] = ROOT.TH1F('mu1_pt'     , '', nbins,  0  ,  30  )
-histos['mu2_pt'             ] = ROOT.TH1F('mu2_pt'     , '', nbins,  0  ,  20  )
-histos['mu1_eta'            ] = ROOT.TH1F('mu1_eta'    , '', nbins, -2.5,   2.5)
-histos['mu2_eta'            ] = ROOT.TH1F('mu2_eta'    , '', nbins, -2.5,   2.5)
-histos['mass'               ] = ROOT.TH1F('mass'       , '', nbins,  2.5,   4.5)
-histos['mass_alt'           ] = ROOT.TH1F('mass_alt'   , '', nbins,  3.1-0.12,   3.1+0.12)
-histos['npv'                ] = ROOT.TH1F('npv'        , '',   100,  0  , 100  )
-histos['lxy'                ] = ROOT.TH1F('lxy'        , '', nbins,  0  ,   1  )
-histos['lxy_sig'            ] = ROOT.TH1F('lxy_sig'    , '', nbins,  0  ,  20  )
-histos['log10(lxy)'         ] = ROOT.TH1F('log10lxy'   , '', nbins, -4  ,   1. )
-histos['log10(lxy_sig)'     ] = ROOT.TH1F('log10lxysig', '', nbins, -2  ,   2. )
-histos['vtx_prob'           ] = ROOT.TH1F('vtx_prob'   , '', nbins,  0  ,   1  )
-histos['dr_12'              ] = ROOT.TH1F('dr_12'      , '', nbins,  0  ,   0.8)
+histos['npv'                ] = ROOT.TH1D('npv'        , '',   100,  0  , 100  )
+histos['mu1_pt'             ] = ROOT.TH1D('mu1_pt'     , '', nbins,  0  ,  30  )
+histos['mu2_pt'             ] = ROOT.TH1D('mu2_pt'     , '', nbins,  0  ,  20  )
+histos['mu1_eta'            ] = ROOT.TH1D('mu1_eta'    , '', nbins, -2.5,   2.5)
+histos['mu2_eta'            ] = ROOT.TH1D('mu2_eta'    , '', nbins, -2.5,   2.5)
+histos['mass'               ] = ROOT.TH1D('mass'       , '', nbins,  2.5,   4.5)
+histos['mass_alt'           ] = ROOT.TH1D('mass_alt'   , '', nbins,  3.1-0.12,   3.1+0.12)
+histos['lxy'                ] = ROOT.TH1D('lxy'        , '', nbins,  0  ,   1  )
+histos['lxy_sig'            ] = ROOT.TH1D('lxy_sig'    , '', nbins,  0  ,  20  )
+# histos['log10(lxy)'         ] = ROOT.TH1D('log10lxy'   , '', nbins, -4  ,   1. )
+# histos['log10(lxy_sig)'     ] = ROOT.TH1D('log10lxysig', '', nbins, -2  ,   2. )
+histos['vtx_prob'           ] = ROOT.TH1D('vtx_prob'   , '', nbins,  0  ,   1  )
+histos['dr_12'              ] = ROOT.TH1D('dr_12'      , '', nbins,  0  ,   0.8)
+# histos['abs(mu1_dz)'        ] = ROOT.TH1D('mu1_dz_alt' , '', nbins,  0  ,   0.25)
+# histos['abs(mu2_dz)'        ] = ROOT.TH1D('mu2_dz_alt' , '', nbins,  0  ,   0.25)
+# histos['abs(mu1_dxy)'       ] = ROOT.TH1D('mu1_dxy_alt', '', nbins,  0  ,   0.06)
+# histos['abs(mu2_dxy)'       ] = ROOT.TH1D('mu2_dxy_alt', '', nbins,  0  ,   0.06)
+# histos['log10(abs(mu1_dz))' ] = ROOT.TH1D('mu1_dz'     , '', nbins, -5  ,   -0.5)
+# histos['log10(abs(mu2_dz))' ] = ROOT.TH1D('mu2_dz'     , '', nbins, -5  ,   -0.5)
+# histos['log10(abs(mu1_dxy))'] = ROOT.TH1D('mu1_dxy'    , '', nbins, -5  ,   -1)
+# histos['log10(abs(mu2_dxy))'] = ROOT.TH1D('mu2_dxy'    , '', nbins, -5  ,   -1)
 
 labels = {}
 labels['mass'          ] = 'mass(#mu, #mu) (GeV)'
@@ -141,28 +173,42 @@ main_pad.SetBottomMargin(0.)
 ratio_pad.SetTopMargin(0.)   
 ratio_pad.SetGridy()
 ratio_pad.SetBottomMargin(0.45)
- 
+
+histos_data = histos.copy()
+histos_mc   = histos.copy()
+
 for k, v in histos.items():
 
-    hdata = v.Clone() 
+    print('\t...processing', k)
+    
+    my_selection = selection
+    if k!='mass':
+        my_selection += ' & abs(mass-3.1)<0.12' 
+    
+    histo_model = ROOT.RDF.TH1DModel(v)
+    
+    #import pdb ; pdb.set_trace()
+    histos_data[k] = rdf_data.Filter(my_selection).Histo1D(histo_model, k.replace('_alt',''), 'weight')
+    histos_mc  [k] = rdf_mc  .Filter(my_selection).Histo1D(histo_model, k.replace('_alt',''), 'weight')
+    
+    #tree_data.Draw('%s>>%s' %(k.replace('_alt',''), hdata.GetName()), '(%s) * (charge==0 - charge!=0)' %my_selection)
+    #tree_mc  .Draw('%s>>%s' %(k.replace('_alt',''), hmc  .GetName()), '(%s) * (charge==0 - charge!=0)' %my_selection)
+    
+
+for k, v in histos.items():
+
+    hdata = histos_data[k].GetValue().Clone() 
     hdata.SetName('data_' + v.GetName())
     hdata.GetYaxis().SetTitle('a.u.')
     hdata.GetXaxis().SetTitle(labels[k])
 
-    hmc = v.Clone() 
+    hmc = histos_mc[k].GetValue().Clone() 
     hmc.SetName('mc_' + v.GetName())
     hmc.GetYaxis().SetTitle('a.u.')
     hmc.GetXaxis().SetTitle(labels[k])
            
     c1.cd()
     main_pad.cd()
-    
-    my_selection = selection
-    if k!='mass':
-        my_selection += ' & abs(mass-3.1)<0.12' 
-    
-    tree_data.Draw('%s>>%s' %(k.replace('_alt',''), hdata.GetName()), '(%s) * (charge==0 - charge!=0)' %my_selection)
-    tree_mc  .Draw('%s>>%s' %(k.replace('_alt',''), hmc  .GetName()), '(%s) * (charge==0 - charge!=0)' %my_selection)
     
     if newdir == 'nonprompt':
         colour = ROOT.kBlue-7
@@ -211,6 +257,12 @@ for k, v in histos.items():
     ratio.GetYaxis().SetLabelSize(3.* ratio.GetYaxis().GetLabelSize())
     ratio.GetXaxis().SetTitleSize(3.* ratio.GetXaxis().GetTitleSize())
     ratio.GetYaxis().SetTitleSize(3.* ratio.GetYaxis().GetTitleSize())
+
+    if k == 'npv':
+        print ('PILEUP REWEIGHING')
+        for ibin in range(ratio.GetNbinsX()):
+            print(ibin+1, ratio.GetBinCenter(ibin+1)-0.5, ratio.GetBinCenter(ibin+1)+0.5, ratio.GetBinContent(ibin+1), ratio.GetBinError(ibin+1))
+
 
     CMS_lumi(main_pad, 4, 0, cmsText = 'CMS', extraText = ' Preliminary', lumi_13TeV = '')
 
