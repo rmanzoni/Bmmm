@@ -97,6 +97,9 @@ branches = [
     'ele1_eta'                ,
     'ele1_phi'                ,
     'ele1_e'                  ,
+    'ele1_to_pt'              ,
+    'ele1_to_eta'             ,
+    'ele1_to_phi'             ,
     'ele1_tk_pt'              ,
     'ele1_tk_eta'             ,
     'ele1_tk_phi'             ,
@@ -140,11 +143,15 @@ branches = [
     'ele1_dr03TkSumPt'        ,  # dr03TkSumPt 
     'ele1_dr03EcalRecHitSumEt',  # dr03EcalRecHitSumEt 
     'ele1_dr03HcalTowerSumEt' ,  # dr03HcalTowerSumEt
+    'ele1_pixhits'            ,  # gsfTrack().hitPattern().numberOfValidPixelHits()
 
     'ele2_pt'                 ,
     'ele2_eta'                ,
     'ele2_phi'                ,
     'ele2_e'                  ,
+    'ele2_to_pt'              ,
+    'ele2_to_eta'             ,
+    'ele2_to_phi'             ,
     'ele2_tk_pt'              ,
     'ele2_tk_eta'             ,
     'ele2_tk_phi'             ,
@@ -188,6 +195,7 @@ branches = [
     'ele2_dr03TkSumPt'        ,  # dr03TkSumPt 
     'ele2_dr03EcalRecHitSumEt',  # dr03EcalRecHitSumEt 
     'ele2_dr03HcalTowerSumEt' ,  # dr03HcalTowerSumEt
+    'ele2_pixhits'            ,  # gsfTrack().hitPattern().numberOfValidPixelHits()
 
     'k_pt'                    ,
     'k_eta'                   ,
@@ -206,6 +214,8 @@ branches = [
     'k_bs_dxy_sig'            ,
     'k_cov_pos_def'           ,
     'k_det_cov'               ,
+    
+    'trg_match'               ,
 ]
 
 
@@ -242,23 +252,49 @@ branches_mc = [
 ]
 
 paths = [
-    'HLT_DoubleEle4_eta1p22_mMax6_v1'  ,
-    'HLT_DoubleEle4p5_eta1p22_mMax6_v1',
-    'HLT_DoubleEle5_eta1p22_mMax6_v1'  ,
-    'HLT_DoubleEle5p5_eta1p22_mMax6_v1',
-    'HLT_DoubleEle6_eta1p22_mMax6_v1'  ,
-    'HLT_DoubleEle6p5_eta1p22_mMax6_v1',
-    'HLT_DoubleEle7_eta1p22_mMax6_v1'  ,
-    'HLT_DoubleEle7p5_eta1p22_mMax6_v1',
-    'HLT_DoubleEle8_eta1p22_mMax6_v1'  ,
-    'HLT_DoubleEle8p5_eta1p22_mMax6_v1',
-    'HLT_DoubleEle9_eta1p22_mMax6_v1'  ,
-    'HLT_DoubleEle9p5_eta1p22_mMax6_v1',
-    'HLT_DoubleEle10_eta1p22_mMax6_v1' ,
+    'HLT_DoubleEle4_eta1p22_mMax6'  ,
+    'HLT_DoubleEle4p5_eta1p22_mMax6',
+    'HLT_DoubleEle5_eta1p22_mMax6'  ,
+    'HLT_DoubleEle5p5_eta1p22_mMax6',
+    'HLT_DoubleEle6_eta1p22_mMax6'  ,
+    'HLT_DoubleEle6p5_eta1p22_mMax6',
+    'HLT_DoubleEle7_eta1p22_mMax6'  ,
+    'HLT_DoubleEle7p5_eta1p22_mMax6',
+    'HLT_DoubleEle8_eta1p22_mMax6'  ,
+    'HLT_DoubleEle8p5_eta1p22_mMax6',
+    'HLT_DoubleEle9_eta1p22_mMax6'  ,
+    'HLT_DoubleEle9p5_eta1p22_mMax6',
+    'HLT_DoubleEle10_eta1p22_mMax6' ,
+
+    'HLT_DoubleEle4_eta1p22_mMax6_trkHits10'  ,
+    'HLT_DoubleEle4p5_eta1p22_mMax6_trkHits10',
+    'HLT_DoubleEle5_eta1p22_mMax6_trkHits10'  ,
+    'HLT_DoubleEle5p5_eta1p22_mMax6_trkHits10',
+    'HLT_DoubleEle6_eta1p22_mMax6_trkHits10'  ,
+    'HLT_DoubleEle6p5_eta1p22_mMax6_trkHits10',
+    'HLT_DoubleEle7_eta1p22_mMax6_trkHits10'  ,
+    'HLT_DoubleEle7p5_eta1p22_mMax6_trkHits10',
+    'HLT_DoubleEle8_eta1p22_mMax6_trkHits10'  ,
+    'HLT_DoubleEle8p5_eta1p22_mMax6_trkHits10',
+    'HLT_DoubleEle9_eta1p22_mMax6_trkHits10'  ,
+    'HLT_DoubleEle9p5_eta1p22_mMax6_trkHits10',
+    'HLT_DoubleEle10_eta1p22_mMax6_trkHits10' ,
+
+    'HLT_DoubleEle4_eta1p22_mMax6_dz0p8'  ,
+    'HLT_DoubleEle4p5_eta1p22_mMax6_dz0p8',
+    'HLT_DoubleEle5_eta1p22_mMax6_dz0p8'  ,
+    'HLT_DoubleEle5p5_eta1p22_mMax6_dz0p8',
+    'HLT_DoubleEle6_eta1p22_mMax6_dz0p8'  ,
+    'HLT_DoubleEle6p5_eta1p22_mMax6_dz0p8',
+    'HLT_DoubleEle7_eta1p22_mMax6_dz0p8'  ,
+    'HLT_DoubleEle7p5_eta1p22_mMax6_dz0p8',
+    'HLT_DoubleEle8_eta1p22_mMax6_dz0p8'  ,
+    'HLT_DoubleEle8p5_eta1p22_mMax6_dz0p8',
+    'HLT_DoubleEle9_eta1p22_mMax6_dz0p8'  ,
+    'HLT_DoubleEle9p5_eta1p22_mMax6_dz0p8',
+    'HLT_DoubleEle10_eta1p22_mMax6_dz0p8' ,
 ]
 
 branches += paths
 branches += [path+'_ps' for path in paths]
-
-
 

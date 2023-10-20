@@ -6,6 +6,7 @@ ipython -i -- inspector_kee_analysis.py --inputFiles="37c50324-b780-4536-b137-11
 ipython -i -- inspector_kee_analysis.py --inputFiles="912a511d-832e-4d14-8b0c-e6e49e7d8b17.root" --filename=data
 
 
+/store/data/Run2022F/ParkingDoubleElectronLowMass0/MINIAOD/PromptReco-v1/000/361/971/00000/5043b499-ae56-403b-8243-5e9a8a0e9d8e.root
 
 xrdcp /scratch/manzoni/Kee_DoubleEleLowMass0to5_Run2022C_11aug22_v9/bd957a0a-bb1c-45ff-9f70-0896457511c8.root .
 
@@ -30,6 +31,12 @@ https://github.com/DiElectronX/BParkingNANO/blob/main/BParkingNano/production/sa
 dasgoclient -query="file dataset=/BuTOKEE20220826bettersplitting/jodedra-SUMMER22_MINIAOD-d5db235e2a58bcae594a314d29cbde75/USER            instance=prod/phys03" > files_kee_lowq2.txt
 dasgoclient -query="file dataset=/BuTOjpsiKEE20220831fiftyMbettersplitting/jodedra-SUMMER22_MINIAOD-d5db235e2a58bcae594a314d29cbde75/USER  instance=prod/phys03" > files_kee_jpsi.txt
 dasgoclient -query="file dataset=/BuTOpsi2sKEE20220831fiftyMbettersplitting/jodedra-SUMMER22_MINIAOD-d5db235e2a58bcae594a314d29cbde75/USER instance=prod/phys03" > files_kee_psi2s.txt
+
+
+https://stackoverflow.com/questions/582336/how-do-i-profile-a-python-script
+
+
+ipython -i -- inspector_kee_analysis_v2.py --inputFiles="361971_5043b499-ae56-403b-8243-5e9a8a0e9d8e.root" --filename=ruttone
 
 '''
 
@@ -151,28 +158,29 @@ for i, event in enumerate(events):
         iname = str(iname) # why no auto conversion from CPP string to python string?!
         if not iname.startswith('HLT_DoubleEle') or 'mMax6' not in iname : continue 
         #print(iname)
-        #import pdb ; pdb.set_trace()
         for ipath in paths:
             idx = len(trg_names)
-            if iname.startswith(ipath):
+            # remove version
+            reduced_iname = '_'.join(iname.split('_')[:-1])
+            if ipath==reduced_iname:
                 idx = trg_names.triggerIndex(iname)
                 tofill[ipath        ] = ( idx < len(trg_names)) * (event.trg_res.accept(idx))
                 tofill[ipath + '_ps'] = event.trg_ps.getPrescaleForIndex(idx)
-                if ipath=='HLT_Mu7_IP4' and event.trg_ps.getPrescaleForIndex(idx)>0 and ( idx < len(trg_names)) * (event.trg_res.accept(idx)):
-                    hlt_passed = True
-
+                #if ipath=='HLT_Mu7_IP4' and event.trg_ps.getPrescaleForIndex(idx)>0 and ( idx < len(trg_names)) * (event.trg_res.accept(idx)):
+                #    hlt_passed = True
+    
     if not hlt_passed:
         continue            
         
-#     # trigger matching
-#     # these are the filters, MAYBE!! too lazy to check confDB. Or, more appropriately: confDB sucks
-#     # https://github.com/cms-sw/cmssw/blob/6d2f66057131baacc2fcbdd203588c41c885b42c/Configuration/Skimming/python/pwdgSkimBPark_cfi.py#L11-L18 
-#     good_tobjs = []
-#     for to in [to for to in event.tobjs if to.pt()>6.5 and abs(to.eta())<2.]:
-#         to.unpackFilterLabels(event.object(), event.trg_res)
-#         if to.hasFilterLabel('hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered7IP4Q'):
-#             good_tobjs.append(to)
-#             
+    # save trigger objects for trigger matching
+    # https://github.com/cms-sw/cmssw/blob/8b101cb0f00c4a961bc4a6d49512ef0335486f40/DataFormats/HLTReco/interface/TriggerTypeDefs.h
+    good_tobjs = []
+    for to in [to for to in event.tobjs if to.pt()>3.9 and abs(to.eta())<1.4 and (to.type(81) or to.type(82))]:
+        to.unpackFilterLabels(event.object(), event.trg_res)        
+        #for aa in to.filterLabels(): print(aa)
+        if to.hasFilterLabel("hltDoubleEle*eta1p22mMax6ValidHitsFilter"): # add the other new filters!
+            good_tobjs.append(to)
+                     
     eles = [ele for ele in event.eles if ele.pt()>4. and abs(ele.eta())<1.4 and ele.electronID('mvaEleID-Fall17-noIso-V1-wpLoose') and ROOT.reco.Track(ele.gsfTrack().get()).numberOfValidHits()>0 and ele.isPF()]
     eles.sort(key = lambda x : x.pt(), reverse = True)
         
@@ -240,18 +248,37 @@ for i, event in enumerate(events):
         cand = DiEleCandidate(ipair, event.vtx, event.bs)
         
         # 2 eles somewhat close in dz, max distance 1 cm
-        if max([abs( iele.gsfTrack().get().dz(cand.pv.position()) - jele.gsfTrack().get().dz(cand.pv.position()) ) for iele, jele in combinations(cand.eles, 2)])>1: 
+        if max([abs( iele.gsfTrack().get().dz(cand.pv.position()) - jele.gsfTrack().get().dz(cand.pv.position()) ) for iele, jele in combinations(cand.eles, 2)])>0.8: 
             continue
         
         # filter by mass, first
         if cand.mass()<0.1 or cand.mass()>5.3:
             continue
         
-        # FIXME! disable trigger matching for now          
-        # trigger matching, at least one muon matched. 
-        # Later one can save the best matched trigger object to each muon, but let me keep it simple for now
-#         if sum([deltaR(ipair[0], ipair[1])<0.15 for ipair in product(itriplet, good_tobjs)])==0:
-#             continue
+        # trigger matching
+        to1, dr1 = bestMatch(cand.ele1, good_tobjs)
+        to2, dr2 = bestMatch(cand.ele2, good_tobjs)
+        
+        cand.ele1.to = None
+        cand.ele2.to = None
+
+        #check = False
+        #if to1==to2:
+        #    check=True
+        #    import pdb ; pdb.set_trace()
+    
+        if to1==to2 and dr1 < dr2:
+            to2, dr2 = bestMatch(cand.ele2, [obj for obj in good_tobjs if obj!=to1])
+            cand.ele1.to = to1 if dr1<0.2*0.2 else None
+            cand.ele2.to = to2 if dr2<0.2*0.2 else None
+        elif to1==to2 and dr2 < dr1:
+            to1, dr1 = bestMatch(cand.ele1, [obj for obj in good_tobjs if obj!=to2])
+        elif to1 != to2:
+            cand.ele1.to = to1 if dr1<0.2*0.2 else None
+            cand.ele2.to = to2 if dr2<0.2*0.2 else None
+
+        #if check:
+        #    import pdb ; pdb.set_trace()
         
         # valid vertex
         if not cand.vtx.isValid():
@@ -273,11 +300,11 @@ for i, event in enumerate(events):
         cand = KeeCandidate(iee, itk, all_trks, event.vtx, event.bs, mass=0.493677)
         
         # dR
-        if cand.r()>1.4:
+        if cand.r()>1.5:
             continue
         
         # eles - track somewhat close in dz, max distance 1 cm
-        if max([abs( iele.gsfTrack().get().dz(cand.pv.position()) - itk.dz(iee.pv.position()) ) for iele in cand.eles])>1: 
+        if max([abs( iele.gsfTrack().get().dz(cand.pv.position()) - itk.dz(iee.pv.position()) ) for iele in cand.eles])>0.8: 
             continue
 
         # no double counting
@@ -291,7 +318,11 @@ for i, event in enumerate(events):
         # valid vertex
         if not cand.vtx.isValid():
             continue
-        
+
+        # some non crazy pointing
+        if cand.vtx.cos<0.5:
+            continue
+
         # if you made it this far, then save the candidate
         b_cands.append(cand)
 
@@ -299,9 +330,9 @@ for i, event in enumerate(events):
     if len(b_cands)==0:
         continue
 
-    # sort candidates by charge combination and best pointing angle, i.e. cosine closer to 1
+    # sort candidates by trigger matching, charge combination and best pointing angle, i.e. cosine closer to 1
     # can implement and use other criteria later
-    b_cands.sort(key = lambda x : (abs(x.diele.charge())==1, x.vtx.cos), reverse = True)
+    b_cands.sort(key = lambda x : ((x.ele1.to is not None and x.ele2.to is not None), abs(x.diele.charge())!=1, x.vtx.cos), reverse = True)
     final_cand = b_cands[0]
       
     # fill the tree    
@@ -404,6 +435,10 @@ for i, event in enumerate(events):
     tofill['ele1_eta'        ] = final_cand.ele1.eta()
     tofill['ele1_phi'        ] = final_cand.ele1.phi()
     tofill['ele1_e'          ] = final_cand.ele1.energy()
+    if final_cand.ele1.to is not None:
+        tofill['ele1_to_pt'      ] = final_cand.ele1.to.pt()
+        tofill['ele1_to_eta'     ] = final_cand.ele1.to.eta()
+        tofill['ele1_to_phi'     ] = final_cand.ele1.to.phi()
     tofill['ele1_mass'       ] = final_cand.ele1.mass()
     tofill['ele1_tk_pt'      ] = final_cand.ele1.gsfTrack().pt()
     tofill['ele1_tk_eta'     ] = final_cand.ele1.gsfTrack().eta()
@@ -449,11 +484,16 @@ for i, event in enumerate(events):
     tofill['ele1_dr03TkSumPt'        ] = final_cand.ele1.dr03TkSumPt() 
     tofill['ele1_dr03EcalRecHitSumEt'] = final_cand.ele1.dr03EcalRecHitSumEt() 
     tofill['ele1_dr03HcalTowerSumEt' ] = final_cand.ele1.dr03HcalTowerSumEt()
+    tofill['ele1_pixhits'            ] = final_cand.ele1.gsfTrack().hitPattern().numberOfValidPixelHits()
 
     tofill['ele2_pt'         ] = final_cand.ele2.pt()
     tofill['ele2_eta'        ] = final_cand.ele2.eta()
     tofill['ele2_phi'        ] = final_cand.ele2.phi()
     tofill['ele2_e'          ] = final_cand.ele2.energy()
+    if final_cand.ele2.to is not None:
+        tofill['ele2_to_pt'      ] = final_cand.ele2.to.pt()
+        tofill['ele2_to_eta'     ] = final_cand.ele2.to.eta()
+        tofill['ele2_to_phi'     ] = final_cand.ele2.to.phi()
     tofill['ele2_mass'       ] = final_cand.ele2.mass()
     tofill['ele2_tk_pt'      ] = final_cand.ele2.gsfTrack().pt()
     tofill['ele2_tk_eta'     ] = final_cand.ele2.gsfTrack().eta()
@@ -498,6 +538,7 @@ for i, event in enumerate(events):
     tofill['ele2_dr03TkSumPt'        ] = final_cand.ele2.dr03TkSumPt() 
     tofill['ele2_dr03EcalRecHitSumEt'] = final_cand.ele2.dr03EcalRecHitSumEt() 
     tofill['ele2_dr03HcalTowerSumEt' ] = final_cand.ele2.dr03HcalTowerSumEt()
+    tofill['ele2_pixhits'            ] = final_cand.ele2.gsfTrack().hitPattern().numberOfValidPixelHits()
 
     tofill['k_pt'            ] = final_cand.trk.pt()
     tofill['k_eta'           ] = final_cand.trk.eta()
@@ -517,6 +558,8 @@ for i, event in enumerate(events):
     tofill['k_cov_pos_def'   ] = final_cand.trk.is_cov_pos_def
     tofill['k_det_cov'       ] = np.linalg.det(final_cand.trk.cov)
 
+    tofill['trg_match'] = (final_cand.ele1.to is not None and final_cand.ele2.to is not None)
+    
     if mc and good_gen_matching:
         tofill['ele1_gen_pt'   ] = myb.e1.pt()
         tofill['ele1_gen_eta'  ] = myb.e1.eta()
