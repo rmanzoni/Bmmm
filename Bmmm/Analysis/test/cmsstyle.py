@@ -15,11 +15,11 @@ def CMS_lumi(pad, iPeriod, iPosX, cmsText = "CMS", extraText = 'Preliminary',
     
     extraTextFont = 52 
 
-    lumiTextSize   = 0.55
+    lumiTextSize   = 0.6
     lumiTextOffset = 0.2
 
-    cmsTextSize   = 0.8
-    cmsTextOffset = 0.15
+    cmsTextSize   = 0.9
+    cmsTextOffset = 0.2
 
     relPosX    = 0.150
 #     relPosY    = 0.025

@@ -55,37 +55,62 @@ class B4MuCandidate():
         for imu in self.muons:
             tofit.push_back(imu.bestTrack())
         self.vtx = vtxfit.Fit(tofit)
-        self.vtx.chi2 = self.vtx.normalisedChiSquared()
-        self.vtx.prob = (1. - stats.chi2.cdf(self.vtx.chi2, 1)) if self.vtx.isValid() else np.nan 
-
-        # now compute some displacement related quantities, here in the transverse plane.
-        # later can add 3D quantities
-        self.lxy = ROOT.VertexDistanceXY().distance(self.bs, self.vtx.vertexState()) if self.vtx.isValid() else np.nan
-
-        vect_lxy = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
-                    self.vtx.position().x() - self.bs.position().x(),
-                    self.vtx.position().y() - self.bs.position().y(),
-                    0. ) if self.vtx.isValid() else np.nan
-
-        vect_pt = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
-                    self.px(),
-                    self.py(),
-                    0. ) if self.vtx.isValid() else np.nan
-
-        self.vtx.cos = vect_pt.Dot(vect_lxy) / (vect_pt.R() * vect_lxy.R()) if (self.vtx.isValid() and vect_lxy.R() > 0.) else np.nan
         
-        self.pv_to_sv = ROOT.Math.XYZVector(
-                            (self.vtx.position().x() - self.pv.position().x()), 
-                            (self.vtx.position().y() - self.pv.position().y()),
-                            (self.vtx.position().z() - self.pv.position().z())
-                        ) if self.vtx.isValid() else np.nan
-        self.Bdirection  = self.pv_to_sv/np.sqrt(self.pv_to_sv.Mag2()) if self.vtx.isValid() else np.nan                  
-        self.Bdir_eta    = self.Bdirection.eta() if self.vtx.isValid() else np.nan                                
-        self.Bdir_phi    = self.Bdirection.phi() if self.vtx.isValid() else np.nan                                
-        self.mmm_p4_par  = self.p4().Vect().Dot(self.Bdirection) if self.vtx.isValid() else np.nan                   
-        self.mmm_p4_perp = np.sqrt(self.p4().Vect().Mag2() - self.mmm_p4_par*self.mmm_p4_par) if self.vtx.isValid() else np.nan
-        self.mcorr       = np.sqrt(self.p4().mass()*self.p4().mass() + self.mmm_p4_perp*self.mmm_p4_perp) + self.mmm_p4_perp if self.vtx.isValid() else np.nan
+        if self.vtx.isValid():
+            self.vtx.chi2 = self.vtx.normalisedChiSquared()
+            self.vtx.prob = (1. - stats.chi2.cdf(self.vtx.chi2, 1)) 
+    
+            # now compute some displacement related quantities, here in the transverse plane.
+            # later can add 3D quantities
+            self.lxy = ROOT.VertexDistanceXY().distance(self.bs, self.vtx.vertexState())
+    
+            vect_lxy = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
+                        self.vtx.position().x() - self.bs.position().x(),
+                        self.vtx.position().y() - self.bs.position().y(),
+                        0. )
+    
+            vect_pt = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
+                        self.px(),
+                        self.py(),
+                        0. )
+    
+            self.vtx.cos = vect_pt.Dot(vect_lxy) / (vect_pt.R() * vect_lxy.R()) if (vect_lxy.R() > 0.) else np.nan
             
+            self.pv_to_sv = ROOT.Math.XYZVector(
+                                (self.vtx.position().x() - self.pv.position().x()), 
+                                (self.vtx.position().y() - self.pv.position().y()),
+                                (self.vtx.position().z() - self.pv.position().z())
+                            )
+            self.Bdirection  = self.pv_to_sv/np.sqrt(self.pv_to_sv.Mag2())                  
+            self.Bdir_eta    = self.Bdirection.eta()                                
+            self.Bdir_phi    = self.Bdirection.phi()                                
+            self.mmm_p4_par  = self.p4().Vect().Dot(self.Bdirection)                   
+            self.mmm_p4_perp = np.sqrt(self.p4().Vect().Mag2() - self.mmm_p4_par*self.mmm_p4_par)
+            self.mcorr       = np.sqrt(self.p4().mass()*self.p4().mass() + self.mmm_p4_perp*self.mmm_p4_perp) + self.mmm_p4_perp
+        
+        if self.vtx.isValid() and self.vtx.hasRefittedTracks():
+            self.mu1.rfp4 = self.create_refitted_p4(0)
+            self.mu2.rfp4 = self.create_refitted_p4(1)
+            self.mu3.rfp4 = self.create_refitted_p4(2)
+            self.mu4.rfp4 = self.create_refitted_p4(3)
+
+            vect_rf_pt = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
+                        self.rf_px(),
+                        self.rf_py(),
+                        0. )
+            self.vtx.rf_cos = vect_pt.Dot(vect_lxy) / (vect_rf_pt.R() * vect_rf_pt.R()) if (vect_rf_pt.R() > 0.) else np.nan
+
+            self.mu1.rf_track = self.vtx.refittedTracks().at(0).track()
+            self.mu2.rf_track = self.vtx.refittedTracks().at(1).track()
+            self.mu3.rf_track = self.vtx.refittedTracks().at(2).track()
+            self.mu4.rf_track = self.vtx.refittedTracks().at(3).track()
+
+    def create_refitted_p4(self, idx):
+        mu = self.vtx.refittedTracks().at(idx).track()
+        rfp4 = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')(
+                mu.px(), mu.py(), mu.pz(), np.sqrt(mu.p()**2 + self.mu1.mass()**2) )
+        return rfp4
+                           
     def convert_cov(self, m):
         return np.array([[m(i,j) for j in range(m.kCols)] for i in range(m.kRows)])
 
@@ -185,3 +210,84 @@ class B4MuCandidate():
             '\t mu4 pt %.2f eta %.2f phi %.2f' %(self.mu4.pt(), self.mu4.eta(), self.mu4.phi()),
         ]
         return '\n'.join(to_return)
+
+    ######################################################################################
+    ######################################################################################
+    ####            __ _ _   _           _ 
+    ####           / _(_) | | |         | |
+    ####  _ __ ___| |_ _| |_| |_ ___  __| |
+    #### | '__/ _ \  _| | __| __/ _ \/ _` |
+    #### | | |  __/ | | | |_| ||  __/ (_| |
+    #### |_|  \___|_| |_|\__|\__\___|\__,_|
+    ####                                   
+    ######################################################################################
+    ######################################################################################
+
+    def rf_p4(self):
+        return self.mu1.rfp4 + self.mu2.rfp4 + self.mu3.rfp4 + self.mu4.rfp4
+    def rf_p4_12(self):
+        return self.mu1.rfp4 + self.mu2.rfp4
+    def rf_p4_13(self):
+        return self.mu1.rfp4 + self.mu3.rfp4
+    def rf_p4_14(self):
+        return self.mu1.rfp4 + self.mu4.rfp4
+    def rf_p4_23(self):
+        return self.mu2.rfp4 + self.mu3.rfp4
+    def rf_p4_24(self):
+        return self.mu2.rfp4 + self.mu4.rfp4
+    def rf_p4_34(self):
+        return self.mu3.rfp4 + self.mu4.rfp4
+    def rf_pt(self):
+        return self.rf_p4().pt()
+    def rf_eta(self):
+        return self.rf_p4().eta()
+    def rf_phi(self):
+        return self.rf_p4().phi()
+    def rf_mass(self):
+        return self.rf_p4().mass()
+    def rf_energy(self):
+        return self.rf_p4().energy()
+    def rf_px(self):
+        return self.rf_p4().px()
+    def rf_py(self):
+        return self.rf_p4().py()
+    def rf_pz(self):
+        return self.rf_p4().pz()
+    def rf_r(self):
+        '''
+        Cone radius parameter: max distance between the 4-mu candidate direction and one of the muons
+        '''
+        return max([deltaR(self.rf_p4(), imu.rfp4) for imu in self.muons])
+    def rf_max_dr(self):
+        '''
+        Max distance between pairwise muons
+        '''
+        return max([deltaR(imu.rfp4, jmu.rfp4) for imu, jmu in combinations(self.muons, 2)])
+    def rf_dr12(self):
+        return deltaR(self.mu1.rfp4, self.mu2.rfp4)
+    def rf_dr13(self):
+        return deltaR(self.mu1.rfp4, self.mu3.rfp4)
+    def rf_dr14(self):
+        return deltaR(self.mu1.rfp4, self.mu4.rfp4)
+    def rf_dr23(self):
+        return deltaR(self.mu2.rfp4, self.mu3.rfp4)
+    def rf_dr24(self):
+        return deltaR(self.mu2.rfp4, self.mu4.rfp4)
+    def rf_dr34(self):
+        return deltaR(self.mu3.rfp4, self.mu4.rfp4)
+    def rf_mass12(self):
+        return self.rf_p4_12().mass()
+    def rf_mass13(self):
+        return self.rf_p4_13().mass()
+    def rf_mass14(self):
+        return self.rf_p4_14().mass()
+    def rf_mass23(self):
+        return self.rf_p4_23().mass()
+    def rf_mass24(self):
+        return self.rf_p4_24().mass()
+    def rf_mass34(self):
+        return self.rf_p4_34().mass()
+
+
+
+
