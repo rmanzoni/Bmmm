@@ -46,22 +46,7 @@ from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
 from Bmmm.Analysis.B4MuBranches import branches, paths, muon_branches, cand_branches
 from Bmmm.Analysis.B4MuCandidate import B4MuCandidate as Candidate
-
-def drop_hlt_version(string, pattern=r"_v\d+"):
-    regex = re.compile(pattern + "$")
-    if regex.search(string):
-        match = re.search(r'_v\d+$', string)
-        return string[:match.start()]
-    else:
-        return string
-
-
-######################################################################################
-#####      CUT FLOW LOGGER
-######################################################################################
-def zero():
-    return 0
-cutflow = defaultdict(zero)
+from Bmmm.Analysis.utils import drop_hlt_version, cutflow
 
 ######################################################################################
 #####      PARSER
