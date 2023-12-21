@@ -276,3 +276,59 @@ def isMyDs(ds, minpt=0.5, maxeta=2.5):
     daus.sort(key = lambda x : abs(x))
     return daus==[211, 333] or daus==[-211, 333]
 
+
+##########################################################################################
+##########################################################################################
+
+def convert_cov(m):
+    return np.array([[m(i,j) for j in range(m.kCols)] for i in range(m.kRows)])
+
+def is_pos_def(x):
+    '''
+    https://stackoverflow.com/questions/16266720/find-out-if-matrix-is-positive-definite-with-numpy
+    '''
+    return np.all(np.linalg.eigvals(x) > 0)
+
+def fix_track(trk, delta=1e-9):
+    '''
+    https://github.com/CMSKStarMuMu/miniB0KstarMuMu/blob/master/miniKstarMuMu/plugins/miniKstarMuMu.cc#L1611-L1678
+    '''
+    
+    cov = convert_cov(trk.covariance())
+    
+    if is_pos_def(cov): 
+        return trk
+    
+    if int(np.__version__.split('.')[1])<17:
+        new_cov = np.nan_to_num(cov) # missing keyword, check docs
+    else:
+        new_cov = np.nan_to_num(cov, posinf=0., neginf=0.)    
+    min_eigenvalue = np.nan_to_num(min(np.linalg.eigvals(new_cov)))
+    for i in range(new_cov.shape[0]):
+        new_cov[i,i] = new_cov[i,i] - min_eigenvalue + delta
+                       
+    upper_triangle = []
+    for i in range(new_cov.shape[0]):
+        for j in range(new_cov.shape[1]):
+            if i<=j:
+                upper_triangle.append(new_cov[i,j])
+                
+    # https://root.cern/doc/v606/SMatrixDoc.html
+    # che sudata sta merdata
+    mycov = ROOT.Math.SMatrix('double', 5, 5, ROOT.Math.MatRepSym('double', 5) )(ROOT.Math.SVector('double', len(upper_triangle))(np.array(upper_triangle), len(upper_triangle)), False)
+
+    new_trk = ROOT.reco.Track(
+        trk.chi2(), 
+        trk.ndof(), 
+        trk.referencePoint(), 
+        trk.momentum(), 
+        trk.charge(), 
+        mycov, 
+        trk.algo(), 
+        ROOT.reco.TrackBase.TrackQuality(trk.qualityMask()),
+    )
+
+    if not is_pos_def(new_cov): 
+        fix_track(new_trk, delta)
+    
+    return new_trk

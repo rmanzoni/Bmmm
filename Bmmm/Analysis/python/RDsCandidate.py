@@ -1,18 +1,21 @@
 import numpy as np
 from scipy import stats
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
-from Bmmm.Analysis.utils import masses, compute_vertex_quantities, p4_with_mass
+from Bmmm.Analysis.utils import masses, compute_vertex_quantities, p4_with_mass, convert_cov, is_pos_def, fix_track
 from itertools import product, combinations
 
 import ROOT
 ROOT.gSystem.Load('libBmmmAnalysis')
 from ROOT import KVFitter # VertexDistance3D is contained here, dirt trick!!
+from ROOT import RDsKinVtxFitter
 
 # make these available everywhere in here
 global vtxfit
 vtxfit = KVFitter()
 global tofit
 tofit = ROOT.std.vector('reco::Track')()
+global kinfit
+kinfit = RDsKinVtxFitter()
 
 ##########################################################################################
 class PhiCandidate():
@@ -22,10 +25,13 @@ class PhiCandidate():
         self.bs = bs
         self.pv = pv 
 
-        # compute correct four momenta
-        self.k1_p4 = p4_with_mass(self.k1, masses['k'], root_type=1)
-        self.k2_p4 = p4_with_mass(self.k2, masses['k'], root_type=1)
-        self.phi_p4 = self.k1_p4 + self.k2_p4
+        # compute correct four momenta and override default call to p4()
+        self.k1.p4 = lambda : p4_with_mass(particle=self.k1, mass=masses['k'], root_type=1)
+        self.k2.p4 = lambda : p4_with_mass(particle=self.k2, mass=masses['k'], root_type=1)
+        self.k1.mass = lambda : self.k1.p4().mass()
+        self.k2.mass = lambda : self.k2.p4().mass()
+        self.k1.energy = lambda : self.k1.p4().energy()
+        self.k2.energy = lambda : self.k2.p4().energy()
 
     def compute_vtx(self, full=False):
         # phi(1020) vertex
@@ -35,11 +41,11 @@ class PhiCandidate():
         self.vtx = vtxfit.Fit(tofit)
 
         if self.vtx.isValid():
-            self.vtx = compute_vertex_quantities(self.vtx, self.bs, self.phi_p4, self.pv, full)
+            self.vtx = compute_vertex_quantities(self.vtx, self.bs, self.p4(), self.pv, full)
 
     # Phi candidate kinematics
     def p4(self):
-        return self.phi_p4
+        return self.k1.p4() + self.k2.p4()
     def pt(self):
         return self.p4().pt()
     def eta(self):
@@ -144,7 +150,10 @@ class RDsCandidate():
         ############################################################
         self.kaons = sorted(kaons, key = lambda tk : tk.pt(), reverse = True)
         self.k1 = self.kaons[0]
-        self.k2 = self.kaons[1]
+        self.k2 = self.kaons[1]        
+        self.k1.p4 = lambda : p4_with_mass(particle=self.k1, mass=masses['k'], root_type=1)
+        self.k2.p4 = lambda : p4_with_mass(particle=self.k1, mass=masses['k'], root_type=1)
+                
         self.pi = pion
 
         self.k1.pv = self.pv
@@ -281,23 +290,29 @@ class RDsCandidate():
         if self.vtx.isValid():
             self.vtx, self.p4_par, self.p4_perp, self.mcorr = compute_vertex_quantities(self.vtx, self.bs, self.p4(), self.pv, full=True)
 
-    # FIXME!
-    #def compute_covariance(self):
-    #    for pp in ['mu', 'k1', 'k2', 'pi']:
-    #        tk = getattr(self, pp).bestTrack()
-    #        import pdb ; pdb.set_trace()
-    #        setattr(getattr(self, pp), 'cov'           , self.convert_cov(tk.covariance()))
-    #        setattr(getattr(self, pp), 'is_cov_pos_def', self.is_pos_def(getattr(self, pp), 'cov'))
+    def check_covariances(self):
+        '''
+        Sometimes tracks have negative covariance matrices, because of
+        MINIAOD compression.
+        If that happens, then it screws the KinematicFit
+        So, we check and fix the covariance matrix to be pos def
+        ''' 
+        # FIXME! it was better written, but it messes up somehow, so I go full on pedant
+        old_trk_k1 = self.k1.bestTrack()
+        old_trk_k2 = self.k2.bestTrack()
+        old_trk_pi = self.pi.bestTrack()
+        old_trk_mu = self.mu.bestTrack()
+        
+        new_trk_k1 = fix_track(old_trk_k1)
+        new_trk_k2 = fix_track(old_trk_k2)
+        new_trk_pi = fix_track(old_trk_pi)
+        new_trk_mu = fix_track(old_trk_mu)
+        
+        self.k1.bestTrack = lambda : new_trk_k1
+        self.k2.bestTrack = lambda : new_trk_k2
+        self.pi.bestTrack = lambda : new_trk_pi
+        self.mu.bestTrack = lambda : new_trk_mu
        
-    def convert_cov(self, m):
-        return np.array([[m(i,j) for j in range(m.kCols)] for i in range(m.kRows)])
-
-    def is_pos_def(self, x):
-        '''
-        https://stackoverflow.com/questions/16266720/find-out-if-matrix-is-positive-definite-with-numpy
-        '''
-        return np.all(np.linalg.eigvals(x) > 0)
-
     # Bs candidate kinematics
     def p4(self):
         return self.bs_p4

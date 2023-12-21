@@ -1,4 +1,5 @@
 <lcgdict>
 	<class name="KVFitter"/>
+	<class name="KinVtxFitter"/>
 </lcgdict>
 

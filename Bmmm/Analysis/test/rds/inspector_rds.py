@@ -18,13 +18,15 @@ from itertools import product, combinations
 from cuts import cuts_tight, cuts_loose, cuts_gen
 from Bmmm.Analysis.RDsBranches import branches, paths, event_branches, cand_branches, muon_branches, track_branches
 from Bmmm.Analysis.RDsCandidate import RDsCandidate
-from Bmmm.Analysis.utils import drop_hlt_version, diquarks, excitedBs, isAncestor, masses, p4_with_mass, cutflow, fillRecoTree, isMyDs
+from Bmmm.Analysis.utils import drop_hlt_version, diquarks, excitedBs, isAncestor, masses, p4_with_mass, cutflow, fillRecoTree, isMyDs, convert_cov, is_pos_def, fix_track
 
 import particle
 from particle import Particle
 ROOT.gSystem.Load('libVtxFitFitter')
 from ROOT import KVFitter # VertexDistance3D is contained here, dirt trick!!
+from ROOT import RDsKinVtxFitter
 
+kinfit = RDsKinVtxFitter()    
 vtxfit = KVFitter()
 tofit = ROOT.std.vector('reco::Track')()
 
@@ -434,6 +436,42 @@ for i, event in enumerate(events):
         tofill_reco['pi_%s' %(branch)] = getter(mycand.pi) 
 
     fillRecoTree(ntuple_reco, tofill_reco)
+
+    #print('>>>>>>>>>>>>>>>>>')
+    #print('k1 pos def', is_pos_def(convert_cov(mycand.k1.bestTrack().covariance())))
+    #print('k2 pos def', is_pos_def(convert_cov(mycand.k2.bestTrack().covariance())))
+    #print('pi pos def', is_pos_def(convert_cov(mycand.pi.bestTrack().covariance())))
+    #print('mu pos def', is_pos_def(convert_cov(mycand.mu.bestTrack().covariance())))
+    #print('=================')
+    mycand.check_covariances()
+    #print('k1 pos def', is_pos_def(convert_cov(mycand.k1.bestTrack().covariance())))
+    #print('k2 pos def', is_pos_def(convert_cov(mycand.k2.bestTrack().covariance())))
+    #print('pi pos def', is_pos_def(convert_cov(mycand.pi.bestTrack().covariance())))
+    #print('mu pos def', is_pos_def(convert_cov(mycand.mu.bestTrack().covariance())))
+    #print('<<<<<<<<<<<<<<<<<')
+    fit_results = kinfit.Fit(mycand.k1.bestTrack(), mycand.k2.bestTrack(), mycand.pi.bestTrack(), mycand.mu.bestTrack(), masses['k'], masses['pi'], masses['mu'], masses['phi'], masses['ds'])
+    phi_tree = fit_results._0
+    ds_tree = fit_results._1
+    bs_tree = fit_results._2
+    
+    if not(hasattr(phi_tree, 'isValid') and phi_tree.get().__nonzero__() and phi_tree.isValid()):
+        if mc: fillRecoTree(ntuple_reco, tofill_reco)
+        continue
+    
+    cutflow['pass constrained phi vtx fit>0'] += 1
+
+    if not(hasattr(ds_tree, 'isValid') and ds_tree.get().__nonzero__() and ds_tree.isValid()):
+        if mc: fillRecoTree(ntuple_reco, tofill_reco)
+        continue
+    
+    cutflow['pass constrained Ds vtx fit>0'] += 1
+
+    if not(hasattr(bs_tree, 'isValid') and bs_tree.get().__nonzero__() and bs_tree.isValid()):
+        if mc: fillRecoTree(ntuple_reco, tofill_reco)
+        continue
+    
+    cutflow['pass Bs vtx fit>0'] += 1
+
             
 fout.cd()
 if mc:

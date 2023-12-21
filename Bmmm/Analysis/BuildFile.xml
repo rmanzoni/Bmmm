@@ -20,6 +20,7 @@
 <use name="RecoVertex/KinematicFit"/>
 <use name="RecoVertex/KinematicFitPrimitives"/>
 <use name="RecoVertex/VertexTools"/>
+<use name="TrackingTools/TransientTrack"/>
 <use name="SimDataFormats/GeneratorProducts"/>
 <use name="cppunit"/>
 

@@ -4,9 +4,11 @@
 
 #include "DataFormats/Common/interface/Wrapper.h"
 #include "Bmmm/Analysis/interface/KVFitter.h"
+#include "Bmmm/Analysis/interface/RDsKinVtxFitter.h"
 
 namespace {
   struct RDs {
-    KVFitter hnlKalVtx_;
+    KVFitter KalVtx_;
+    RDsKinVtxFitter KinVtx_;
   };
 }
