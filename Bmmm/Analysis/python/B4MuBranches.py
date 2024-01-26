@@ -1,20 +1,22 @@
 import ROOT
 import numpy as np
 
-branches = [
-    'run'               ,
-    'lumi'              ,
-    'event'             ,
-    
-    'ncands'            ,
-    'npv'               ,
-    'npu'               ,
-    'nti'               ,
+event_branches = {
+    'run'     : lambda ev : ev.eventAuxiliary().run()            ,
+    'lumi'    : lambda ev : ev.eventAuxiliary().luminosityBlock(),
+    'event'   : lambda ev : ev.eventAuxiliary().event()          ,
 
-    'bs_x0'             ,
-    'bs_y0'             ,
-    'bs_z0'             ,
-]
+    'ncands'  : lambda ev : ev.ncands                            ,
+
+    'qscale'  : lambda ev : ev.genInfo.qScale()                  ,
+    'npv'     : lambda ev : len(ev.vtx)                          ,
+    'npu'     : lambda ev : ev.pu_at_bx0.getPU_NumInteractions() ,
+    'nti'     : lambda ev : ev.pu_at_bx0.getTrueNumInteractions(),
+
+    'bs_x0'   : lambda ev : ev.bs.x0()                           ,
+    'bs_y0'   : lambda ev : ev.bs.y0()                           ,
+    'bs_z0'   : lambda ev : ev.bs.z0()                           ,
+}
 
 cand_branches = {
     'mass'              : lambda cand : cand.mass()            ,
@@ -96,7 +98,7 @@ cand_branches = {
     'vtx_prob'          : lambda cand : cand.vtx.prob          ,
 
     'cos2d'             : lambda cand : cand.vtx.cos           ,
-    'rf_cos2d'          : lambda cand : cand.vtx.rf_cos        ,
+#    'rf_cos2d'          : lambda cand : cand.vtx.rf_cos        ,
     'lxy'               : lambda cand : cand.lxy.value()       ,
     'lxy_err'           : lambda cand : cand.lxy.error()       ,
     'lxy_sig'           : lambda cand : cand.lxy.significance(),
@@ -151,15 +153,15 @@ muon_branches = {
     'bs_dxy'         :  lambda imu : imu.bestTrack().dxy(imu.bs.position()),
     'bs_dxy_e'       :  lambda imu : imu.bestTrack().dxyError(imu.bs.position(), imu.bs.error()),
     'bs_dxy_sig'     :  lambda imu : imu.bestTrack().dxy(imu.bs.position()) / imu.bestTrack().dxyError(imu.bs.position(), imu.bs.error()),
-    'rf_dxy'         :  lambda imu : imu.rf_track.dxy(imu.pv.position()),
-    'rf_dxy_e'       :  lambda imu : imu.rf_track.dxyError(imu.pv.position(), imu.pv.error()),
-    'rf_dxy_sig'     :  lambda imu : imu.rf_track.dxy(imu.pv.position()) / imu.rf_track.dxyError(imu.pv.position(), imu.pv.error()),
-    'rf_dz'          :  lambda imu : imu.rf_track.dz(imu.pv.position()),
-    'rf_dz_e'        :  lambda imu : imu.rf_track.dzError(),
-    'rf_dz_sig'      :  lambda imu : imu.rf_track.dz(imu.pv.position()) / imu.rf_track.dzError(),
-    'rf_bs_dxy'      :  lambda imu : imu.rf_track.dxy(imu.bs.position()),
-    'rf_bs_dxy_e'    :  lambda imu : imu.rf_track.dxyError(imu.bs.position(), imu.bs.error()),
-    'rf_bs_dxy_sig'  :  lambda imu : imu.rf_track.dxy(imu.bs.position()) / imu.rf_track.dxyError(imu.bs.position(), imu.bs.error()),
+#    'rf_dxy'         :  lambda imu : imu.rf_track.dxy(imu.pv.position()),
+#    'rf_dxy_e'       :  lambda imu : imu.rf_track.dxyError(imu.pv.position(), imu.pv.error()),
+#    'rf_dxy_sig'     :  lambda imu : imu.rf_track.dxy(imu.pv.position()) / imu.rf_track.dxyError(imu.pv.position(), imu.pv.error()),
+#    'rf_dz'          :  lambda imu : imu.rf_track.dz(imu.pv.position()),
+#    'rf_dz_e'        :  lambda imu : imu.rf_track.dzError(),
+#    'rf_dz_sig'      :  lambda imu : imu.rf_track.dz(imu.pv.position()) / imu.rf_track.dzError(),
+#    'rf_bs_dxy'      :  lambda imu : imu.rf_track.dxy(imu.bs.position()),
+#    'rf_bs_dxy_e'    :  lambda imu : imu.rf_track.dxyError(imu.bs.position(), imu.bs.error()),
+#    'rf_bs_dxy_sig'  :  lambda imu : imu.rf_track.dxy(imu.bs.position()) / imu.rf_track.dxyError(imu.bs.position(), imu.bs.error()),
     'cov_pos_def'    :  lambda imu : imu.is_cov_pos_def,
     'jet_pt'         :  lambda imu : imu.jet.pt()      if hasattr(imu, 'jet') else np.nan,
     'jet_eta'        :  lambda imu : imu.jet.eta()     if hasattr(imu, 'jet') else np.nan,
@@ -171,6 +173,12 @@ muon_branches = {
     'gen_e'          :  lambda imu : imu.genp.energy() if hasattr(imu, 'genp') else np.nan,
     'gen_pdgid'      :  lambda imu : imu.genp.pdgId()  if hasattr(imu, 'genp') else np.nan,
 }
+
+
+branches =[]
+
+for ibranch in event_branches.keys():
+    branches.append(ibranch)
 
 for idx in [1,2,3,4]:
     for ibr in muon_branches.keys():

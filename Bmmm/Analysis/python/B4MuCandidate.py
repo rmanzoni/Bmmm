@@ -1,17 +1,21 @@
 import numpy as np
 from scipy import stats
-from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
+from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
+from Bmmm.Analysis.utils import masses
 
 import ROOT
 ROOT.gSystem.Load('libBmmmAnalysis')
 from ROOT import KVFitter # VertexDistance3D is contained here, dirt trick!!
+from ROOT import B4MuKinVtxFitter
 
 # make these available everywhere in here
 global vtxfit
 vtxfit = KVFitter()
 global tofit
 tofit = ROOT.std.vector('reco::Track')()
+global kinfit
+kinfit = B4MuKinVtxFitter()
 
 class B4MuCandidate():
     '''
@@ -47,64 +51,90 @@ class B4MuCandidate():
         chi2 = 0.
         ndof = 0.
         self.bs = ROOT.reco.Vertex(bs_point, bs_error, chi2, ndof, 3) # size? say 3? does it matter?
-
-        # we'll fit a vertex out of the three muons, shall we? 
-        # ideally this can be triggered on demand, and just build a skinny candidate to 
-        # check simple things, such as mass etc
-        tofit.clear()
-        for imu in self.muons:
-            tofit.push_back(imu.bestTrack())
-        self.vtx = vtxfit.Fit(tofit)
         
-        if self.vtx.isValid():
-            self.vtx.chi2 = self.vtx.normalisedChiSquared()
-            self.vtx.prob = (1. - stats.chi2.cdf(self.vtx.chi2, 1)) 
-    
-            # now compute some displacement related quantities, here in the transverse plane.
-            # later can add 3D quantities
-            self.lxy = ROOT.VertexDistanceXY().distance(self.bs, self.vtx.vertexState())
-    
-            vect_lxy = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
-                        self.vtx.position().x() - self.bs.position().x(),
-                        self.vtx.position().y() - self.bs.position().y(),
-                        0. )
-    
-            vect_pt = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
-                        self.px(),
-                        self.py(),
-                        0. )
-    
-            self.vtx.cos = vect_pt.Dot(vect_lxy) / (vect_pt.R() * vect_lxy.R()) if (vect_lxy.R() > 0.) else np.nan
-            
-            self.pv_to_sv = ROOT.Math.XYZVector(
-                                (self.vtx.position().x() - self.pv.position().x()), 
-                                (self.vtx.position().y() - self.pv.position().y()),
-                                (self.vtx.position().z() - self.pv.position().z())
-                            )
-            self.Bdirection  = self.pv_to_sv/np.sqrt(self.pv_to_sv.Mag2())                  
-            self.Bdir_eta    = self.Bdirection.eta()                                
-            self.Bdir_phi    = self.Bdirection.phi()                                
-            self.mmm_p4_par  = self.p4().Vect().Dot(self.Bdirection)                   
-            self.mmm_p4_perp = np.sqrt(self.p4().Vect().Mag2() - self.mmm_p4_par*self.mmm_p4_par)
-            self.mcorr       = np.sqrt(self.p4().mass()*self.p4().mass() + self.mmm_p4_perp*self.mmm_p4_perp) + self.mmm_p4_perp
+        self.vertex_tree = kinfit.Fit(self.mu1.bestTrack(), self.mu2.bestTrack(), self.mu3.bestTrack(), self.mu4.bestTrack(), masses['mu'])
+        self.good_vtx = False
+        try:
+            if self.vertex_tree:
+                self.good_vtx = ( (not self.vertex_tree.isEmpty()) and self.vertex_tree.isValid() )
+            if self.good_vtx:
+                self.compute_vtx_quantities()        
+        except:
+            import pdb ; pdb.set_trace()
         
-        if self.vtx.isValid() and self.vtx.hasRefittedTracks():
-            self.mu1.rfp4 = self.create_refitted_p4(0)
-            self.mu2.rfp4 = self.create_refitted_p4(1)
-            self.mu3.rfp4 = self.create_refitted_p4(2)
-            self.mu4.rfp4 = self.create_refitted_p4(3)
 
-            vect_rf_pt = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
-                        self.rf_px(),
-                        self.rf_py(),
-                        0. )
-            self.vtx.rf_cos = vect_pt.Dot(vect_lxy) / (vect_rf_pt.R() * vect_rf_pt.R()) if (vect_rf_pt.R() > 0.) else np.nan
+    def compute_vtx_quantities(self):
 
-            self.mu1.rf_track = self.vtx.refittedTracks().at(0).track()
-            self.mu2.rf_track = self.vtx.refittedTracks().at(1).track()
-            self.mu3.rf_track = self.vtx.refittedTracks().at(2).track()
-            self.mu4.rf_track = self.vtx.refittedTracks().at(3).track()
+        self.vertex_tree.movePointerToTheTop()
+        self.vtx = self.vertex_tree.currentDecayVertex().get()
+        
+        self.vtx.ndof = self.vtx.degreesOfFreedom()
+        self.vtx.chi2 = self.vtx.chiSquared()
+        self.vtx.norm_chi2 = self.vtx.chi2/self.vtx.ndof
+        self.vtx.prob = (1. - stats.chi2.cdf(self.vtx.chi2, self.vtx.ndof)) 
+    
+        # now compute some displacement related quantities, here in the transverse plane.
+        # later can add 3D quantities
+        self.lxy = ROOT.VertexDistanceXY().distance(self.bs, self.vtx.vertexState())
+    
+        vect_lxy = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
+                    self.vtx.position().x() - self.bs.position().x(),
+                    self.vtx.position().y() - self.bs.position().y(),
+                    0. )
+    
+        vect_pt = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
+                    self.px(),
+                    self.py(),
+                    0. )
+    
+        self.vtx.cos = vect_pt.Dot(vect_lxy) / (vect_pt.R() * vect_lxy.R()) if (vect_lxy.R() > 0.) else np.nan
+        
+        self.pv_to_sv = ROOT.Math.XYZVector(
+                            (self.vtx.position().x() - self.pv.position().x()), 
+                            (self.vtx.position().y() - self.pv.position().y()),
+                            (self.vtx.position().z() - self.pv.position().z())
+                        )
+        self.Bdirection  = self.pv_to_sv/np.sqrt(self.pv_to_sv.Mag2())                  
+        self.Bdir_eta    = self.Bdirection.eta()                                
+        self.Bdir_phi    = self.Bdirection.phi()                                
+        self.mmm_p4_par  = self.p4().Vect().Dot(self.Bdirection)                   
+        self.mmm_p4_perp = np.sqrt(self.p4().Vect().Mag2() - self.mmm_p4_par*self.mmm_p4_par)
+        self.mcorr       = np.sqrt(self.p4().mass()*self.p4().mass() + self.mmm_p4_perp*self.mmm_p4_perp) + self.mmm_p4_perp
+        
+        # can also do this https://github.com/CMSKStarMuMu/miniB0KstarMuMu/blob/master/miniKstarMuMu/plugins/miniKstarMuMu.cc#L809C48-L809C58
+        self.vertex_tree.movePointerToTheFirstChild()
+        mu1ref = self.vertex_tree.currentParticle()
+        self.mu1.rfp4, _ = self.buildP4(mu1ref)
 
+        self.vertex_tree.movePointerToTheNextChild()
+        mu2ref = self.vertex_tree.currentParticle()
+        self.mu2.rfp4, _ = self.buildP4(mu2ref)
+
+        self.vertex_tree.movePointerToTheNextChild()
+        mu3ref = self.vertex_tree.currentParticle()
+        self.mu3.rfp4, _ = self.buildP4(mu3ref)
+
+        self.vertex_tree.movePointerToTheNextChild()
+        mu4ref = self.vertex_tree.currentParticle()
+        self.mu4.rfp4, _ = self.buildP4(mu4ref)
+
+    @staticmethod
+    def buildP4(ref):
+
+        ref_x  = ref.currentState().kinematicParameters().vector().At(0)
+        ref_y  = ref.currentState().kinematicParameters().vector().At(1)
+        ref_z  = ref.currentState().kinematicParameters().vector().At(2)
+        ref_px = ref.currentState().kinematicParameters().vector().At(3)
+        ref_py = ref.currentState().kinematicParameters().vector().At(4)
+        ref_pz = ref.currentState().kinematicParameters().vector().At(5)
+        ref_m  = ref.currentState().kinematicParameters().vector().At(6)
+
+        energy = np.sqrt(ref_px**2 + ref_py**2 + ref_pz**2 + ref_m**2)
+
+        p4 = ROOT.Math.LorentzVector("ROOT::Math::PxPyPzE4D<double>")(ref_px, ref_py, ref_pz, energy)
+        
+        return p4, ref
+        
     def create_refitted_p4(self, idx):
         mu = self.vtx.refittedTracks().at(idx).track()
         rfp4 = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')(

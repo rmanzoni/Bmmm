@@ -6,7 +6,7 @@ https://link.springer.com/content/pdf/10.1140/epjc/s10052-019-7112-x.pdf
 Example:
 
 ipython -i -- inspector_b4m_analysis.py \
---inputFiles="/pnfs/psi.ch/cms/trivcat/store/user/manzoni/Bs4Mu_MINIAOD_01sep23_v1/*.root" \
+--inputFiles="/pnfs/psi.ch/cms/trivcat/store/user/manzoni/Bs4Mu_MINIAOD_05sep23_v1/*.root" \
 --filename=bs4mu \
 --mc \
 --maxevents=100
@@ -44,7 +44,7 @@ from collections import OrderedDict, defaultdict
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
-from Bmmm.Analysis.B4MuBranches import branches, paths, muon_branches, cand_branches
+from Bmmm.Analysis.B4MuBranches import branches, paths, muon_branches, cand_branches, event_branches
 from Bmmm.Analysis.B4MuCandidate import B4MuCandidate as Candidate
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow
 
@@ -147,9 +147,7 @@ for i, event in enumerate(events):
             event.getByLabel(v[0], v[1])
             setattr(event, k, v[1].product())
 
-        pu_at_bx0 = [ipu for ipu in event.pu if ipu.getBunchCrossing()==0][0]
-        tofill['npu'] = pu_at_bx0.getPU_NumInteractions()
-        tofill['nti'] = pu_at_bx0.getTrueNumInteractions()
+        event.pu_at_bx0 = [ipu for ipu in event.pu if ipu.getBunchCrossing()==0][0]
     
     cutflow['all processed events'] += 1
 
@@ -239,7 +237,7 @@ for i, event in enumerate(events):
         cutflow['\tpass trigger match'] += 1
         
         # valid vertex
-        if not cand.vtx.isValid():
+        if not cand.good_vtx:
             continue
         cutflow['\tpass secondary vertex'] += 1
         
@@ -249,7 +247,9 @@ for i, event in enumerate(events):
     # if no cands at this point, you might as well move on to the next event
     if len(cands)==0:
         continue
-
+    
+    event.ncands = len(cands) # useful for ntuple filling
+    
     cutflow['at least one cand pass presel'] += 1
 
     # sort candidates by charge combination and best pointing angle, i.e. cosine closer to 1
@@ -260,21 +260,9 @@ for i, event in enumerate(events):
     ######################################################################################
     #####      FILL
     ######################################################################################
-    tofill['run'   ] = event.eventAuxiliary().run()
-    tofill['lumi'  ] = event.eventAuxiliary().luminosityBlock()
-    tofill['event' ] = event.eventAuxiliary().event()
-    tofill['npv'   ] = len(event.vtx)
-    tofill['npu'   ] = len(event.vtx) # FIXME!
-    tofill['nti'   ] = len(event.vtx) # FIXME!
-    tofill['ncands'] = len(cands)
-
-    tofill['bs_x0'] = event.bs.x0()
-    tofill['bs_y0'] = event.bs.y0()
-    tofill['bs_z0'] = event.bs.z0()
-
-    for branch, getter in cand_branches.items():
-        tofill[branch] = getter(final_cand)    
-           
+    for branch, getter in event_branches.items():
+        tofill[branch] = getter(event)    
+               
     for idx in range(1, 5):
         imu = getattr(final_cand, 'mu%d' %idx)
         imu.pv = final_cand.pv
@@ -292,6 +280,13 @@ for i, event in enumerate(events):
         
         for branch, getter in muon_branches.items():
             tofill['mu%d_%s' %(idx, branch)] = getter(imu) 
+
+    #import pdb ; pdb.set_trace()
+    # mass uncertainty
+    #np.sqrt(bs.get().currentState().kinematicParametersError().matrix().At(6,6))
+
+    for branch, getter in cand_branches.items():
+        tofill[branch] = getter(final_cand)    
            
     ntuple.Fill(array('f', tofill.values()))
 
