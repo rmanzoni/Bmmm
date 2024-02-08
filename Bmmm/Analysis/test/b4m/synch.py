@@ -5,7 +5,7 @@ Attaching file b4mu_jpsi_phi_2022EE.root as _file0...
 (TFile *) 0x2d61a90
 root [1] tree->SetScanField(0)
 root [2] .> scan_jpsi_phi_2022EE.txt
-tree->Scan("run:lumi:event")
+tree->Scan("run:lumi:event", "", "colsize=30")
 .>
 root [5] .q
 
