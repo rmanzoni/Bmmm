@@ -8,7 +8,7 @@ event_branches = {
 
     'ncands'  : lambda ev : ev.ncands                            ,
 
-    'qscale'  : lambda ev : ev.genInfo.qScale()                  ,
+    #'qscale'  : lambda ev : ev.genInfo.qScale()                  ,
     'npv'     : lambda ev : len(ev.vtx)                          ,
     'npu'     : lambda ev : ev.pu_at_bx0.getPU_NumInteractions() ,
     'nti'     : lambda ev : ev.pu_at_bx0.getTrueNumInteractions(),
@@ -57,6 +57,7 @@ cand_branches = {
                                              cand.mass34()])   ,
  
     'rf_mass'           : lambda cand : cand.rf_mass()         ,
+    #'rf_err'            : lambda cand : np.sqrt(cand.get().currentState().kinematicParametersError().matrix().At(6,6)),
     'rf_pt'             : lambda cand : cand.rf_pt()           ,
     'rf_eta'            : lambda cand : cand.rf_eta()          ,
     'rf_phi'            : lambda cand : cand.rf_phi()          ,
@@ -172,7 +173,31 @@ muon_branches = {
     'gen_phi'        :  lambda imu : imu.genp.phi()    if hasattr(imu, 'genp') else np.nan,
     'gen_e'          :  lambda imu : imu.genp.energy() if hasattr(imu, 'genp') else np.nan,
     'gen_pdgid'      :  lambda imu : imu.genp.pdgId()  if hasattr(imu, 'genp') else np.nan,
+    'gen_charge'     :  lambda imu : imu.genp.charge() if hasattr(imu, 'genp') else np.nan,
 }
+
+# mother B0 or Bs branches
+bs_branches = {
+    'gen_b_pt'     :  lambda ib : ib.pt()    ,
+    'gen_b_eta'    :  lambda ib : ib.eta()   , 
+    'gen_b_phi'    :  lambda ib : ib.phi()   ,
+    'gen_b_e'      :  lambda ib : ib.energy(),
+    'gen_b_mass'   :  lambda ib : ib.mass()  ,
+    'gen_b_pdgid'  :  lambda ib : ib.pdgId() ,
+    'gen_b_charge' :  lambda ib : ib.charge(),
+
+    'gen_pv_x'     :  lambda ib : ib.vx()    ,
+    'gen_pv_y'     :  lambda ib : ib.vy()    ,
+    'gen_pv_z'     :  lambda ib : ib.vz()    ,
+
+    'gen_sv_x'     :  lambda ib : ib.daughter(0).vx(),
+    'gen_sv_y'     :  lambda ib : ib.daughter(0).vy(),
+    'gen_sv_z'     :  lambda ib : ib.daughter(0).vz(),
+
+    'gen_lxy'      :  lambda ib : np.sqrt( (ib.daughter(0).vx() - ib.vx())**2 + (ib.daughter(0).vy() - ib.vy())**2 ) ,
+    'gen_lxyz'     :  lambda ib : np.sqrt( (ib.daughter(0).vx() - ib.vx())**2 + (ib.daughter(0).vy() - ib.vy())**2 + (ib.daughter(0).vz() - ib.vz())**2 ) ,
+}
+
 
 
 branches =[]
@@ -185,6 +210,9 @@ for idx in [1,2,3,4]:
         branches.append('mu%d_%s' %(idx, ibr))
 
 for ibranch in cand_branches.keys():
+    branches.append(ibranch)
+
+for ibranch in bs_branches.keys():
     branches.append(ibranch)
 
 paths = {}

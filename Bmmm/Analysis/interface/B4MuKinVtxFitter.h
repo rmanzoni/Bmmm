@@ -66,7 +66,7 @@ class B4MuKinVtxFitter {
              const reco::Track & mu4,
              const double      & mmu)
     {
-    
+        
         //define a factory
         KinematicParticleFactoryFromTransientTrack pFactory;
         
@@ -74,7 +74,7 @@ class B4MuKinVtxFitter {
         std::vector<RefCountedKinematicParticle> bToFit;
 
         // add the final states
-        ParticleMass muMass  = mmu ;
+        ParticleMass muMass = mmu ;
     
         float chi   = 0.0;
         float ndf   = 0.0;
@@ -104,6 +104,7 @@ class B4MuKinVtxFitter {
         RefCountedKinematicTree bTree = kcvFitter.fit(bToFit);
         //return phiTree;
         // return void results if failed
+        if (bTree==0) return RefCountedKinematicTree();
         if (!bTree->isValid()) return RefCountedKinematicTree();
 
         return bTree;

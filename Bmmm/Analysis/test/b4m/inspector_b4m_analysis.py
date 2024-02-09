@@ -44,7 +44,7 @@ from collections import OrderedDict, defaultdict
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
-from Bmmm.Analysis.B4MuBranches import branches, paths, muon_branches, cand_branches, event_branches
+from Bmmm.Analysis.B4MuBranches import branches, paths, muon_branches, cand_branches, event_branches, bs_branches
 from Bmmm.Analysis.B4MuCandidate import B4MuCandidate as Candidate
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow
 
@@ -77,21 +77,21 @@ mc = False; mc = args.mc
 
 handles_mc = OrderedDict()
 handles_mc['genpr'  ] = ('prunedGenParticles'  , Handle('std::vector<reco::GenParticle>')     )
-handles_mc['genpk'  ] = ('packedGenParticles'  , Handle('std::vector<pat::PackedGenParticle>'))
-handles_mc['genInfo'] = ('generator'           , Handle('GenEventInfoProduct')                )
-handles_mc['genInfo'] = ('generator'           , Handle('GenEventInfoProduct')                )
+#handles_mc['genpk'  ] = ('packedGenParticles'  , Handle('std::vector<pat::PackedGenParticle>'))
+#handles_mc['genInfo'] = ('generator'           , Handle('GenEventInfoProduct')                )
 handles_mc['pu'     ] = ('slimmedAddPileupInfo', Handle('std::vector<PileupSummaryInfo>')     )
 
 handles = OrderedDict()
-handles['muons'  ] = ('slimmedMuons'                 , Handle('std::vector<pat::Muon>')                   )
-handles['trk'    ] = ('packedPFCandidates'           , Handle('std::vector<pat::PackedCandidate>')        )
-handles['ltrk'   ] = ('lostTracks'                   , Handle('std::vector<pat::PackedCandidate>')        )
-handles['vtx'    ] = ('offlineSlimmedPrimaryVertices', Handle('std::vector<reco::Vertex>')                )
-handles['trg_res'] = (('TriggerResults', '', 'HLT' ) , Handle('edm::TriggerResults'        )              )
-handles['trg_ps' ] = (('patTrigger'    , '')         , Handle('pat::PackedTriggerPrescales')              )
-handles['bs'     ] = ('offlineBeamSpot'              , Handle('reco::BeamSpot')                           )
-handles['tobjs'  ] = ('slimmedPatTrigger'            , Handle('std::vector<pat::TriggerObjectStandAlone>'))
-handles['jets'   ] = ('slimmedJets'                  , Handle('std::vector<pat::Jet>')                    )
+handles['muons'  ] = ('slimmedMuons'                       , Handle('std::vector<pat::Muon>')                   )
+handles['trk'    ] = ('packedPFCandidates'                 , Handle('std::vector<pat::PackedCandidate>')        )
+handles['ltrk'   ] = ('lostTracks'                         , Handle('std::vector<pat::PackedCandidate>')        )
+handles['vtx'    ] = ('offlineSlimmedPrimaryVerticesWithBS', Handle('std::vector<reco::Vertex>')                )
+#handles['vtx'    ] = ('offlineSlimmedPrimaryVertices'      , Handle('std::vector<reco::Vertex>')                )
+handles['trg_res'] = (('TriggerResults', '', 'HLT' )       , Handle('edm::TriggerResults'        )              )
+handles['trg_ps' ] = (('patTrigger'    , '')               , Handle('pat::PackedTriggerPrescales')              )
+handles['bs'     ] = ('offlineBeamSpot'                    , Handle('reco::BeamSpot')                           )
+handles['tobjs'  ] = ('slimmedPatTrigger'                  , Handle('std::vector<pat::TriggerObjectStandAlone>'))
+handles['jets'   ] = ('slimmedJets'                        , Handle('std::vector<pat::Jet>')                    )
 
 if ('txt' in inputFiles):
     with open(inputFiles) as f:
@@ -123,7 +123,7 @@ mytimestamp = datetime.now().strftime('%Y-%m-%d__%Hh%Mm%Ss')
 print('#### STARTING NOW', mytimestamp)
 
 for i, event in enumerate(events):
-
+    
     if (i+1) > maxevents:
         break
             
@@ -148,12 +148,12 @@ for i, event in enumerate(events):
             setattr(event, k, v[1].product())
 
         event.pu_at_bx0 = [ipu for ipu in event.pu if ipu.getBunchCrossing()==0][0]
-    
+
     cutflow['all processed events'] += 1
 
     lumi = event.eventAuxiliary().luminosityBlock()
     iev  = event.eventAuxiliary().event()
-
+        
     ######################################################################################
     #####      RECO PART HERE
     ######################################################################################
@@ -263,6 +263,13 @@ for i, event in enumerate(events):
     for branch, getter in event_branches.items():
         tofill[branch] = getter(event)    
                
+    if mc:
+        gen_muons = [ip for ip in event.genpr if abs(ip.pdgId())==13 and (abs(ip.mother(0).pdgId())==531 or abs(ip.mother(0).pdgId())==511)]
+        #bss= [ip for ip in event.genpr if abs(ip.pdgId())==531 and abs(abs(ip.mother().pdgId())!=531)]
+        #print('\n')
+        #for jj, ibs in enumerate(bss):
+        #    print('%d Bs PDG ID %d' %(jj, ibs.pdgId()))
+
     for idx in range(1, 5):
         imu = getattr(final_cand, 'mu%d' %idx)
         imu.pv = final_cand.pv
@@ -275,8 +282,8 @@ for i, event in enumerate(events):
         if dr2<0.2**2: imu.jet = jet        
         # gen matching
         if mc:
-            genp, dr2 = bestMatch(imu, event.genpr)
-            if dr2<0.1**2: imu.genp = genp
+            genp, dr2 = bestMatch(imu, [ip for ip in gen_muons if ip.charge()==imu.charge()])
+            if dr2<0.02**2: imu.genp = genp
         
         for branch, getter in muon_branches.items():
             tofill['mu%d_%s' %(idx, branch)] = getter(imu) 
@@ -287,14 +294,31 @@ for i, event in enumerate(events):
 
     for branch, getter in cand_branches.items():
         tofill[branch] = getter(final_cand)    
+
+    if getattr(final_cand.mu1, 'genp', False) and \
+       getattr(final_cand.mu2, 'genp', False) and \
+       getattr(final_cand.mu3, 'genp', False) and \
+       getattr(final_cand.mu4, 'genp', False):
+                
+        if ( abs(final_cand.mu1.genp.mother(0).pdgId()) in [511, 531] ) and \
+           final_cand.mu1.genp.mother(0) == final_cand.mu2.genp.mother(0) == final_cand.mu3.genp.mother(0) == final_cand.mu4.genp.mother(0):
+            mother_b = final_cand.mu1.genp.mother(0)
+
+            for branch, getter in bs_branches.items():
+                tofill[branch] = getter(mother_b)    
+            
+
+
            
     ntuple.Fill(array('f', tofill.values()))
+
+###############################################         
+fout.cd()
+ntuple.Write()
+fout.Close()
 
 with open('logger_%s.txt'%mytimestamp, 'w') as logger:
     for k, v in cutflow.items():
         print(k, v, file=logger)
-         
-fout.cd()
-ntuple.Write()
-fout.Close()
+
 
