@@ -66,7 +66,6 @@ class B4MuKinVtxFitter {
              const reco::Track & mu4,
              const double      & mmu)
     {
-        
         //define a factory
         KinematicParticleFactoryFromTransientTrack pFactory;
         
