@@ -2,20 +2,20 @@ import ROOT
 import numpy as np
 
 event_branches = {
-    'run'     : lambda ev : ev.eventAuxiliary().run()            ,
-    'lumi'    : lambda ev : ev.eventAuxiliary().luminosityBlock(),
-    'event'   : lambda ev : ev.eventAuxiliary().event()          ,
-
-    'ncands'  : lambda ev : ev.ncands                            ,
-
-    #'qscale'  : lambda ev : ev.genInfo.qScale()                  ,
-    'npv'     : lambda ev : len(ev.vtx)                          ,
-    'npu'     : lambda ev : ev.pu_at_bx0.getPU_NumInteractions() ,
-    'nti'     : lambda ev : ev.pu_at_bx0.getTrueNumInteractions(),
-
-    'bs_x0'   : lambda ev : ev.bs.x0()                           ,
-    'bs_y0'   : lambda ev : ev.bs.y0()                           ,
-    'bs_z0'   : lambda ev : ev.bs.z0()                           ,
+    'run'       : lambda ev : ev.eventAuxiliary().run()             ,
+    'lumi'      : lambda ev : ev.eventAuxiliary().luminosityBlock() ,
+    'event'     : lambda ev : ev.eventAuxiliary().event()           ,
+    
+    'ncands'  : lambda ev : ev.ncands                               ,
+   
+    #'qscale'  : lambda ev : ev.genInfo.qScale()                     ,
+    'npv'     : lambda ev : len(ev.vtx)                             ,
+    'npu'     : lambda ev : ev.pu_at_bx0.getPU_NumInteractions()    ,
+    'nti'     : lambda ev : ev.pu_at_bx0.getTrueNumInteractions()   ,
+   
+    'bs_x0'   : lambda ev : ev.bs.x0()                              ,
+    'bs_y0'   : lambda ev : ev.bs.y0()                              ,
+    'bs_z0'   : lambda ev : ev.bs.z0()                              ,
 }
 
 cand_branches = {

@@ -33,10 +33,15 @@ TO DO:
 from __future__ import print_function
 import os
 import re
+import sys
 import ROOT
 import argparse
 import numpy as np
+import pandas as pd
+import uproot
 from time import time
+from copy import deepcopy as dc
+from copy import copy as sc
 from datetime import datetime, timedelta
 from array import array
 from glob import glob
@@ -110,12 +115,25 @@ print("files:", files)
 events = Events(files)
 maxevents = maxevents if maxevents>=0 else events.size() # total number of events in the files
 
-fout = ROOT.TFile(destination + '/' + fileName + '.root', filemode)
-if filemode=='update':
-    ntuple = fout.Get('tree')
-else:
-    ntuple = ROOT.TNtuple('tree', 'tree', ':'.join(branches))
+#fout = ROOT.TFile(destination + '/' + fileName + '.root', filemode)
+fout = uproot.recreate(destination + '/' + fileName + '.root')
+
+#if filemode=='update':
+#    ntuple = fout.Get('tree')
+#else:
+#    ntuple = ROOT.TNtuple('tree', 'tree', ':'.join(branches))
+
+#ntuple = pd.DataFrame(columns=branches)
+row_list = []
+
 tofill = OrderedDict(zip(branches, [np.nan]*len(branches)))
+if sys.version_info[0]>=3:
+    if sys.version_info[0]>=7:
+        tofill = dict(zip(branches, [np.nan]*len(branches)))
+
+
+tofill = dict(zip(branches, [np.nan]*len(branches)))
+
 
 # start the stopwatch
 start = time()
@@ -123,7 +141,7 @@ mytimestamp = datetime.now().strftime('%Y-%m-%d__%Hh%Mm%Ss')
 print('#### STARTING NOW', mytimestamp)
 
 for i, event in enumerate(events):
-    
+        
     if (i+1) > maxevents:
         break
             
@@ -153,7 +171,6 @@ for i, event in enumerate(events):
 
     lumi = event.eventAuxiliary().luminosityBlock()
     iev  = event.eventAuxiliary().event()
-        
     ######################################################################################
     #####      RECO PART HERE
     ######################################################################################
@@ -306,16 +323,12 @@ for i, event in enumerate(events):
 
             for branch, getter in bs_branches.items():
                 tofill[branch] = getter(mother_b)    
-            
-
-
-           
-    ntuple.Fill(array('f', tofill.values()))
-
+    
+    row_list.append(sc(tofill))
+    
 ###############################################         
-fout.cd()
-ntuple.Write()
-fout.Close()
+ntuple = pd.DataFrame(row_list, columns=branches)
+fout['tree'] = ntuple
 
 with open('logger_%s.txt'%mytimestamp, 'w') as logger:
     for k, v in cutflow.items():
