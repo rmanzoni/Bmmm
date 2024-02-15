@@ -64,6 +64,7 @@ parser.add_argument('--filename'     , dest='filename'   , required=True, type=s
 parser.add_argument('--maxevents'    , dest='maxevents'  , default=-1   , type=int)
 parser.add_argument('--mc'           , dest='mc'         , action='store_true')
 parser.add_argument('--logfreq'      , dest='logfreq'    , default=100   , type=int)
+parser.add_argument('--logger'       , dest='logger'     , default=''    , type=str)
 parser.add_argument('--filemode'     , dest='filemode'   , default='recreate', type=str)
 parser.add_argument('--savenontrig'  , dest='savenontrig', action='store_true' )
 parser.add_argument('--maxfiles'     , dest='maxfiles'   , default=-1   , type=int)
@@ -75,6 +76,7 @@ fileName    = args.filename
 maxevents   = args.maxevents
 verbose     = args.verbose
 logfreq     = args.logfreq
+logger      = args.logger
 filemode    = args.filemode
 savenontrig = args.savenontrig
 maxfiles    = args.maxfiles
@@ -160,7 +162,10 @@ for i, event in enumerate(events):
         event.getByLabel(v[0], v[1])
         setattr(event, k, v[1].product())
     
+    event.mc = False
+    
     if mc:
+        event.mc = True
         for k, v in handles_mc.items():
             event.getByLabel(v[0], v[1])
             setattr(event, k, v[1].product())
@@ -271,7 +276,7 @@ for i, event in enumerate(events):
 
     # sort candidates by charge combination and best pointing angle, i.e. cosine closer to 1
     # can implement and use other criteria later
-    cands.sort(key = lambda x : (abs(x.charge())==0, x.vtx.cos), reverse = True)
+    cands.sort(key = lambda x : (abs(x.charge())==0, x.vtx.cos2d), reverse = True)
     final_cand = cands[0]
           
     ######################################################################################
@@ -305,10 +310,6 @@ for i, event in enumerate(events):
         for branch, getter in muon_branches.items():
             tofill['mu%d_%s' %(idx, branch)] = getter(imu) 
 
-    #import pdb ; pdb.set_trace()
-    # mass uncertainty
-    #np.sqrt(bs.get().currentState().kinematicParametersError().matrix().At(6,6))
-
     for branch, getter in cand_branches.items():
         tofill[branch] = getter(final_cand)    
 
@@ -324,13 +325,24 @@ for i, event in enumerate(events):
             for branch, getter in bs_branches.items():
                 tofill[branch] = getter(mother_b)    
     
+    # append selected event
     row_list.append(sc(tofill))
     
-###############################################         
+##########################################################################################
+#####      WRITE TO DISK
+##########################################################################################
 ntuple = pd.DataFrame(row_list, columns=branches)
+print('\nnumber of selected events', len(ntuple))
 fout['tree'] = ntuple
+print('\nntuple saved, processed all desired events?', (i+1==maxevents), 'processed', i+1, 'maxevents', maxevents)
 
-with open('logger_%s.txt'%mytimestamp, 'w') as logger:
+##########################################################################################
+#####      SAVE LOGGER 
+##########################################################################################
+
+logger_name = logger if len(logger)>0 else 'logger_'+mytimestamp
+
+with open('%s.txt'%logger_name, 'w') as logger:
     for k, v in cutflow.items():
         print(k, v, file=logger)
 

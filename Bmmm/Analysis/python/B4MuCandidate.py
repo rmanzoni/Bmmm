@@ -75,20 +75,41 @@ class B4MuCandidate():
     
         # now compute some displacement related quantities, here in the transverse plane.
         # later can add 3D quantities
+        
+        # 2D
         self.lxy = ROOT.VertexDistanceXY().distance(self.bs, self.vtx.vertexState())
     
         vect_lxy = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
-                    self.vtx.position().x() - self.bs.position().x(),
-                    self.vtx.position().y() - self.bs.position().y(),
-                    0. )
+            self.vtx.position().x() - self.bs.position().x(),
+            self.vtx.position().y() - self.bs.position().y(),
+            0. 
+        )
     
         vect_pt = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
-                    self.px(),
-                    self.py(),
-                    0. )
+            self.px(),
+            self.py(),
+            0. 
+        )
     
-        self.vtx.cos = vect_pt.Dot(vect_lxy) / (vect_pt.R() * vect_lxy.R()) if (vect_lxy.R() > 0.) else np.nan
+        self.vtx.cos2d = vect_pt.Dot(vect_lxy) / (vect_pt.R() * vect_lxy.R()) if (vect_lxy.R() > 0.) else np.nan
         
+        # 3D
+        self.lxyz = ROOT.VertexDistance3D().distance(self.pv, self.vtx.vertexState())
+
+        vect_lxyz = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
+            self.vtx.position().x() - self.bs.position().x(), # transverse quantities always from BS
+            self.vtx.position().y() - self.bs.position().y(), # transverse quantities always from BS
+            self.vtx.position().z() - self.pv.position().z(),
+        )
+        
+        vect_p = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
+            self.px(),
+            self.py(),
+            self.pz(),
+        )
+     
+        self.vtx.cos3d = vect_p.Dot(vect_lxyz) / (vect_p.R() * vect_lxyz.R())
+
         self.pv_to_sv = ROOT.Math.XYZVector(
                             (self.vtx.position().x() - self.pv.position().x()), 
                             (self.vtx.position().y() - self.pv.position().y()),
@@ -117,6 +138,13 @@ class B4MuCandidate():
         self.vertex_tree.movePointerToTheNextChild()
         mu4ref = self.vertex_tree.currentParticle()
         self.mu4.rfp4, _ = self.buildP4(mu4ref)
+        
+        # bmass and mass uncertainty
+        # FIXME! ugly naming
+        self.vertex_tree.movePointerToTheTop()
+        b4ref = self.vertex_tree.currentParticle()
+        self.b4refUnc = self.vertex_tree.currentParticle().currentState().kinematicParametersError().matrix()
+        self.bbp4, _ = self.buildP4(b4ref)
 
     @staticmethod
     def buildP4(ref):

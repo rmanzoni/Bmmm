@@ -10,8 +10,8 @@ event_branches = {
    
     #'qscale'  : lambda ev : ev.genInfo.qScale()                     ,
     'npv'     : lambda ev : len(ev.vtx)                             ,
-    'npu'     : lambda ev : ev.pu_at_bx0.getPU_NumInteractions()    ,
-    'nti'     : lambda ev : ev.pu_at_bx0.getTrueNumInteractions()   ,
+    'npu'     : lambda ev : ev.pu_at_bx0.getPU_NumInteractions()  if ev.mc else np.nan,
+    'nti'     : lambda ev : ev.pu_at_bx0.getTrueNumInteractions() if ev.mc else np.nan,
    
     'bs_x0'   : lambda ev : ev.bs.x0()                              ,
     'bs_y0'   : lambda ev : ev.bs.y0()                              ,
@@ -57,7 +57,7 @@ cand_branches = {
                                              cand.mass34()])   ,
  
     'rf_mass'           : lambda cand : cand.rf_mass()         ,
-    #'rf_err'            : lambda cand : np.sqrt(cand.get().currentState().kinematicParametersError().matrix().At(6,6)),
+    'rf_mass_err'       : lambda cand : np.sqrt(cand.b4refUnc.At(6,6)),
     'rf_pt'             : lambda cand : cand.rf_pt()           ,
     'rf_eta'            : lambda cand : cand.rf_eta()          ,
     'rf_phi'            : lambda cand : cand.rf_phi()          ,
@@ -98,11 +98,16 @@ cand_branches = {
     'vtx_chi2'          : lambda cand : cand.vtx.chi2          ,
     'vtx_prob'          : lambda cand : cand.vtx.prob          ,
 
-    'cos2d'             : lambda cand : cand.vtx.cos           ,
-#    'rf_cos2d'          : lambda cand : cand.vtx.rf_cos        ,
+    'cos2d'             : lambda cand : cand.vtx.cos2d         ,
+    'cos3d'             : lambda cand : cand.vtx.cos3d         ,
+
     'lxy'               : lambda cand : cand.lxy.value()       ,
     'lxy_err'           : lambda cand : cand.lxy.error()       ,
     'lxy_sig'           : lambda cand : cand.lxy.significance(),
+
+    'lxyz'              : lambda cand : cand.lxyz.value()       ,
+    'lxyz_err'          : lambda cand : cand.lxyz.error()       ,
+    'lxyz_sig'          : lambda cand : cand.lxyz.significance(),
 
     'trig_match'        : lambda cand : cand.trig_match        ,
 }
