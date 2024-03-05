@@ -104,7 +104,7 @@ if ('txt' in inputFiles):
     with open(inputFiles) as f:
         files = f.read().splitlines()
         files = ['root://cms-xrd-global.cern.ch//' + file for file in files]
-elif ',' in inputFiles or 'cms-xrd-global' in inputFiles:
+elif ',' in inputFiles or 'cms-xrd-global' in inputFiles or 't3dcachedb' in inputFiles:
     files = inputFiles.split(',')
 else:
     files = glob(inputFiles)
@@ -346,4 +346,6 @@ with open('%s.txt'%logger_name, 'w') as logger:
     for k, v in cutflow.items():
         print(k, v, file=logger)
 
+finish = time()
+print('done in %.1f hours' %( (finish-start)/3600. ))
 
