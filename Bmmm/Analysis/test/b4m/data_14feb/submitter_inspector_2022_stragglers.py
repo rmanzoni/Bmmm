@@ -41,11 +41,11 @@ else:
 pnfs = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni'
 
 periods = [
-    'Run2022C-PromptReco-v1',
+#    'Run2022C-PromptReco-v1',
 #    'Run2022D-PromptReco-v1',
 #    'Run2022D-PromptReco-v2',
 #    'Run2022E-PromptReco-v1',
-#    'Run2022F-PromptReco-v1',
+    'Run2022F-PromptReco-v1',
 #    'Run2022G-PromptReco-v1',
 ]
 

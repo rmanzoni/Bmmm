@@ -191,6 +191,10 @@ bs_branches = {
     'gen_b_pdgid'  :  lambda ib : ib.pdgId() ,
     'gen_b_charge' :  lambda ib : ib.charge(),
 
+    'gen_b_beta'   :  lambda ib : ib.p4().Beta(),
+    'gen_b_gamma'  :  lambda ib : ib.p4().Gamma(),
+    'gen_b_ct'     :  lambda ib : np.sqrt( (ib.daughter(0).vx() - ib.vx())**2 + (ib.daughter(0).vy() - ib.vy())**2 + (ib.daughter(0).vz() - ib.vz())**2 )/ib.p4().Beta()/ib.p4().Gamma(),
+
     'gen_pv_x'     :  lambda ib : ib.vx()    ,
     'gen_pv_y'     :  lambda ib : ib.vy()    ,
     'gen_pv_z'     :  lambda ib : ib.vz()    ,
@@ -203,6 +207,25 @@ bs_branches = {
     'gen_lxyz'     :  lambda ib : np.sqrt( (ib.daughter(0).vx() - ib.vx())**2 + (ib.daughter(0).vy() - ib.vy())**2 + (ib.daughter(0).vz() - ib.vz())**2 ) ,
 }
 
+jpsi_branches = {
+    'gen_jpsi_pt'     :  lambda ib : ib.pt()    ,
+    'gen_jpsi_eta'    :  lambda ib : ib.eta()   , 
+    'gen_jpsi_phi'    :  lambda ib : ib.phi()   ,
+    'gen_jpsi_e'      :  lambda ib : ib.energy(),
+    'gen_jpsi_mass'   :  lambda ib : ib.mass()  ,
+    'gen_jpsi_pdgid'  :  lambda ib : ib.pdgId() ,
+    'gen_jpsi_charge' :  lambda ib : ib.charge(),
+}
+
+phi_branches = {
+    'gen_phi_pt'     :  lambda ib : ib.pt()    ,
+    'gen_phi_eta'    :  lambda ib : ib.eta()   , 
+    'gen_phi_phi'    :  lambda ib : ib.phi()   ,
+    'gen_phi_e'      :  lambda ib : ib.energy(),
+    'gen_phi_mass'   :  lambda ib : ib.mass()  ,
+    'gen_phi_pdgid'  :  lambda ib : ib.pdgId() ,
+    'gen_phi_charge' :  lambda ib : ib.charge(),
+}
 
 
 branches =[]
@@ -219,6 +242,13 @@ for ibranch in cand_branches.keys():
 
 for ibranch in bs_branches.keys():
     branches.append(ibranch)
+
+for ibranch in jpsi_branches.keys():
+    branches.append(ibranch)
+
+for ibranch in phi_branches.keys():
+    branches.append(ibranch)
+
 
 paths = {}
 paths['HLT_DoubleMu4_3_LowMass'] = ['hltDisplacedmumuFilterDoubleMu43LowMass', 'hltDisplacedmumuFilterDoubleMu43LowMass']

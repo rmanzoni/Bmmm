@@ -64,7 +64,10 @@ class B4MuKinVtxFitter {
              const reco::Track & mu2,
              const reco::Track & mu3,
              const reco::Track & mu4,
-             const double      & mmu)
+             const double      & mmu1,
+             const double      & mmu2,
+             const double      & mmu3,
+             const double      & mmu4)
     {
         //define a factory
         KinematicParticleFactoryFromTransientTrack pFactory;
@@ -73,7 +76,10 @@ class B4MuKinVtxFitter {
         std::vector<RefCountedKinematicParticle> bToFit;
 
         // add the final states
-        ParticleMass muMass = mmu ;
+        ParticleMass muMass1 = mmu1 ;
+        ParticleMass muMass2 = mmu2 ;
+        ParticleMass muMass3 = mmu3 ;
+        ParticleMass muMass4 = mmu4 ;
     
         float chi   = 0.0;
         float ndf   = 0.0;
@@ -94,10 +100,10 @@ class B4MuKinVtxFitter {
 
         //--------------------------------------------------------------------------------
         // fit phi1020
-        bToFit.push_back(pFactory.particle(getTransientTrack(mu1), muMass, chi, ndf, sigma));
-        bToFit.push_back(pFactory.particle(getTransientTrack(mu2), muMass, chi, ndf, sigma));
-        bToFit.push_back(pFactory.particle(getTransientTrack(mu3), muMass, chi, ndf, sigma));
-        bToFit.push_back(pFactory.particle(getTransientTrack(mu4), muMass, chi, ndf, sigma));
+        bToFit.push_back(pFactory.particle(getTransientTrack(mu1), muMass1, chi, ndf, sigma));
+        bToFit.push_back(pFactory.particle(getTransientTrack(mu2), muMass2, chi, ndf, sigma));
+        bToFit.push_back(pFactory.particle(getTransientTrack(mu3), muMass3, chi, ndf, sigma));
+        bToFit.push_back(pFactory.particle(getTransientTrack(mu4), muMass4, chi, ndf, sigma));
         
         // fit
         RefCountedKinematicTree bTree = kcvFitter.fit(bToFit);

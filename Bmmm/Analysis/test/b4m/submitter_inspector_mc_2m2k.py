@@ -41,44 +41,31 @@ else:
 pnfs = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni'
 
 periods = [
-#    'BsToJpsiPhi_JMM_PhiMM_MuFilter_2022'  ,
-#    'BsToJpsiPhi_JMM_PhiMM_MuFilter_2022EE',
-    'Bs0To4Mu_FourMuonFilter_2022'         ,
-    'Bs0To4Mu_FourMuonFilter_2022EE'       ,
-#    'BdTo4Mu_FourMuonFilter_2022'          ,
-#    'BdTo4Mu_FourMuonFilter_2022EE'        ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'  ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE',
 ]
 
 
 # obtain these with a different script
 to_resubmit = {}
-to_resubmit['BsToJpsiPhi_JMM_PhiMM_MuFilter_2022'  ] = []
-to_resubmit['BsToJpsiPhi_JMM_PhiMM_MuFilter_2022EE'] = []
-to_resubmit['Bs0To4Mu_FourMuonFilter_2022'         ] = []
-to_resubmit['Bs0To4Mu_FourMuonFilter_2022EE'       ] = []
-to_resubmit['BdTo4Mu_FourMuonFilter_2022'          ] = []
-to_resubmit['BdTo4Mu_FourMuonFilter_2022EE'        ] = []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'  ] = []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE'] = []
 
 
 sample_files = {}
-sample_files['BsToJpsiPhi_JMM_PhiMM_MuFilter_2022'  ] = 'files_BsToJpsiPhi_JMM_PhiMM_MuFilter_SoftQCDnonD_TuneCP5_13p6TeV-pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5-v2.txt'
-sample_files['BsToJpsiPhi_JMM_PhiMM_MuFilter_2022EE'] = 'files_BsToJpsiPhi_JMM_PhiMM_MuFilter_SoftQCDnonD_TuneCP5_13p6TeV-pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2.txt'
-sample_files['Bs0To4Mu_FourMuonFilter_2022'         ] = 'files_Bs0To4Mu_FourMuonFilter_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5-v3.txt'
-sample_files['Bs0To4Mu_FourMuonFilter_2022EE'       ] = 'files_Bs0To4Mu_FourMuonFilter_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v3.txt'
-sample_files['BdTo4Mu_FourMuonFilter_2022'          ] = 'files_BdTo4Mu_FourMuonFilter_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5-v3.txt'
-sample_files['BdTo4Mu_FourMuonFilter_2022EE'        ] = 'files_BdTo4Mu_FourMuonFilter_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v3.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'  ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5-v2.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE'] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2.txt'
 
-
-# queue = 'standard'; time = 720
-queue = 'short'   ; time = 60
+queue = 'standard'; time = 720
+# queue = 'short'   ; time = 60
 # queue = 'long'    ; time = 10080
 
-
-time_tag = '12mar24'
+#time_tag = '08mar24'
+time_tag = '15mar24'
 version = 0
-ntuplizer = 'inspector_b4m_analysis.py'
-output = 'b4m'
-files_per_job = 1
+ntuplizer = 'inspector_b2m2k_analysis.py'
+output = 'b2m2k'
+files_per_job = 2
 
 
 for iperiod in periods:
@@ -86,13 +73,19 @@ for iperiod in periods:
     print('#'*80)
     print('\n', iperiod, '\n')
 
-    out_dir = 'B4Mu_ntuples_%s_%s_v%d' %(iperiod.replace('-', '_'), time_tag, version)
+    #out_dir = 'B4Mu_ntuples_%s_%s_v%d' %(iperiod.replace('-', '_'), time_tag, version)
+    out_dir = 'B2Mu2K_ntuples_%s_%s_v%d' %(iperiod.replace('-', '_'), time_tag, version)
 
     if not resubmit:
 
         allfiles = []
+        
+        base_cms_dir = os.environ['CMSSW_BASE']
+        files_dir = '/'.join([base_cms_dir, 'src', 'Bmmm', 'Analysis', 'test', 'files'])
     
-        with open('../files/%s' %sample_files[iperiod]) as f:
+        print('looking for files here', files_dir)
+            
+        with open('%s/%s' %(files_dir, sample_files[iperiod])) as f:
             files = f.read().splitlines()
             files = ['root://cms-xrd-global.cern.ch//'+ifile for ifile in files]
             allfiles += files

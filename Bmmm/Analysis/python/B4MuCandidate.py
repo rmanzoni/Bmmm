@@ -19,8 +19,6 @@ kinfit = B4MuKinVtxFitter()
 
 class B4MuCandidate():
     '''
-    3-muon candidate.
-    MISSING: use the post fit muon momenta
     '''
     def __init__(self, triplet, vertices, beamspot):
         # sort by pt
@@ -52,7 +50,8 @@ class B4MuCandidate():
         ndof = 0.
         self.bs = ROOT.reco.Vertex(bs_point, bs_error, chi2, ndof, 3) # size? say 3? does it matter?
         
-        self.vertex_tree = kinfit.Fit(self.mu1.bestTrack(), self.mu2.bestTrack(), self.mu3.bestTrack(), self.mu4.bestTrack(), masses['mu'])
+        self.vertex_tree = kinfit.Fit(self.mu1.bestTrack(), self.mu2.bestTrack(), self.mu3.bestTrack(), self.mu4.bestTrack(), \
+                                      masses['mu'], masses['mu'], masses['mu'], masses['mu'])
         self.good_vtx = False
         try:
             if self.vertex_tree:

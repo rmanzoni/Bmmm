@@ -332,3 +332,15 @@ def fix_track(trk, delta=1e-9):
         fix_track(new_trk, delta)
     
     return new_trk
+
+##########################################################################################
+##########################################################################################
+
+#@np.njit
+def compute_mass(p1, p2, m1, m2, p1p2):
+    mass_squared = m1**2 + m2**2 + 2*np.sqrt(m1**2 + p1**2)*np.sqrt(m2**2 + p2**2) - 2*p1p2
+    return np.sqrt(mass_squared) 
+
+
+
+
