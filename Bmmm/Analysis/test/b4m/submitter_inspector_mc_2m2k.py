@@ -21,7 +21,7 @@ from copy import copy
 #######################################################################
 #######################################################################
 
-resubmit = False
+resubmit = True
 
 #######################################################################
 #######################################################################
@@ -48,7 +48,7 @@ periods = [
 
 # obtain these with a different script
 to_resubmit = {}
-to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'  ] = []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'  ] = [0]
 to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE'] = []
 
 
@@ -56,16 +56,17 @@ sample_files = {}
 sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'  ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5-v2.txt'
 sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE'] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2.txt'
 
-queue = 'standard'; time = 720
-# queue = 'short'   ; time = 60
+#queue = 'standard'; time = 720
+queue = 'short'   ; time = 60
 # queue = 'long'    ; time = 10080
 
 #time_tag = '08mar24'
-time_tag = '15mar24'
+#time_tag = '15mar24'
+time_tag = '25mar24'
 version = 0
 ntuplizer = 'inspector_b2m2k_analysis.py'
 output = 'b2m2k'
-files_per_job = 2
+files_per_job = 1
 
 
 for iperiod in periods:

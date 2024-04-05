@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats
 from itertools import product, combinations
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
-from Bmmm.Analysis.utils import masses, is_pos_def, convert_cov, fix_track, compute_IP3D
+from Bmmm.Analysis.utils import masses, p4_with_mass, is_pos_def, convert_cov, fix_track, compute_IP3D
 
 import ROOT
 ROOT.gSystem.Load('libBmmmAnalysis')
@@ -17,29 +17,64 @@ tofit = ROOT.std.vector('reco::Track')()
 global kinfit
 kinfit = B4MuKinVtxFitter()
 
-class B4MuCandidate():
+class B2Mu2TkCandidate():
     '''
+    FIXME! brutal copy-paste from B4MuCandidate... should do better than this.
     '''
-    def __init__(self, triplet, vertices, beamspot):
+    def __init__(self, muons, tracks, vertices, beamspot):
+        
+        '''
+        tracks must be adictionary {track:mass}
+        '''
         # sort by pt
-        self.muons = sorted([mu for mu in triplet], key = lambda x : x.pt(), reverse = True)
+        self.muons     = sorted([mu for mu in muons        ], key = lambda x : x.pt(), reverse = True)
+        self.tracks    = sorted([tk for tk in tracks.keys()], key = lambda x : x.pt(), reverse = True)
+
         self.mu1 = self.muons[0]
         self.mu2 = self.muons[1]
-        self.mu3 = self.muons[2]
-        self.mu4 = self.muons[3]
+        self.tk1 = self.tracks[0]
+        self.tk2 = self.tracks[1]
+
+        self.tk1.old_mass = self.tk1.mass()
+        self.tk2.old_mass = self.tk2.mass()
+
+        self.tk1.old_p4 = self.tk1.p4()
+        self.tk2.old_p4 = self.tk2.p4()
+
+        self.tk1.new_mass = tracks[self.tk1]
+        self.tk2.new_mass = tracks[self.tk2]
+
+        self.tk1.new_p4 = p4_with_mass(self.tk1, self.tk1.new_mass)
+        self.tk2.new_p4 = p4_with_mass(self.tk2, self.tk2.new_mass)
+
+        self.tk1.p4 = lambda : self.tk1.new_p4
+        self.tk2.p4 = lambda : self.tk2.new_p4
+
+        self.tk1.mass = lambda : self.tk1.p4().mass()
+        self.tk2.mass = lambda : self.tk2.p4().mass()
+
+        self.tk1.energy = lambda : self.tk1.p4().energy()
+        self.tk2.energy = lambda : self.tk2.p4().energy()
+
         # check that the muon track covariance matrix is pos-def
-        self.mu1.cov = self.convert_cov(self.mu1.bestTrack().covariance())
-        self.mu2.cov = self.convert_cov(self.mu2.bestTrack().covariance())
-        self.mu3.cov = self.convert_cov(self.mu3.bestTrack().covariance())
-        self.mu4.cov = self.convert_cov(self.mu4.bestTrack().covariance())
-        self.mu1.is_cov_pos_def = self.is_pos_def(self.mu1.cov)
-        self.mu2.is_cov_pos_def = self.is_pos_def(self.mu2.cov)
-        self.mu3.is_cov_pos_def = self.is_pos_def(self.mu3.cov)
-        self.mu4.is_cov_pos_def = self.is_pos_def(self.mu4.cov)
+        self.mu1.cov = convert_cov(self.mu1.bestTrack().covariance())
+        self.mu2.cov = convert_cov(self.mu2.bestTrack().covariance())
+        self.tk1.cov = convert_cov(self.tk1.bestTrack().covariance())
+        self.tk2.cov = convert_cov(self.tk2.bestTrack().covariance())
+        self.mu1.is_cov_pos_def = is_pos_def(self.mu1.cov)
+        self.mu2.is_cov_pos_def = is_pos_def(self.mu2.cov)
+        self.tk1.is_cov_pos_def = is_pos_def(self.tk1.cov)
+        self.tk2.is_cov_pos_def = is_pos_def(self.tk2.cov)
+                
+        mu1_tk = self.mu1.bestTrack() if self.mu1.is_cov_pos_def else fix_track(self.mu1.bestTrack())   
+        mu2_tk = self.mu2.bestTrack() if self.mu2.is_cov_pos_def else fix_track(self.mu2.bestTrack())   
+        tk1_tk = self.tk1.bestTrack() if self.tk1.is_cov_pos_def else fix_track(self.tk1.bestTrack())   
+        tk2_tk = self.tk2.bestTrack() if self.tk2.is_cov_pos_def else fix_track(self.tk2.bestTrack())   
         
-        self.vertex_tree = kinfit.Fit(self.mu1.bestTrack(), self.mu2.bestTrack(), self.mu3.bestTrack(), self.mu4.bestTrack(), \
-                                      masses['mu'], masses['mu'], masses['mu'], masses['mu'])
+        self.vertex_tree = kinfit.Fit(mu1_tk, mu2_tk, tk1_tk, tk2_tk, \
+                                      masses['mu'], masses['mu'], masses['k'], masses['k'])
         self.good_vtx = False
+        
         if self.vertex_tree:
             self.good_vtx = ( (not self.vertex_tree.isEmpty()) and self.vertex_tree.isValid() )
         if self.good_vtx:
@@ -60,13 +95,13 @@ class B4MuCandidate():
             chi2 = 0.
             ndof = 0.
             self.bs = ROOT.reco.Vertex(bs_point, bs_error, chi2, ndof, 3) # size? say 3? does it matter?
-       
+        
         
     def compute_vtx_quantities(self, vertices, beamspot):
 
         self.vertex_tree.movePointerToTheTop()
         self.vtx = self.vertex_tree.currentDecayVertex().get()
-
+        
         # find PV as the closest to the Bs flight direction
         # https://www.nagwa.com/en/explainers/939127418581/#:~:text=The%20perpendicular%20distance%20between%20a%20point%20and%20a%20line%20is,any%20point%20on%20the%20line.
         pv_idx = -1
@@ -90,7 +125,7 @@ class B4MuCandidate():
         chi2 = 0.
         ndof = 0.
         self.bs = ROOT.reco.Vertex(bs_point, bs_error, chi2, ndof, 3) # size? say 3? does it matter?
-        
+
         self.vtx.ndof = self.vtx.degreesOfFreedom()
         self.vtx.chi2 = self.vtx.chiSquared()
         self.vtx.norm_chi2 = self.vtx.chi2/self.vtx.ndof
@@ -155,12 +190,12 @@ class B4MuCandidate():
         self.mu2.rfp4, _ = self.buildP4(mu2ref)
 
         self.vertex_tree.movePointerToTheNextChild()
-        mu3ref = self.vertex_tree.currentParticle()
-        self.mu3.rfp4, _ = self.buildP4(mu3ref)
+        tk1ref = self.vertex_tree.currentParticle()
+        self.tk1.rfp4, _ = self.buildP4(tk1ref)
 
         self.vertex_tree.movePointerToTheNextChild()
-        mu4ref = self.vertex_tree.currentParticle()
-        self.mu4.rfp4, _ = self.buildP4(mu4ref)
+        tk2ref = self.vertex_tree.currentParticle()
+        self.tk2.rfp4, _ = self.buildP4(tk2ref)
         
         # bmass and mass uncertainty
         # FIXME! ugly naming
@@ -192,29 +227,20 @@ class B4MuCandidate():
                 mu.px(), mu.py(), mu.pz(), np.sqrt(mu.p()**2 + self.mu1.mass()**2) )
         return rfp4
                            
-    def convert_cov(self, m):
-        return np.array([[m(i,j) for j in range(m.kCols)] for i in range(m.kRows)])
-
-    def is_pos_def(self, x):
-        '''
-        https://stackoverflow.com/questions/16266720/find-out-if-matrix-is-positive-definite-with-numpy
-        '''
-        return np.all(np.linalg.eigvals(x) > 0)
-
     def p4(self):
-        return self.mu1.p4() + self.mu2.p4() + self.mu3.p4() + self.mu4.p4()
+        return self.mu1.p4() + self.mu2.p4() + self.tk1.p4() + self.tk2.p4()
     def p4_12(self):
         return self.mu1.p4() + self.mu2.p4()
     def p4_13(self):
-        return self.mu1.p4() + self.mu3.p4()
+        return self.mu1.p4() + self.tk1.p4()
     def p4_14(self):
-        return self.mu1.p4() + self.mu4.p4()
+        return self.mu1.p4() + self.tk2.p4()
     def p4_23(self):
-        return self.mu2.p4() + self.mu3.p4()
+        return self.mu2.p4() + self.tk1.p4()
     def p4_24(self):
-        return self.mu2.p4() + self.mu4.p4()
+        return self.mu2.p4() + self.tk2.p4()
     def p4_34(self):
-        return self.mu3.p4() + self.mu4.p4()
+        return self.tk1.p4() + self.tk2.p4()
     def pt(self):
         return self.p4().pt()
     def eta(self):
@@ -234,19 +260,19 @@ class B4MuCandidate():
     def pz(self):
         return self.p4().pz()
     def charge(self):
-        return self.mu1.charge() + self.mu2.charge() + self.mu3.charge() + self.mu4.charge()
+        return self.mu1.charge() + self.mu2.charge() + self.tk1.charge() + self.tk2.charge()
     def charge12(self):
         return self.mu1.charge() + self.mu2.charge()
     def charge13(self):
-        return self.mu1.charge() + self.mu3.charge()
+        return self.mu1.charge() + self.tk1.charge()
     def charge14(self):
-        return self.mu1.charge() + self.mu4.charge()
+        return self.mu1.charge() + self.tk2.charge()
     def charge23(self):
-        return self.mu2.charge() + self.mu3.charge()
+        return self.mu2.charge() + self.tk1.charge()
     def charge24(self):
-        return self.mu2.charge() + self.mu4.charge()
+        return self.mu2.charge() + self.tk2.charge()
     def charge34(self):
-        return self.mu3.charge() + self.mu4.charge()
+        return self.tk1.charge() + self.tk2.charge()
     def r(self):
         '''
         Cone radius parameter: max distance between the 4-mu candidate direction and one of the muons
@@ -260,15 +286,17 @@ class B4MuCandidate():
     def dr12(self):
         return deltaR(self.mu1, self.mu2)
     def dr13(self):
-        return deltaR(self.mu1, self.mu3)
+        return deltaR(self.mu1, self.tk1)
     def dr14(self):
-        return deltaR(self.mu1, self.mu4)
+        return deltaR(self.mu1, self.tk2)
     def dr23(self):
-        return deltaR(self.mu2, self.mu3)
+        return deltaR(self.mu2, self.tk1)
     def dr24(self):
-        return deltaR(self.mu2, self.mu4)
+        return deltaR(self.mu2, self.tk2)
     def dr34(self):
-        return deltaR(self.mu3, self.mu4)
+        return deltaR(self.tk1, self.tk2)
+    
+    # FIXME!
     def mass12(self):
         return self.p4_12().mass()
     def mass13(self):
@@ -287,8 +315,8 @@ class B4MuCandidate():
             'cand vtx prob %2f vtx chi2 %.2f lxy %.4f lxy sig %.2f cos %.2f' %(self.vtx.prob, self.vtx.chi2, self.lxy.value(), self.lxy.significance(), self.vtx.cos),
             '\t mu1 pt %.2f eta %.2f phi %.2f' %(self.mu1.pt(), self.mu1.eta(), self.mu1.phi()),
             '\t mu2 pt %.2f eta %.2f phi %.2f' %(self.mu2.pt(), self.mu2.eta(), self.mu2.phi()),
-            '\t mu3 pt %.2f eta %.2f phi %.2f' %(self.mu3.pt(), self.mu3.eta(), self.mu3.phi()),
-            '\t mu4 pt %.2f eta %.2f phi %.2f' %(self.mu4.pt(), self.mu4.eta(), self.mu4.phi()),
+            '\t tk1 pt %.2f eta %.2f phi %.2f' %(self.tk1.pt(), self.tk1.eta(), self.tk1.phi()),
+            '\t tk2 pt %.2f eta %.2f phi %.2f' %(self.tk2.pt(), self.tk2.eta(), self.tk2.phi()),
         ]
         return '\n'.join(to_return)
 
@@ -305,19 +333,19 @@ class B4MuCandidate():
     ######################################################################################
 
     def rf_p4(self):
-        return self.mu1.rfp4 + self.mu2.rfp4 + self.mu3.rfp4 + self.mu4.rfp4
+        return self.mu1.rfp4 + self.mu2.rfp4 + self.tk1.rfp4 + self.tk2.rfp4
     def rf_p4_12(self):
         return self.mu1.rfp4 + self.mu2.rfp4
     def rf_p4_13(self):
-        return self.mu1.rfp4 + self.mu3.rfp4
+        return self.mu1.rfp4 + self.tk1.rfp4
     def rf_p4_14(self):
-        return self.mu1.rfp4 + self.mu4.rfp4
+        return self.mu1.rfp4 + self.tk2.rfp4
     def rf_p4_23(self):
-        return self.mu2.rfp4 + self.mu3.rfp4
+        return self.mu2.rfp4 + self.tk1.rfp4
     def rf_p4_24(self):
-        return self.mu2.rfp4 + self.mu4.rfp4
+        return self.mu2.rfp4 + self.tk2.rfp4
     def rf_p4_34(self):
-        return self.mu3.rfp4 + self.mu4.rfp4
+        return self.tk1.rfp4 + self.tk2.rfp4
     def rf_pt(self):
         return self.rf_p4().pt()
     def rf_eta(self):
@@ -347,15 +375,15 @@ class B4MuCandidate():
     def rf_dr12(self):
         return deltaR(self.mu1.rfp4, self.mu2.rfp4)
     def rf_dr13(self):
-        return deltaR(self.mu1.rfp4, self.mu3.rfp4)
+        return deltaR(self.mu1.rfp4, self.tk1.rfp4)
     def rf_dr14(self):
-        return deltaR(self.mu1.rfp4, self.mu4.rfp4)
+        return deltaR(self.mu1.rfp4, self.tk2.rfp4)
     def rf_dr23(self):
-        return deltaR(self.mu2.rfp4, self.mu3.rfp4)
+        return deltaR(self.mu2.rfp4, self.tk1.rfp4)
     def rf_dr24(self):
-        return deltaR(self.mu2.rfp4, self.mu4.rfp4)
+        return deltaR(self.mu2.rfp4, self.tk2.rfp4)
     def rf_dr34(self):
-        return deltaR(self.mu3.rfp4, self.mu4.rfp4)
+        return deltaR(self.tk1.rfp4, self.tk2.rfp4)
     def rf_mass12(self):
         return self.rf_p4_12().mass()
     def rf_mass13(self):

@@ -287,7 +287,7 @@ def is_pos_def(x):
     '''
     https://stackoverflow.com/questions/16266720/find-out-if-matrix-is-positive-definite-with-numpy
     '''
-    return np.all(np.linalg.eigvals(x) > 0)
+    return np.all(np.linalg.eigvals(np.nan_to_num(x)) > 0)
 
 def fix_track(trk, delta=1e-9):
     '''
@@ -299,10 +299,13 @@ def fix_track(trk, delta=1e-9):
     if is_pos_def(cov): 
         return trk
     
-    if int(np.__version__.split('.')[1])<17:
-        new_cov = np.nan_to_num(cov) # missing keyword, check docs
-    else:
-        new_cov = np.nan_to_num(cov, posinf=0., neginf=0.)    
+    #if int(np.__version__.split('.')[1])<17:
+    #    new_cov = np.nan_to_num(cov) # missing keyword, check docs
+    #else:
+    #    new_cov = np.nan_to_num(cov, posinf=0., neginf=0.)    
+
+    new_cov = np.nan_to_num(cov)    
+
     min_eigenvalue = np.nan_to_num(min(np.linalg.eigvals(new_cov)))
     for i in range(new_cov.shape[0]):
         new_cov[i,i] = new_cov[i,i] - min_eigenvalue + delta
@@ -341,6 +344,28 @@ def compute_mass(p1, p2, m1, m2, p1p2):
     mass_squared = m1**2 + m2**2 + 2*np.sqrt(m1**2 + p1**2)*np.sqrt(m2**2 + p2**2) - 2*p1p2
     return np.sqrt(mass_squared) 
 
+##########################################################################################
+##########################################################################################
+
+def compute_IP3D(pv, sv, direction):
+    pv_to_sv_vector = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
+        sv.x()-pv.x(),
+        sv.y()-pv.y(),
+        sv.z()-pv.z() 
+    )
+    
+    ip3d = abs(pv_to_sv_vector.Cross(direction).rho() / direction.rho())
+    return ip3d
 
 
+##########################################################################################
+##########################################################################################
 
+# https://stackoverflow.com/questions/36695256/python-asyncio-how-to-mock-aiter-method
+class AsyncIter:    
+    def __init__(self, items):    
+        self.items = items    
+
+    async def __aiter__(self):    
+        for item in self.items:    
+            yield item    

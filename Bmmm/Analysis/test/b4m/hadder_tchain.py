@@ -3,8 +3,11 @@ from glob import glob
 
 directories = [
 
-    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE_15mar24_v0',
-    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022_15mar24_v0',
+    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE_25mar24_v0',
+    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022_25mar24_v0',
+
+#    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE_15mar24_v0',
+#    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022_15mar24_v0',
 
 #    'B4Mu_ntuples_Bs0To4Mu_FourMuonFilter_2022EE_12mar24_v0',
 #    'B4Mu_ntuples_Bs0To4Mu_FourMuonFilter_2022_12mar24_v0'  ,
@@ -27,8 +30,8 @@ fouts = {}
 #fouts['B4Mu_ntuples_Bs0To4Mu_FourMuonFilter_2022EE_12mar24_v0'] = 'bs4mu_2022EE_lifetime.root'
 #fouts['B4Mu_ntuples_Bs0To4Mu_FourMuonFilter_2022_12mar24_v0'  ] = 'bs4mu_2022_lifetime.root'
 
-fouts['B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE_15mar24_v0'] = 'bs_jpsi_phi_2mu2k_2022EE.root'
-fouts['B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022_15mar24_v0'  ] = 'bs_jpsi_phi_2mu2k_2022.root'
+fouts['B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE_25mar24_v0'] = 'bs_jpsi_phi_2mu2k_2022EE.root'
+fouts['B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022_25mar24_v0'  ] = 'bs_jpsi_phi_2mu2k_2022.root'
 
 for idir in directories:
 

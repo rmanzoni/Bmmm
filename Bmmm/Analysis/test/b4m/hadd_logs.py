@@ -25,12 +25,17 @@ def zero():
 #directory = 'B4Mu_ntuples_Bs0To4Mu_FourMuonFilter_2022_06mar24_v0'
 
 directories =[
-    'B4Mu_ntuples_BdTo4Mu_FourMuonFilter_2022EE_06mar24_v0'        ,
-    'B4Mu_ntuples_BdTo4Mu_FourMuonFilter_2022_06mar24_v0'          ,
-    'B4Mu_ntuples_Bs0To4Mu_FourMuonFilter_2022EE_06mar24_v0'       ,
-    'B4Mu_ntuples_Bs0To4Mu_FourMuonFilter_2022_06mar24_v0'         ,
-    'B4Mu_ntuples_BsToJpsiPhi_JMM_PhiMM_MuFilter_2022EE_06mar24_v0',
-    'B4Mu_ntuples_BsToJpsiPhi_JMM_PhiMM_MuFilter_2022_06mar24_v0'  ,
+#    'B4Mu_ntuples_BdTo4Mu_FourMuonFilter_2022EE_06mar24_v0'        ,
+#    'B4Mu_ntuples_BdTo4Mu_FourMuonFilter_2022_06mar24_v0'          ,
+#    'B4Mu_ntuples_Bs0To4Mu_FourMuonFilter_2022EE_06mar24_v0'       ,
+#    'B4Mu_ntuples_Bs0To4Mu_FourMuonFilter_2022_06mar24_v0'         ,
+#    'B4Mu_ntuples_BsToJpsiPhi_JMM_PhiMM_MuFilter_2022EE_06mar24_v0',
+#    'B4Mu_ntuples_BsToJpsiPhi_JMM_PhiMM_MuFilter_2022_06mar24_v0'  ,
+#    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE_15mar24_v0',
+#    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022_15mar24_v0'  ,
+
+    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE_25mar24_v0',
+    'B2Mu2K_ntuples_BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022_25mar24_v0',
 ]
 
 for directory in directories:
@@ -52,9 +57,11 @@ for directory in directories:
     for ifile in files:
         #filename = 'b4m_logger7_part0.txt'
         #idx = int(ifile.replace('_part0.txt', '').replace('b4m_logger', ''))
-        idx = int(ifile.replace('logger_b4m_chunk', '').replace('.txt', ''))
+        #idx = int(ifile.replace('logger_b4m_chunk', '').replace('.txt', ''))
+        idx = int(ifile.replace('logger_b2m2k_chunk', '').replace('.txt', ''))
         tree = ROOT.TChain('tree')
-        tree.Add('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/%s/b4m_chunk%d.root' %(directory, idx))
+        #tree.Add('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/%s/b4m_chunk%d.root' %(directory, idx))
+        tree.Add('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/%s/b2m2k_chunk%d.root' %(directory, idx))
         entries = tree.GetEntries()
         #print('chunk %d - entries %.0f' %(idx, entries))
     
