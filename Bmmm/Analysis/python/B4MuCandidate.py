@@ -169,6 +169,25 @@ class B4MuCandidate():
         self.b4refUnc = self.vertex_tree.currentParticle().currentState().kinematicParametersError().matrix()
         self.bbp4, _ = self.buildP4(b4ref)
 
+    def compute_dimuon_vtx_quantities(self):
+        
+        for i,j in combinations([1,2,3,4], 2):
+
+            vtx_name = 'vertex_tree_%d%d'%(i,j)
+                
+            setattr(self, vtx_name, kinfit.Fit2Body(getattr(self, 'mu%d'%i).bestTrack(), getattr(self, 'mu%d'%j).bestTrack(), masses['mu'], masses['mu']))
+
+            if getattr(self, vtx_name):
+                good_vtx = ( (not getattr(self, vtx_name).isEmpty()) and getattr(self, vtx_name).isValid() )
+            else: 
+                good_vtx = False
+            
+            if good_vtx:
+                getattr(self, vtx_name).movePointerToTheTop()
+                setattr(self, 'dimuon%d%d_mass_unc' %(i,j), np.sqrt(getattr(self, vtx_name).currentParticle().currentState().kinematicParametersError().matrix().At(6,6)))
+            else:
+                setattr(self, 'dimuon%d%d_mass_unc' %(i,j), np.nan)
+                                    
     @staticmethod
     def buildP4(ref):
 

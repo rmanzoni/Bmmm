@@ -41,28 +41,64 @@ else:
 pnfs = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni'
 
 periods = [
-    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'  ,
-    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE',
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'                  ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE'                ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_2023'                  ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_2023BPix'              ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022'      ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022_ext'  ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022EE'    ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022EE_ext',
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2023'      ,
+    'BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2023BPix'  ,
+    'BdToJpsiKstar_BMuonFilter_2022'                       ,
+    'BdToJpsiKstar_BMuonFilter_2022EE'                     ,
+    'BdToJpsiKstar_BMuonFilter_2023'                       ,
+    'BdToJpsiKstar_BMuonFilter_2023BPix'                   ,
 ]
-
 
 # obtain these with a different script
 to_resubmit = {}
-to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'  ] = [0]
-to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE'] = []
+to_resubmit['BdToJpsiKstar_BMuonFilter_2022EE'] =  []
+to_resubmit['BdToJpsiKstar_BMuonFilter_2022'] =  []
+to_resubmit['BdToJpsiKstar_BMuonFilter_2023BPix'] =  [28]
+to_resubmit['BdToJpsiKstar_BMuonFilter_2023'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2023BPix'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2023'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022EE'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022EE_ext'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022_ext'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2023BPix'] =  []
+to_resubmit['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2023'] =  []
 
 
 sample_files = {}
-sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'  ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5-v2.txt'
-sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE'] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022'                  ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5-v2.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2022EE'                ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2023'                  ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer23MiniAODv4-130X_mcRun3_2023_realistic_v14-v3.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_2023BPix'              ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer23BPixMiniAODv4-130X_mcRun3_2023_realistic_postBPix_v2-v3.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022'      ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_EtaPtFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5-v2.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022_ext'  ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_EtaPtFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5_ext1-v2.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022EE'    ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_EtaPtFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2022EE_ext'] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_EtaPtFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6_ext1-v2.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2023'      ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_EtaPtFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer23MiniAODv4-130X_mcRun3_2023_realistic_v14-v3.txt'
+sample_files['BsToJPsiPhi_JPsiToMuMu_PhiToKK_PtEtaFilter_2023BPix'  ] = 'files_BsToJPsiPhi_JPsiToMuMu_PhiToKK_EtaPtFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer23BPixMiniAODv4-130X_mcRun3_2023_realistic_postBPix_v2-v3.txt'
+sample_files['BdToJpsiKstar_BMuonFilter_2022'                       ] = 'files_BdToJpsiKstar_BMuonFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22MiniAODv4-130X_mcRun3_2022_realistic_v5-v2.txt'
+sample_files['BdToJpsiKstar_BMuonFilter_2022EE'                     ] = 'files_BdToJpsiKstar_BMuonFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer22EEMiniAODv4-130X_mcRun3_2022_realistic_postEE_v6-v2.txt'
+sample_files['BdToJpsiKstar_BMuonFilter_2023'                       ] = 'files_BdToJpsiKstar_BMuonFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer23MiniAODv4-130X_mcRun3_2023_realistic_v14-v3.txt'
+sample_files['BdToJpsiKstar_BMuonFilter_2023BPix'                   ] = 'files_BdToJpsiKstar_BMuonFilter_SoftQCDnonD_TuneCP5_13p6TeV_pythia8-evtgen__Run3Summer23BPixMiniAODv4-130X_mcRun3_2023_realistic_postBPix_v2-v3.txt'
 
-#queue = 'standard'; time = 720
-queue = 'short'   ; time = 60
+queue = 'standard'; time = 720
+# queue = 'short'   ; time = 60
 # queue = 'long'    ; time = 10080
 
 #time_tag = '08mar24'
 #time_tag = '15mar24'
-time_tag = '25mar24'
+#time_tag = '25mar24'
+time_tag = '10apr24'
 version = 0
 ntuplizer = 'inspector_b2m2k_analysis.py'
 output = 'b2m2k'
@@ -198,7 +234,7 @@ for iperiod in periods:
                 '-e %s/errs/chunk%d.err' %(out_dir, ijob), 
                 '--job-name=%d_%s' %(ijob, out_dir), 
                 '--time=%d'%time,
-                #'-w t3wn70,t3wn71,t3wn72,t3wn73', # only the best nodes
+                '-w t3wn70,t3wn71,t3wn72,t3wn73', # only the best nodes
                 '%s/submitter_chunk%d.sh' %(out_dir, ijob), 
             ])
             

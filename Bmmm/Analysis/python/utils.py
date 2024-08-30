@@ -268,7 +268,7 @@ def isMyDs(ds, minpt=0.5, maxeta=2.5):
                 continue
             for jdau in range(dau.numberOfDaughters()):
                 if abs(dau.daughter(jdau).pdgId())!=321 or \
-                   dau.daughter(jdau).pt < minpt        or \
+                   dau.daughter(jdau).pt() < minpt      or \
                    abs(dau.daughter(jdau).eta()) > maxeta:
                     continue # only kaons in the acceptance
             ds.phi_meson = dau

@@ -34,22 +34,21 @@ from collections import OrderedDict, defaultdict, namedtuple
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
-from Bmmm.Analysis.B2Mu2TkBranches import branches, paths, muon_branches, cand_branches, event_branches, bs_branches, jpsi_branches, phi_branches, track_branches
+from Bmmm.Analysis.B2Mu2TkBranches import branches, paths, muon_branches, cand_branches, event_branches, bs_branches, jpsi_branches, phi_branches, track_branches, kstar_branches
 from Bmmm.Analysis.B2Mu2TkCandidate import B2Mu2TkCandidate as Candidate
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow, p4_with_mass, masses, compute_mass, AsyncIter
 from Bmmm.Analysis.B4Mucuts import cuts
 from Bmmm.Analysis.Handles import handles, handles_mc
-
 
 ######################################################################################
 #####      LOOPER
 ######################################################################################
 async def looper(events, options, handles, handles_mc, row_list, start):
     
-    async for i, event in aiostream.stream.enumerate(AsyncIter(events)):
+    async for i, event in aiostream.stream.enumerate(AsyncIter(events), 1):
 
-        if (i+1) > options.maxevents:
-            break
+        if i > options.maxevents:
+            return i-1, cutflow
                 
         if i%options.logfreq == 0:
             percentage = float(i) / options.maxevents * 100.
@@ -244,7 +243,7 @@ async def looper(events, options, handles, handles_mc, row_list, start):
         # can implement and use other criteria later
         cands.sort(key = lambda x : (abs(x.charge())==0, x.vtx.cos2d), reverse = True)
         final_cand = cands[0]
-                  
+              
         ######################################################################################
         #####      FILL
         ######################################################################################
@@ -252,12 +251,12 @@ async def looper(events, options, handles, handles_mc, row_list, start):
             tofill[branch] = getter(event)    
                    
         if options.mc:
-            gen_muons = [ip for ip in event.genpr if abs(ip.pdgId())==13  and abs(ip.mother(0).pdgId())==443 and abs(ip.mother(0).mother(0).pdgId())==531]
+            gen_muons = [ip for ip in event.genpr if abs(ip.pdgId())==13  and abs(ip.mother(0).pdgId())==443 and abs(ip.mother(0).mother(0).pdgId()) in [531, 511]]
             gen_kaons = [ip for ip in event.genpr if abs(ip.pdgId())==321 and abs(ip.mother(0).pdgId())==333 and abs(ip.mother(0).mother(0).pdgId())==531]
-            #bss= [ip for ip in event.genpr if abs(ip.pdgId())==531 and abs(abs(ip.mother().pdgId())!=531)]
-            #print('\n')
-            #for jj, ibs in enumerate(bss):
-            #    print('%d Bs PDG ID %d' %(jj, ibs.pdgId()))
+            # GEN matching for Bd--> Jpsi K*(-->K pi) 
+            # these exist in gen packed           
+            gen_bd_kaons = [ip for ip in event.genpk if abs(ip.pdgId())==321 and abs(ip.mother(0).pdgId())==313 and abs(ip.mother(0).mother(0).pdgId())==511]
+            gen_bd_pions = [ip for ip in event.genpk if abs(ip.pdgId())==211 and abs(ip.mother(0).pdgId())==313 and abs(ip.mother(0).mother(0).pdgId())==511]
     
         for idx in range(1, 3):
             imu = getattr(final_cand, 'mu%d' %idx)
@@ -287,7 +286,7 @@ async def looper(events, options, handles, handles_mc, row_list, start):
             if dr2<0.2**2: itk.jet = jet        
             # gen matching
             if options.mc:
-                genp, dr2 = bestMatch(itk, [ip for ip in gen_kaons if ip.charge()==itk.charge()])
+                genp, dr2 = bestMatch(itk, [ip for ip in gen_kaons+gen_bd_kaons+gen_bd_pions if ip.charge()==itk.charge()])
                 if dr2<0.02**2: itk.genp = genp
             
             for branch, getter in track_branches.items():
@@ -295,7 +294,7 @@ async def looper(events, options, handles, handles_mc, row_list, start):
     
         for branch, getter in cand_branches.items():
             tofill[branch] = getter(final_cand)    
-    
+        
         if getattr(final_cand.mu1, 'genp', False) and \
            getattr(final_cand.mu2, 'genp', False) and \
            getattr(final_cand.tk1, 'genp', False) and \
@@ -308,28 +307,33 @@ async def looper(events, options, handles, handles_mc, row_list, start):
             grandmothers = [nana(imu) for imu in final_cand.muons] + [nana(itk) for itk in final_cand.tracks] 
             
             ## Bs Jpsi Phi
-            if len(set(mothers))==2 and len(set(grandmothers))==1 and grandmothers[0].pdgId() in [531]:       
+            if len(set(mothers))==2 and len(set(grandmothers))==1 and abs(grandmothers[0].pdgId()) in [531, 511]:       
                 the_b = grandmothers[0]
     
                 for branch, getter in bs_branches.items():
                     tofill[branch] = getter(the_b)
                     
-                the_jpsi = [ip for ip in set(mothers) if abs(ip.pdgId())==443][0]
-                the_phi = [ip for ip in set(mothers) if abs(ip.pdgId())==333][0] 
-    
+                the_jpsi  = [ip for ip in set(mothers) if abs(ip.pdgId())==443][0]
+
                 for branch, getter in jpsi_branches.items():
                     tofill[branch] = getter(the_jpsi)
+
+                if abs(grandmothers[0].pdgId())==531:
+                    the_phi   = [ip for ip in set(mothers) if abs(ip.pdgId())==333][0] 
+                    for branch, getter in phi_branches.items():
+                        tofill[branch] = getter(the_phi)
     
-                for branch, getter in phi_branches.items():
-                    tofill[branch] = getter(the_phi)
+                if abs(grandmothers[0].pdgId())==511:
+                    the_kstar = [ip for ip in set(mothers) if abs(ip.pdgId())==313][0] 
+                    for branch, getter in kstar_branches.items():
+                        tofill[branch] = getter(the_kstar)
         
         # append selected event
         row_list.append(tofill)
  
     # return number of processed events and cutflow
     return i, cutflow
-    
-    
+
 ######################################################################################
 #####      MAIN
 ######################################################################################
@@ -350,13 +354,14 @@ async def main():
     parser.add_argument('--filemode'     , dest='filemode'   , default='recreate', type=str)
     parser.add_argument('--savenontrig'  , dest='savenontrig', action='store_true' )
     parser.add_argument('--maxfiles'     , dest='maxfiles'   , default=-1   , type=int)
+    parser.add_argument('--redirector'   , dest='redirector' , default='root://cms-xrd-global.cern.ch//', type=str)
     
     options = namedtuple('options', parser.parse_args().__dict__.keys())(*parser.parse_args().__dict__.values())
     
     if ('txt' in options.inputFiles):
         with open(options.inputFiles) as f:
             files = f.read().splitlines()
-            files = ['root://cms-xrd-global.cern.ch//' + file for file in files]
+            files = [options.redirector + file for file in files]
     elif ',' in options.inputFiles or 'cms-xrd-global' in options.inputFiles or 't3dcachedb' in options.inputFiles:
         files = options.inputFiles.split(',')
     else:
@@ -392,13 +397,12 @@ async def main():
     ##########################################################################################
     ntuple = pd.DataFrame(row_list, columns=branches)
     print('\nnumber of selected events', len(ntuple))
-    fout['tree'] = ntuple
-    print('\nntuple saved, processed all desired events?', (n_proc_events+1==options.maxevents), 'processed', n_proc_events+1, 'maxevents', options.maxevents)
+    if len(ntuple)>0: fout['tree'] = ntuple
+    print('\nntuple saved, processed all desired events?', (n_proc_events==options.maxevents), 'processed', n_proc_events, 'maxevents', options.maxevents)
     
     ##########################################################################################
     #####      SAVE LOGGER 
-    ##########################################################################################
-    
+    ########################################################################################## 
     logger_name = options.logger if len(options.logger)>0 else 'logger_'+mytimestamp
     
     with open('%s.txt'%logger_name, 'w') as logger_file:
@@ -407,8 +411,7 @@ async def main():
     
     finish = time()
     print('done in %.1f hours' %( (finish-start)/3600. ))
-    
-
+   
 ######################################################################################
 #####      MAIN
 ######################################################################################

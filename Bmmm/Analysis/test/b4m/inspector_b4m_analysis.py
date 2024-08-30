@@ -60,16 +60,19 @@ from Bmmm.Analysis.utils import drop_hlt_version, cutflow, p4_with_mass, masses,
 from Bmmm.Analysis.B4Mucuts import cuts
 from Bmmm.Analysis.Handles import handles, handles_mc
 
+# remove stdout delay
+sys.stdout.flush()
+
 
 ######################################################################################
 #####      LOOPER
 ######################################################################################
 async def looper(events, options, handles, handles_mc, row_list, start):
     
-    async for i, event in aiostream.stream.enumerate(AsyncIter(events)):
+    async for i, event in aiostream.stream.enumerate(AsyncIter(events), 1):
 
-        if (i+1) > options.maxevents:
-            break
+        if i > options.maxevents:
+            return i-1, cutflow
                 
         if i%options.logfreq == 0:
             percentage = float(i) / options.maxevents * 100.
@@ -97,191 +100,219 @@ async def looper(events, options, handles, handles_mc, row_list, start):
     
         cutflow['all processed events'] += 1
     
+        irun = event.eventAuxiliary().run()
         lumi = event.eventAuxiliary().luminosityBlock()
         iev  = event.eventAuxiliary().event()
-        ######################################################################################
-        #####      RECO PART HERE
-        ######################################################################################
-        trg_names = event.object().triggerNames(event.trg_res)
-    
-        hlt_passed = False
-    
-        for iname in trg_names.triggerNames():
-            iname = str(iname)
-            if not iname.startswith('HLT_'):
+        
+        try:
+            
+            # avoid corrupted events in 2022C
+            if (irun, lumi) in [(357271, 1259), (357271, 1451)]:
                 continue
-            for ipath in paths.keys():
-                if not iname.startswith(ipath): continue
-                idx = len(trg_names)               
-                if drop_hlt_version(iname)==ipath:
-                    idx = trg_names.triggerIndex(iname)
-                    tofill[ipath        ] = ( idx < len(trg_names)) * (event.trg_res.accept(idx))
-                    tofill[ipath + '_ps'] = event.trg_ps.getPrescaleForIndex(idx)
-        
-        triggers = {key:tofill[key] for key in paths.keys()}
-    
-        hlt_passed = any([vv for vv in triggers.values()])
-        # skip events if no trigger fired, unless savenotrig option is specified
-        if not(options.savenontrig or hlt_passed):
-            continue            
-        
-        cutflow['pass HLT'] += 1
-    
-        # trigger matching
-        good_tobjs = {key:[] for key in paths.keys()}    
-        for to in [to for to in event.tobjs if to.pt()>cuts['4mu']['to_pt'] and abs(to.eta())<cuts['4mu']['to_eta']]:
-            #to.unpackFilterLabels(event.object(), event.trg_res)
-            to.unpackNamesAndLabels(event.object(), event.trg_res)
-            for k, v in paths.items():
-                if triggers[k]!=1: continue
-                for ilabel in v: 
-                    if to.hasFilterLabel(ilabel) and to not in good_tobjs[k]:
-                        good_tobjs[k].append(to)
-    
+            
                 
-        muons = [mu for mu in event.muons if mu.pt()>cuts['4mu']['mu_pt'] and \
-                                             abs(mu.eta())<cuts['4mu']['mu_eta'] and \
-                                             cuts['4mu']['mu_id'](mu) and\
-                                             abs(mu.bestTrack().dxy())<cuts['4mu']['mu_dxy']]
-        muons.sort(key = lambda x : x.pt(), reverse = True)
+            if (irun, lumi, iev) in [(357271, 1259, 2467894967),\
+                                     (357271, 1259, 2468587440),\
+                                     (357271, 1259, 2467373051),\
+                                     (357271, 1259, 2467339610),\
+                                     (357271, 1451, 2804516195),\
+                                     (356619,  130,  104938727),\
+                                     (357112,  101,  150169322),\
+                                     (356582,   92,   71986348),\
+                                     (357080,   15,   15706808),\
+                                     (356615,  563,  675920079),]:
+                print('skipping corrupted event ', (irun, lumi, iev))
+                continue
     
-        if len(muons)<4:
-            continue
-    
-        cutflow['at least four muons'] += 1
-    
-        ######################################################################################
-        #####      BUILD AND SELECT 4MU CANDIDATES
-        ######################################################################################
-        cands = []
-    
-        for iquadruplet in combinations(muons, 4): 
+            
+            ######################################################################################
+            #####      RECO PART HERE
+            ######################################################################################
+            trg_names = event.object().triggerNames(event.trg_res)
         
-            cutflow['\tcandidates after HLT and 4mu'] += 1
-            
-            p4 = iquadruplet[0].p4() + iquadruplet[1].p4() + iquadruplet[2].p4() + iquadruplet[3].p4() 
-            
-            # filter by mass, first
-            if p4.mass()<cuts['4mu']['min_mass'] or p4.mass()>cuts['4mu']['max_mass']:
-                continue
-            cutflow['\tpass mass cut'] += 1
-    
-            # 4 muon candidate
-            cand = Candidate(iquadruplet, event.vtx, event.bs)
-            
-            # 4 muons somewhat close in dz
-            if max([abs( imu.bestTrack().dz(cand.pv.position()) - jmu.bestTrack().dz(cand.pv.position()) ) for imu, jmu in combinations(cand.muons, 2)])>cuts['4mu']['max_dz']: 
-                continue
-            cutflow['\tpass mutual dz'] += 1
-                               
-            # trigger matching, at least one muon matched. 
-            # Later one can save the best matched trigger object to each muon, but let me keep it simple for now
-            # FIXME! trigger name is hardcoded!
-            cand.trig_match = False
-            if sum([deltaR(ipair[0], ipair[1])<cuts['4mu']['hlt_dr'] for ipair in product(iquadruplet, good_tobjs[cuts['4mu']['hlt']])])<2:
-                if options.savenontrig:
-                    pass
-                else:
+            hlt_passed = False
+        
+            for iname in trg_names.triggerNames():
+                iname = str(iname)
+                if not iname.startswith('HLT_'):
                     continue
-            cand.trig_match = True
-            cutflow['\tpass trigger match'] += 1
+                for ipath in paths.keys():
+                    if not iname.startswith(ipath): continue
+                    idx = len(trg_names)               
+                    if drop_hlt_version(iname)==ipath:
+                        idx = trg_names.triggerIndex(iname)
+                        tofill[ipath        ] = ( idx < len(trg_names)) * (event.trg_res.accept(idx))
+                        tofill[ipath + '_ps'] = event.trg_ps.getPrescaleForIndex(idx)
             
-            # valid vertex
-            if not cand.good_vtx:
-                continue
-            cutflow['\tpass secondary vertex'] += 1
-            
-            # if you made it this far, then save the candidate
-            cands.append(cand)
-    
-        # if no cands at this point, you might as well move on to the next event
-        if len(cands)==0:
-            continue
+            triggers = {key:tofill[key] for key in paths.keys()}
         
-        event.ncands = len(cands) # useful for ntuple filling
+            hlt_passed = any([vv for vv in triggers.values()])
+            # skip events if no trigger fired, unless savenotrig option is specified
+            if not(options.savenontrig or hlt_passed):
+                continue            
+            
+            cutflow['pass HLT'] += 1
         
-        cutflow['at least one cand pass presel'] += 1
-    
-        # sort candidates by charge combination and best pointing angle, i.e. cosine closer to 1
-        # can implement and use other criteria later
-        cands.sort(key = lambda x : (abs(x.charge())==0, x.vtx.cos2d), reverse = True)
-        final_cand = cands[0]
-              
-        ######################################################################################
-        #####      FILL
-        ######################################################################################
-        for branch, getter in event_branches.items():
-            tofill[branch] = getter(event)    
-                   
-        if options.mc:
-            # B4mu
-            gen_muons = [ip for ip in event.genpr if abs(ip.pdgId())==13 and abs(ip.mother(0).pdgId()) in [531, 511]]
-            # BJpsiPhi
-            if len(gen_muons)<4:
-                gen_muons = [ip for ip in event.genpr if abs(ip.pdgId())==13 and (abs(ip.mother(0).pdgId())==443 or abs(ip.mother(0).pdgId())==333) and abs(ip.mother(0).mother(0).pdgId()) in [531]]
-            #bss= [ip for ip in event.genpr if abs(ip.pdgId())==531 and abs(abs(ip.mother().pdgId())!=531)]
-            #print('\n')
-            #for jj, ibs in enumerate(bss):
-            #    print('%d Bs PDG ID %d' %(jj, ibs.pdgId()))
-    
-        for idx in range(1, 5):
-            imu = getattr(final_cand, 'mu%d' %idx)
-            imu.pv = final_cand.pv
-            imu.bs = final_cand.bs
-            imu.iso03 = imu.pfIsolationR03()
-            imu.iso04 = imu.pfIsolationR04()
-            
-            # jet matching
-            jet, dr2 = bestMatch(imu, event.jets)        
-            if dr2<0.2**2: imu.jet = jet        
-            # gen matching
-            if options.mc:
-                genp, dr2 = bestMatch(imu, [ip for ip in gen_muons if ip.charge()==imu.charge()])
-                if dr2<0.02**2: imu.genp = genp
-            
-            for branch, getter in muon_branches.items():
-                tofill['mu%d_%s' %(idx, branch)] = getter(imu) 
-    
-        for branch, getter in cand_branches.items():
-            tofill[branch] = getter(final_cand)    
-    
-        if getattr(final_cand.mu1, 'genp', False) and \
-           getattr(final_cand.mu2, 'genp', False) and \
-           getattr(final_cand.mu3, 'genp', False) and \
-           getattr(final_cand.mu4, 'genp', False):
-    
-            mum = lambda x : x.genp.mother(0)
-            nana = lambda x : x.genp.mother(0).mother(0)
-    
-            mothers = [mum(imu) for imu in final_cand.muons]
-            grandmothers = [nana(imu) for imu in final_cand.muons]
-            
-            ## B4mu
-            if len(set(mothers))==1 and abs(mothers[0].pdgId()) in [511, 531]:           
-                the_b = mothers[0]
-    
-                for branch, getter in bs_branches.items():
-                    tofill[branch] = getter(the_b)    
-            
-            ## Bs Jpsi Phi
-            elif len(set(mothers))==2 and len(set(grandmothers))==1 and abs(grandmothers[0].pdgId())==531:       
-                the_b = grandmothers[0]
-    
-                for branch, getter in bs_branches.items():
-                    tofill[branch] = getter(the_b)
+            # trigger matching
+            good_tobjs = {key:[] for key in paths.keys()}    
+            for to in [to for to in event.tobjs if to.pt()>cuts['4mu']['to_pt'] and abs(to.eta())<cuts['4mu']['to_eta']]:
+                #to.unpackFilterLabels(event.object(), event.trg_res)
+                to.unpackNamesAndLabels(event.object(), event.trg_res)
+                #print('run', event.eventAuxiliary().run(), 'lumi', lumi, 'event', iev)
+                #import pdb ; pdb.set_trace()
                     
-                the_jpsi = [ip for ip in set(mothers) if abs(ip.pdgId())==443][0]
-                the_phi = [ip for ip in set(mothers) if abs(ip.pdgId())==333][0] 
-    
-                for branch, getter in jpsi_branches.items():
-                    tofill[branch] = getter(the_jpsi)
-    
-                for branch, getter in phi_branches.items():
-                    tofill[branch] = getter(the_phi)
+                for k, v in paths.items():
+                    if triggers[k]!=1: continue
+                    for ilabel in v: 
+                        if to.hasFilterLabel(ilabel) and to not in good_tobjs[k]:
+                            good_tobjs[k].append(to)
+        
+            muons = [mu for mu in event.muons if mu.pt()>cuts['4mu']['mu_pt'] and \
+                                                 abs(mu.eta())<cuts['4mu']['mu_eta'] and \
+                                                 cuts['4mu']['mu_id'](mu) and\
+                                                 abs(mu.bestTrack().dxy())<cuts['4mu']['mu_dxy']]
+            muons.sort(key = lambda x : x.pt(), reverse = True)
+        
+            if len(muons)<4:
+                continue
+        
+            cutflow['at least four muons'] += 1
+        
+            ######################################################################################
+            #####      BUILD AND SELECT 4MU CANDIDATES
+            ######################################################################################
+            cands = []
+        
+            for iquadruplet in combinations(muons, 4): 
+            
+                cutflow['\tcandidates after HLT and 4mu'] += 1
+                
+                p4 = iquadruplet[0].p4() + iquadruplet[1].p4() + iquadruplet[2].p4() + iquadruplet[3].p4() 
+                
+                # filter by mass, first
+                if p4.mass()<cuts['4mu']['min_mass'] or p4.mass()>cuts['4mu']['max_mass']:
+                    continue
+                cutflow['\tpass mass cut'] += 1
+        
+                # 4 muon candidate
+                cand = Candidate(iquadruplet, event.vtx, event.bs)
+                
+                # 4 muons somewhat close in dz
+                if max([abs( imu.bestTrack().dz(cand.pv.position()) - jmu.bestTrack().dz(cand.pv.position()) ) for imu, jmu in combinations(cand.muons, 2)])>cuts['4mu']['max_dz']: 
+                    continue
+                cutflow['\tpass mutual dz'] += 1
+                                   
+                # trigger matching, at least one muon matched. 
+                # Later one can save the best matched trigger object to each muon, but let me keep it simple for now
+                # FIXME! trigger name is hardcoded!
+                cand.trig_match = False
+                if sum([deltaR(ipair[0], ipair[1])<cuts['4mu']['hlt_dr'] for ipair in product(iquadruplet, good_tobjs[cuts['4mu']['hlt']])])<2:
+                    if options.savenontrig:
+                        pass
+                    else:
+                        continue
+                cand.trig_match = True
+                cutflow['\tpass trigger match'] += 1
+                
+                # valid vertex
+                if not cand.good_vtx:
+                    continue
+                cutflow['\tpass secondary vertex'] += 1
+                
+                # if you made it this far, then save the candidate
+                cands.append(cand)
+        
+            # if no cands at this point, you might as well move on to the next event
+            if len(cands)==0:
+                continue
+            
+            event.ncands = len(cands) # useful for ntuple filling
+            
+            cutflow['at least one cand pass presel'] += 1
+        
+            # sort candidates by charge combination and best pointing angle, i.e. cosine closer to 1
+            # can implement and use other criteria later
+            cands.sort(key = lambda x : (abs(x.charge())==0, x.vtx.cos2d), reverse = True)
+            final_cand = cands[0]
+                  
+            ######################################################################################
+            #####      FILL
+            ######################################################################################
+            for branch, getter in event_branches.items():
+                tofill[branch] = getter(event)    
                        
-        # append selected event
-        row_list.append(tofill)
-
+            if options.mc:
+                # B4mu
+                gen_muons = [ip for ip in event.genpr if abs(ip.pdgId())==13 and abs(ip.mother(0).pdgId()) in [531, 511]]
+                # BJpsiPhi
+                if len(gen_muons)<4:
+                    gen_muons = [ip for ip in event.genpr if abs(ip.pdgId())==13 and (abs(ip.mother(0).pdgId())==443 or abs(ip.mother(0).pdgId())==333) and abs(ip.mother(0).mother(0).pdgId()) in [531]]
+                #bss= [ip for ip in event.genpr if abs(ip.pdgId())==531 and abs(abs(ip.mother().pdgId())!=531)]
+                #print('\n')
+                #for jj, ibs in enumerate(bss):
+                #    print('%d Bs PDG ID %d' %(jj, ibs.pdgId()))
+        
+            for idx in range(1, 5):
+                imu = getattr(final_cand, 'mu%d' %idx)
+                imu.pv = final_cand.pv
+                imu.bs = final_cand.bs
+                imu.iso03 = imu.pfIsolationR03()
+                imu.iso04 = imu.pfIsolationR04()
+                
+                # jet matching
+                jet, dr2 = bestMatch(imu, event.jets)        
+                if dr2<0.2**2: imu.jet = jet        
+                # gen matching
+                if options.mc:
+                    genp, dr2 = bestMatch(imu, [ip for ip in gen_muons if ip.charge()==imu.charge()])
+                    if dr2<0.02**2: imu.genp = genp
+                
+                for branch, getter in muon_branches.items():
+                    tofill['mu%d_%s' %(idx, branch)] = getter(imu) 
+        
+            for branch, getter in cand_branches.items():
+                tofill[branch] = getter(final_cand)    
+        
+            if getattr(final_cand.mu1, 'genp', False) and \
+               getattr(final_cand.mu2, 'genp', False) and \
+               getattr(final_cand.mu3, 'genp', False) and \
+               getattr(final_cand.mu4, 'genp', False):
+        
+                mum = lambda x : x.genp.mother(0)
+                nana = lambda x : x.genp.mother(0).mother(0)
+        
+                mothers = [mum(imu) for imu in final_cand.muons]
+                grandmothers = [nana(imu) for imu in final_cand.muons]
+                
+                ## B4mu
+                if len(set(mothers))==1 and abs(mothers[0].pdgId()) in [511, 531]:           
+                    the_b = mothers[0]
+        
+                    for branch, getter in bs_branches.items():
+                        tofill[branch] = getter(the_b)    
+                
+                ## Bs Jpsi Phi
+                elif len(set(mothers))==2 and len(set(grandmothers))==1 and abs(grandmothers[0].pdgId())==531:       
+                    the_b = grandmothers[0]
+        
+                    for branch, getter in bs_branches.items():
+                        tofill[branch] = getter(the_b)
+                        
+                    the_jpsi = [ip for ip in set(mothers) if abs(ip.pdgId())==443][0]
+                    the_phi = [ip for ip in set(mothers) if abs(ip.pdgId())==333][0] 
+        
+                    for branch, getter in jpsi_branches.items():
+                        tofill[branch] = getter(the_jpsi)
+        
+                    for branch, getter in phi_branches.items():
+                        tofill[branch] = getter(the_phi)
+            
+            # append selected event
+            row_list.append(tofill)
+        
+        except:
+            print('skipping corrupted event ', (irun, lumi, iev))
+        
     # return number of processed events and cutflow
     return i, cutflow
 
@@ -305,7 +336,6 @@ async def main():
     parser.add_argument('--filemode'     , dest='filemode'   , default='recreate', type=str)
     parser.add_argument('--savenontrig'  , dest='savenontrig', action='store_true' )
     parser.add_argument('--maxfiles'     , dest='maxfiles'   , default=-1   , type=int)
-    args = parser.parse_args()
     
     options = namedtuple('options', parser.parse_args().__dict__.keys())(*parser.parse_args().__dict__.values())
     
@@ -342,19 +372,18 @@ async def main():
     results = await asyncio.gather(looper(events, options, handles, handles_mc, row_list, start))
     
     n_proc_events, cutflow = results[0] # don't know why it needs to be this hard
-            
+    
     ##########################################################################################
     #####      WRITE TO DISK
     ##########################################################################################
     ntuple = pd.DataFrame(row_list, columns=branches)
     print('\nnumber of selected events', len(ntuple))
-    fout['tree'] = ntuple
-    print('\nntuple saved, processed all desired events?', (n_proc_events+1==options.maxevents), 'processed', n_proc_events+1, 'maxevents', options.maxevents)
+    if len(ntuple)>0: fout['tree'] = ntuple
+    print('\nntuple saved, processed all desired events?', (n_proc_events==options.maxevents), 'processed', n_proc_events, 'maxevents', options.maxevents)
     
     ##########################################################################################
     #####      SAVE LOGGER 
-    ##########################################################################################
-    
+    ########################################################################################## 
     logger_name = options.logger if len(options.logger)>0 else 'logger_'+mytimestamp
     
     with open('%s.txt'%logger_name, 'w') as logger_file:
@@ -363,7 +392,7 @@ async def main():
     
     finish = time()
     print('done in %.1f hours' %( (finish-start)/3600. ))
-    
+   
 ######################################################################################
 #####      MAIN
 ######################################################################################

@@ -38,6 +38,16 @@ track_branches = {
     'gen_charge'     :  lambda itk : itk.genp.charge() if hasattr(itk, 'genp') else np.nan,
 }
 
+kstar_branches = {
+    'gen_kstar_pt'     :  lambda ib : ib.pt()    ,
+    'gen_kstar_eta'    :  lambda ib : ib.eta()   , 
+    'gen_kstar_phi'    :  lambda ib : ib.phi()   ,
+    'gen_kstar_e'      :  lambda ib : ib.energy(),
+    'gen_kstar_mass'   :  lambda ib : ib.mass()  ,
+    'gen_kstar_pdgid'  :  lambda ib : ib.pdgId() ,
+    'gen_kstar_charge' :  lambda ib : ib.charge(),
+}
+
 branches =[]
 
 for ibranch in event_branches.keys():
@@ -61,6 +71,8 @@ for ibranch in jpsi_branches.keys():
 for ibranch in phi_branches.keys():
     branches.append(ibranch)
 
+for ibranch in kstar_branches.keys():
+    branches.append(ibranch)
 
 branches += paths
 branches += [path+'_ps' for path in paths]

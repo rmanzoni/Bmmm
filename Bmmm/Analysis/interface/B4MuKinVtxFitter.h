@@ -116,7 +116,56 @@ class B4MuKinVtxFitter {
 
     };
 
+    auto Fit2Body(const reco::Track & mu1, 
+                  const reco::Track & mu2,
+                  const double      & mmu1,
+                  const double      & mmu2)
+    {
+        //define a factory
+        KinematicParticleFactoryFromTransientTrack pFactory;
+        
+        //define the vector for the particles to be fitted
+        std::vector<RefCountedKinematicParticle> bToFit;
+
+        // add the final states
+        ParticleMass muMass1 = mmu1 ;
+        ParticleMass muMass2 = mmu2 ;
+    
+        float chi   = 0.0;
+        float ndf   = 0.0;
+        float sigma = 1e-6;
+        //float phiMassSigma = 1e-6;
+        //float dsMassSigma  = 1e-6;
+        //float muMassSigma  = 1e-6;
+
+        //--------------------------------------------------------------------------------
+        // create empty results container
+        //FitResults results;
+        
+        //auto results = std::make_tuple(RefCountedKinematicTree(), RefCountedKinematicTree(), RefCountedKinematicTree());
+
+        //--------------------------------------------------------------------------------
+        // create fitter object
+        KinematicConstrainedVertexFitter kcvFitter;
+
+        //--------------------------------------------------------------------------------
+        // fit phi1020
+        bToFit.push_back(pFactory.particle(getTransientTrack(mu1), muMass1, chi, ndf, sigma));
+        bToFit.push_back(pFactory.particle(getTransientTrack(mu2), muMass2, chi, ndf, sigma));
+        
+        // fit
+        RefCountedKinematicTree bTree = kcvFitter.fit(bToFit);
+        //return phiTree;
+        // return void results if failed
+        if (bTree==0) return RefCountedKinematicTree();
+        if (!bTree->isValid()) return RefCountedKinematicTree();
+
+        return bTree;
+
+    };
+
   private:
     OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
 
 };
+

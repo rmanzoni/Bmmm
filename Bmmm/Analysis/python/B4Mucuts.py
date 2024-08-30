@@ -20,8 +20,9 @@ cuts['baseline']['gen_dr'  ] = 0.02
 
 ######################################
 
-cuts['4mu'  ] = copy(cuts['baseline'])
-cuts['2mu2k'] = copy(cuts['baseline'])
+cuts['4mu'    ] = copy(cuts['baseline'])
+cuts['2mu2k'  ] = copy(cuts['baseline'])
+cuts['jpsi4mu'] = copy(cuts['baseline'])
 
 ######################################
 cuts['4mu']['min_mass'] = 4.5
@@ -46,3 +47,10 @@ cuts['2mu2k']['min_dikaon_mass'] = 1.02 - 0.03
 cuts['2mu2k']['max_dikaon_mass'] = 1.02 + 0.03
 cuts['2mu2k']['dr_cleaning'] = 0.01 # reduce!
 cuts['2mu2k']['dpt_cleaning'] = 0.01 # 0.01 corresponds to 1%
+
+
+######################################
+cuts['jpsi4mu']['min_mass'] = 3.1-1.
+cuts['jpsi4mu']['max_mass'] = 3.1+1.
+cuts['jpsi4mu']['mu_dxy'  ] = 1.2
+cuts['jpsi4mu']['mu_id'   ] = lambda mu : mu.isPFMuon()

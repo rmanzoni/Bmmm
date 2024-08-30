@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 handles_mc = OrderedDict()
 handles_mc['genpr'  ] = ('prunedGenParticles'  , Handle('std::vector<reco::GenParticle>')     )
-#handles_mc['genpk'  ] = ('packedGenParticles'  , Handle('std::vector<pat::PackedGenParticle>'))
+handles_mc['genpk'  ] = ('packedGenParticles'  , Handle('std::vector<pat::PackedGenParticle>'))
 #handles_mc['genInfo'] = ('generator'           , Handle('GenEventInfoProduct')                )
 handles_mc['pu'     ] = ('slimmedAddPileupInfo', Handle('std::vector<PileupSummaryInfo>')     )
 
