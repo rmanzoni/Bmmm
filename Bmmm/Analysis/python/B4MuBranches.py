@@ -57,6 +57,7 @@ cand_branches = {
                                              cand.mass34()])   ,
  
     'rf_mass'           : lambda cand : cand.rf_mass()         ,
+    'rf_mass_err'       : lambda cand : np.sqrt(cand.b4refUnc.At(6,6)),
     'rf_mass12_err'     : lambda cand : cand.dimuon12_mass_unc ,
     'rf_mass13_err'     : lambda cand : cand.dimuon13_mass_unc ,
     'rf_mass14_err'     : lambda cand : cand.dimuon14_mass_unc ,
