@@ -142,8 +142,8 @@ class RDsKinVtxFitter {
         std::vector<RefCountedKinematicParticle> dsDaus     = dsTree->finalStateParticles();
 
         //--------------------------------------------------------------------------------
-        // fit Ds
-        bsToFit .push_back(pFactory.particle(getTransientTrack(mu), muMass, chi, ndf, sigma));
+        // fit Bs
+        bsToFit.push_back(pFactory.particle(getTransientTrack(mu), muMass, chi, ndf, sigma));
         bsToFit.push_back(dsParticle);
 
         // fit

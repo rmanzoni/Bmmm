@@ -253,7 +253,41 @@ def fillRecoTree(ntuple_reco, tofill_reco):
 ##########################################################################################
 ##########################################################################################
 
+# to mimic what we've got in central production fragments, e.g.
+# https://cms-pdmv-prod.web.cern.ch/mcm/public/restapi/requests/get_fragment/BPH-RunIISummer20UL18GEN-00268
 def isMyDs(ds, minpt=0.5, maxeta=2.5):
+    daus = []
+    for idau in range(ds.numberOfDaughters()):
+        dau = ds.daughter(idau)
+        if dau.pdgId()==22: 
+            continue # exclude FSR
+        #if abs(dau.pdgId())==211:
+        #    if dau.pt()<minpt or abs(dau.eta())>maxeta:
+        #        continue # only pions in the acceptance
+        #    ds.pion = dau
+        if abs(dau.pdgId())==333:
+            phi_daughters = [dau.daughter(jdau) for jdau in range(dau.numberOfDaughters()) if abs(dau.daughter(jdau).pdgId())!=22]
+            if len(phi_daughters)!=2: 
+                continue
+            for jdau in phi_daughters:
+                if abs(jdau.pdgId())==321:
+                    if jdau.charge()>0:
+                        ds.kp = jdau
+                    if jdau.charge()<0:
+                        ds.km = jdau
+                if abs(jdau.pdgId())!=321      or \
+                   jdau.pt()         < minpt   or \
+                   abs(jdau.eta())   > maxeta:
+                    continue # only kaons in the acceptance
+            ds.phi_meson = dau
+        daus.append(dau.pdgId())
+        if abs(dau.pdgId())==211:
+            ds.pion = dau
+    daus.sort(key = lambda x : abs(x))
+    return (333 in daus) and ((211 in daus) or (-211 in daus))
+
+# use this as intended.
+def isMyDsOriginal(ds, minpt=0.5, maxeta=2.5):
     daus = []
     for idau in range(ds.numberOfDaughters()):
         dau = ds.daughter(idau)
@@ -292,8 +326,7 @@ def is_pos_def(x):
 def fix_track(trk, delta=1e-9):
     '''
     https://github.com/CMSKStarMuMu/miniB0KstarMuMu/blob/master/miniKstarMuMu/plugins/miniKstarMuMu.cc#L1611-L1678
-    '''
-    
+    '''    
     cov = convert_cov(trk.covariance())
     
     if is_pos_def(cov): 
@@ -332,3 +365,21 @@ def fix_track(trk, delta=1e-9):
         fix_track(new_trk, delta)
     
     return new_trk
+
+
+def compute_IP3D(pv, sv, direction):
+    pv_to_sv_vector = np.array([
+        sv.x()-pv.x(),
+        sv.y()-pv.y(),
+        sv.z()-pv.z() 
+    ])
+
+    direction = np.array([
+        direction.X(),
+        direction.Y(),
+        direction.Z(),
+    ])
+
+    ip3d = np.linalg.norm(np.cross(pv_to_sv_vector, direction)) / np.linalg.norm(direction)
+
+    return ip3d

@@ -1,6 +1,9 @@
 import ROOT
 import numpy as np
 from collections import OrderedDict # still using old python unfortunately
+from PhysicsTools.HeppyCore.utils.deltar import deltaR # eh shit
+
+# FIXME! fix the mess with various refitted variables
 
 ##########################################################################################
 event_branches = OrderedDict()
@@ -73,7 +76,25 @@ cand_branches['cos3d'           ] = lambda cand : cand.vtx.cos3d
 cand_branches['lxyz'            ] = lambda cand : cand.vtx.lxyz.value()       
 cand_branches['lxyz_err'        ] = lambda cand : cand.vtx.lxyz.error()       
 cand_branches['lxyz_sig'        ] = lambda cand : cand.vtx.lxyz.significance()
-  
+cand_branches['bvtx_x'          ] = lambda cand : cand.bs_tree.vtx.position().x()    
+cand_branches['bvtx_y'          ] = lambda cand : cand.bs_tree.vtx.position().y()    
+cand_branches['bvtx_z'          ] = lambda cand : cand.bs_tree.vtx.position().z()    
+cand_branches['bvtx_chi2'       ] = lambda cand : cand.bs_tree.vtx.normalizedChi2()   
+cand_branches['bvtx_prob'       ] = lambda cand : cand.bs_tree.vtx.prob   
+cand_branches['dsvtx_x'         ] = lambda cand : cand.ds_tree.vtx.position().x()    
+cand_branches['dsvtx_y'         ] = lambda cand : cand.ds_tree.vtx.position().y()    
+cand_branches['dsvtx_z'         ] = lambda cand : cand.ds_tree.vtx.position().z()    
+cand_branches['dsvtx_chi2'      ] = lambda cand : cand.ds_tree.vtx.normalizedChi2()   
+cand_branches['dsvtx_prob'      ] = lambda cand : cand.ds_tree.vtx.prob   
+cand_branches['phivtx_x'        ] = lambda cand : cand.phi_tree.vtx.position().x()    
+cand_branches['phivtx_y'        ] = lambda cand : cand.phi_tree.vtx.position().y()    
+cand_branches['phivtx_z'        ] = lambda cand : cand.phi_tree.vtx.position().z()    
+cand_branches['phivtx_chi2'     ] = lambda cand : cand.phi_tree.vtx.normalizedChi2()   
+cand_branches['phivtx_prob'     ] = lambda cand : cand.phi_tree.vtx.prob   
+cand_branches['b_mass'          ] = lambda cand : cand.bs_tree.particle.mass()                
+cand_branches['b_pt'            ] = lambda cand : cand.bs_tree.particle.pt()                  
+cand_branches['b_eta'           ] = lambda cand : cand.bs_tree.particle.eta()                 
+cand_branches['b_phi'           ] = lambda cand : cand.bs_tree.particle.phi()                 
 cand_branches['phi_vx'          ] = lambda cand : cand.phi1020.vtx[0].position().x()    
 cand_branches['phi_vy'          ] = lambda cand : cand.phi1020.vtx[0].position().y()    
 cand_branches['phi_vz'          ] = lambda cand : cand.phi1020.vtx[0].position().z()    
@@ -87,20 +108,40 @@ cand_branches['phi_cos3d'       ] = lambda cand : cand.phi1020.vtx[0].cos3d
 cand_branches['phi_lxyz'        ] = lambda cand : cand.phi1020.vtx[0].lxyz.value()       
 cand_branches['phi_lxyz_err'    ] = lambda cand : cand.phi1020.vtx[0].lxyz.error()       
 cand_branches['phi_lxyz_sig'    ] = lambda cand : cand.phi1020.vtx[0].lxyz.significance()
-  
-cand_branches['ds_vx'           ] = lambda cand : cand.ds.vtx[0].position().x()    
-cand_branches['ds_vy'           ] = lambda cand : cand.ds.vtx[0].position().y()    
-cand_branches['ds_vz'           ] = lambda cand : cand.ds.vtx[0].position().z()    
-cand_branches['ds_vtx_chi2'     ] = lambda cand : cand.ds.vtx[0].chi2              
-cand_branches['ds_vtx_prob'     ] = lambda cand : cand.ds.vtx[0].prob              
-cand_branches['ds_cos2d'        ] = lambda cand : cand.ds.vtx[0].cos2d               
-cand_branches['ds_lxy'          ] = lambda cand : cand.ds.vtx[0].lxy.value()       
-cand_branches['ds_lxy_err'      ] = lambda cand : cand.ds.vtx[0].lxy.error()       
-cand_branches['ds_lxy_sig'      ] = lambda cand : cand.ds.vtx[0].lxy.significance()
-cand_branches['ds_cos3d'        ] = lambda cand : cand.ds.vtx[0].cos3d               
-cand_branches['ds_lxyz'         ] = lambda cand : cand.ds.vtx[0].lxyz.value()       
-cand_branches['ds_lxyz_err'     ] = lambda cand : cand.ds.vtx[0].lxyz.error()       
-cand_branches['ds_lxyz_sig'     ] = lambda cand : cand.ds.vtx[0].lxyz.significance()
+
+cand_branches['ph_pt'           ] = lambda cand : cand.photon.pt()  if cand.photon else np.nan        
+cand_branches['ph_eta'          ] = lambda cand : cand.photon.eta() if cand.photon else np.nan        
+cand_branches['ph_phi'          ] = lambda cand : cand.photon.phi() if cand.photon else np.nan        
+cand_branches['dr_ph_ds'        ] = lambda cand : deltaR(cand.photon, cand.ds) if cand.photon else np.nan        
+
+cand_branches['ds_st_mass'      ] = lambda cand : (cand.photon.p4() + cand.ds.p4()).mass() if cand.photon else np.nan        
+cand_branches['ds_st_pt'        ] = lambda cand : (cand.photon.p4() + cand.ds.p4()).pt()   if cand.photon else np.nan        
+cand_branches['ds_st_eta'       ] = lambda cand : (cand.photon.p4() + cand.ds.p4()).eta()  if cand.photon else np.nan        
+cand_branches['ds_st_phi'       ] = lambda cand : (cand.photon.p4() + cand.ds.p4()).phi()  if cand.photon else np.nan        
+
+cand_branches['ds_m_ph_mass'    ] = lambda cand : (cand.photon.p4() + cand.p4()).mass() if cand.photon else np.nan        
+cand_branches['ds_m_ph_pt'      ] = lambda cand : (cand.photon.p4() + cand.p4()).pt()   if cand.photon else np.nan        
+cand_branches['ds_m_ph_eta'     ] = lambda cand : (cand.photon.p4() + cand.p4()).eta()  if cand.photon else np.nan        
+cand_branches['ds_m_ph_phi'     ] = lambda cand : (cand.photon.p4() + cand.p4()).phi()  if cand.photon else np.nan        
+
+cand_branches['b_p_par'         ] = lambda cand : cand.p4_par     # component of the visible Ds + mu momentum parallel      to the B flight direction (PV to SV)
+cand_branches['b_p_perp'        ] = lambda cand : cand.p4_perp    # component of the visible Ds + mu momentum perpendicular to the B flight direction (PV to SV)
+cand_branches['ds_p_par'        ] = lambda cand : cand.ds.p4_par  # component of the visible Ds momentum parallel      to the B flight direction (PV to SV)
+cand_branches['ds_p_perp'       ] = lambda cand : cand.ds.p4_perp # component of the visible Ds momentum perpendicular to the B flight direction (PV to SV)
+
+cand_branches['ds_vx'           ] = lambda cand : cand.ds.vtx.position().x()    
+cand_branches['ds_vy'           ] = lambda cand : cand.ds.vtx.position().y()    
+cand_branches['ds_vz'           ] = lambda cand : cand.ds.vtx.position().z()    
+cand_branches['ds_vtx_chi2'     ] = lambda cand : cand.ds.vtx.chi2              
+cand_branches['ds_vtx_prob'     ] = lambda cand : cand.ds.vtx.prob              
+cand_branches['ds_cos2d'        ] = lambda cand : cand.ds.vtx.cos2d               
+cand_branches['ds_lxy'          ] = lambda cand : cand.ds.vtx.lxy.value()       
+cand_branches['ds_lxy_err'      ] = lambda cand : cand.ds.vtx.lxy.error()       
+cand_branches['ds_lxy_sig'      ] = lambda cand : cand.ds.vtx.lxy.significance()
+cand_branches['ds_cos3d'        ] = lambda cand : cand.ds.vtx.cos3d               
+cand_branches['ds_lxyz'         ] = lambda cand : cand.ds.vtx.lxyz.value()       
+cand_branches['ds_lxyz_err'     ] = lambda cand : cand.ds.vtx.lxyz.error()       
+cand_branches['ds_lxyz_sig'     ] = lambda cand : cand.ds.vtx.lxyz.significance()
   
 cand_branches['dr_bs_pi'        ] = lambda cand : cand.dr_bs_pi()
 cand_branches['dr_bs_k1'        ] = lambda cand : cand.dr_bs_k1()
@@ -138,6 +179,10 @@ track_branches['pt'        ] = lambda itk : itk.pt()
 track_branches['eta'       ] = lambda itk : itk.eta()   
 track_branches['phi'       ] = lambda itk : itk.phi()   
 track_branches['e'         ] = lambda itk : itk.energy()
+track_branches['rf_pt'     ] = lambda itk : itk.rf.pt()    
+track_branches['rf_eta'    ] = lambda itk : itk.rf.eta()   
+track_branches['rf_phi'    ] = lambda itk : itk.rf.phi()   
+track_branches['rf_e'      ] = lambda itk : itk.rf.energy()
 track_branches['mass'      ] = lambda itk : itk.mass()  
 track_branches['charge'    ] = lambda itk : itk.charge()
 track_branches['dxy'       ] = lambda itk : itk.bestTrack().dxy(itk.pv.position())
@@ -149,6 +194,11 @@ track_branches['dz_sig'    ] = lambda itk : itk.bestTrack().dz(itk.pv.position()
 track_branches['bs_dxy'    ] = lambda itk : itk.bestTrack().dxy(itk.bs.position())
 track_branches['bs_dxy_e'  ] = lambda itk : itk.bestTrack().dxyError(itk.bs.position(), itk.bs.error())
 track_branches['bs_dxy_sig'] = lambda itk : itk.bestTrack().dxy(itk.bs.position()) / itk.bestTrack().dxyError(itk.bs.position(), itk.bs.error())
+track_branches['gen_pt'    ] = lambda itk : itk.genp.pt()     if hasattr(itk, 'genp') else np.nan
+track_branches['gen_eta'   ] = lambda itk : itk.genp.eta()    if hasattr(itk, 'genp') else np.nan
+track_branches['gen_phi'   ] = lambda itk : itk.genp.phi()    if hasattr(itk, 'genp') else np.nan
+track_branches['gen_e'     ] = lambda itk : itk.genp.energy() if hasattr(itk, 'genp') else np.nan
+track_branches['gen_pdgid' ] = lambda itk : itk.genp.pdgId()  if hasattr(itk, 'genp') else np.nan
 
 ##########################################################################################
 muon_branches = OrderedDict()
@@ -156,6 +206,10 @@ muon_branches['pt'             ] = lambda imu : imu.pt()
 muon_branches['eta'            ] = lambda imu : imu.eta()      
 muon_branches['phi'            ] = lambda imu : imu.phi()                           
 muon_branches['e'              ] = lambda imu : imu.energy()                        
+muon_branches['rf_pt'          ] = lambda imu : imu.rf.pt()       
+muon_branches['rf_eta'         ] = lambda imu : imu.rf.eta()      
+muon_branches['rf_phi'         ] = lambda imu : imu.rf.phi()                           
+muon_branches['rf_e'           ] = lambda imu : imu.rf.energy()                        
 muon_branches['mass'           ] = lambda imu : imu.mass()                          
 muon_branches['charge'         ] = lambda imu : imu.charge()                        
 muon_branches['id_loose'       ] = lambda imu : imu.isLooseMuon()                   

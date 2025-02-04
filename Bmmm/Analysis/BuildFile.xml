@@ -16,15 +16,18 @@
 <use name="Geometry/Records"/>
 <use name="MagneticField/ParametrizedEngine"/>
 <use name="PhysicsTools/FWLite"/>
+<use name="RecoBTag/BTagTools"/>
+<use name="RecoVertex/AdaptiveVertexFit"/>
 <use name="RecoVertex/KalmanVertexFit"/>
 <use name="RecoVertex/KinematicFit"/>
 <use name="RecoVertex/KinematicFitPrimitives"/>
 <use name="RecoVertex/VertexTools"/>
+<use name="RecoVertex/VertexPrimitives"/>
 <use name="TrackingTools/TransientTrack"/>
+<use name="TrackingTools/IPTools"/>
 <use name="SimDataFormats/GeneratorProducts"/>
 <use name="cppunit"/>
 
 <export>
 	  <lib   name="1"/>
   </export>
-

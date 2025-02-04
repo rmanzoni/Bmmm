@@ -92,7 +92,7 @@ class DsCandidate():
         self.vtx = vtxfit.Fit(tofit)
 
         if self.vtx.isValid():
-            self.vtx = compute_vertex_quantities(self.vtx, self.bs, self.ds_p4, self.pv, full)
+            self.vtx, self.p4_par, self.p4_perp, self.mcorr = compute_vertex_quantities(self.vtx, self.bs, self.p4(), self.pv, full=True)
 
     # Ds candidate kinematics
     def p4(self):
@@ -312,6 +312,90 @@ class RDsCandidate():
         self.k2.bestTrack = lambda : new_trk_k2
         self.pi.bestTrack = lambda : new_trk_pi
         self.mu.bestTrack = lambda : new_trk_mu
+
+    @staticmethod
+    def good_kin_tree(kintree):
+        return kintree.get().__nonzero__() and kintree.isValid() and (not kintree.isEmpty())
+
+    def run_kin_fit(self):
+    
+        fit_results = kinfit.Fit(self.k1.bestTrack(), 
+                                 self.k2.bestTrack(), 
+                                 self.pi.bestTrack(), 
+                                 self.mu.bestTrack(), 
+                                 masses['k'], 
+                                 masses['pi'], 
+                                 masses['mu'], 
+                                 masses['phi'], 
+                                 masses['ds'])
+
+        self.phi_tree = fit_results._0
+        self.ds_tree  = fit_results._1
+        self.bs_tree  = fit_results._2
+
+        return self.good_kin_tree(self.phi_tree) and \
+               self.good_kin_tree(self.ds_tree ) and \
+               self.good_kin_tree(self.bs_tree )
+
+    def get_refitted_quantities(self):
+        # https://github.com/rmanzoni/WTau3Mu/blob/92X/python/analyzers/Tau3MuKinematicVertexFitterAnalyzer.py
+        self.phi_tree.movePointerToTheTop()
+        self.phi_tree.vtx      = self.vertex(self.phi_tree.currentDecayVertex())
+        self.phi_tree.particle = self.buildP4(self.phi_tree.currentParticle())
+        self.phi_tree.movePointerToTheFirstChild()
+        self.k1.rf             = self.buildP4(self.phi_tree.currentParticle())
+        self.phi_tree.movePointerToTheNextChild()
+        self.k2.rf             = self.buildP4(self.phi_tree.currentParticle())
+        
+        self.ds_tree.movePointerToTheTop()
+        self.ds_tree.vtx      = self.vertex(self.ds_tree.currentDecayVertex())
+        self.ds_tree.particle = self.buildP4(self.ds_tree.currentParticle())
+        self.ds_tree.movePointerToTheFirstChild()
+        self.pi.rf            = self.buildP4(self.ds_tree.currentParticle())
+
+        self.bs_tree.movePointerToTheTop()
+        self.bs_tree.vtx      = self.vertex(self.bs_tree.currentDecayVertex())
+        self.bs_tree.particle = self.buildP4(self.bs_tree.currentParticle())
+        self.bs_tree.movePointerToTheFirstChild()
+        self.mu.rf            = self.buildP4(self.bs_tree.currentParticle())
+
+    @staticmethod
+    def vertex(kinVtx, kinVtxChi2=0., kinVtxNdof=0, kinVtxTrkSize=0):
+        point = ROOT.reco.Vertex.Point(
+            kinVtx.vertexState().position().x(),
+            kinVtx.vertexState().position().y(),
+            kinVtx.vertexState().position().z(),
+        )
+        error = kinVtx.vertexState().error().matrix()
+        chi2  = kinVtxChi2 if kinVtxChi2 else kinVtx.chiSquared()
+        ndof  = kinVtxNdof if kinVtxNdof else kinVtx.degreesOfFreedom()
+        recoVtx = ROOT.reco.Vertex(point, error, chi2, ndof, kinVtxTrkSize)
+        recoVtx.prob = (1. - stats.chi2.cdf(recoVtx.normalizedChi2(), 1))
+        return recoVtx
+
+    @staticmethod
+    def buildP4(ref):
+
+        ref_x  = ref.currentState().kinematicParameters().vector().At(0)
+        ref_y  = ref.currentState().kinematicParameters().vector().At(1)
+        ref_z  = ref.currentState().kinematicParameters().vector().At(2)
+        ref_px = ref.currentState().kinematicParameters().vector().At(3)
+        ref_py = ref.currentState().kinematicParameters().vector().At(4)
+        ref_pz = ref.currentState().kinematicParameters().vector().At(5)
+        ref_m  = ref.currentState().kinematicParameters().vector().At(6)
+
+        energy = np.sqrt(ref_px**2 + ref_py**2 + ref_pz**2 + ref_m**2)
+
+        p4 = ROOT.Math.LorentzVector("ROOT::Math::PxPyPzE4D<double>")(ref_px, ref_py, ref_pz, energy)
+        
+        return p4
+
+
+        
+        self.ds_tree 
+        self.bs_tree 
+
+
        
     # Bs candidate kinematics
     def p4(self):
