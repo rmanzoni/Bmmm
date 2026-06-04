@@ -2,5 +2,6 @@
 	<class name="KVFitter"/>
 	<class name="RDsKinVtxFitter"/>
 	<class name="B4MuKinVtxFitter"/>
+	<class name="RJpsiKinVtxFitter"/>
 </lcgdict>
 

@@ -26,13 +26,17 @@ masses['mu' ] = particle.literals.mu_plus  .mass/1000.
 ##########################################################################################
 ##########################################################################################
 
-def drop_hlt_version(string, pattern=r"_v\d+"):
-    regex = re.compile(pattern + "$")
-    if regex.search(string):
-        match = re.search(pattern, string)
-        return string[:match.start()]
-    else:
-        return string
+_HLT_VER_RE = re.compile(r'(_part\d+|_v\d+)+$')
+def drop_hlt_version(s): 
+    return _HLT_VER_RE.sub('', s)
+
+# def drop_hlt_version(string, pattern=r"_v\d+"):
+#     regex = re.compile(pattern + "$")
+#     if regex.search(string):
+#         match = re.search(pattern, string)
+#         return string[:match.start()]
+#     else:
+#         return string
 
 ##########################################################################################
 ##########################################################################################
@@ -369,3 +373,21 @@ class AsyncIter:
     async def __aiter__(self):    
         for item in self.items:    
             yield item    
+
+from particle import Particle
+
+##########################################################################################
+##########################################################################################
+
+def is_b_hadron(pdgid: int) -> bool:
+    """
+    Returns True if the PDG ID corresponds to a hadron containing a b-quark.
+    Works for both mesons and baryons.
+    """
+    try:
+        p = Particle.from_pdgid(abs(pdgid))
+        # quarks is e.g. ('b', 'u', 'd') or ('b', 'u') etc.
+        return 'b' in p.quarks
+    except Exception:
+        return False
+        

@@ -11,7 +11,8 @@
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
 
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
-#include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
+//#include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
+#include "OAEParametrizedMagneticField.h"
 
 #include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
 
