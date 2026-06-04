@@ -218,6 +218,11 @@ muon_branches = {
 # mother B0 or Bs branches
 bc_branches = {
     'gen_bc_decay' :  lambda ib : ib.bc_code ,
+    'gen_bc_q2'         :  lambda ib : ib.q2         ,
+    'gen_bc_m_miss2'    :  lambda ib : ib.m_miss2    ,
+    'gen_bc_m_miss2_vis':  lambda ib : ib.m_miss2_vis,
+    'gen_bc_e_mu_bc'    :  lambda ib : ib.e_mu_bc    ,
+    'gen_bc_e_mu_jpsi'  :  lambda ib : ib.e_mu_jpsi  ,
     
     'gen_b_pt'     :  lambda ib : ib.pt()    ,
     'gen_b_eta'    :  lambda ib : ib.eta()   , 

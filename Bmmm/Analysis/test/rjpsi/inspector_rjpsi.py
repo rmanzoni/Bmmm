@@ -46,13 +46,13 @@ from collections import namedtuple
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 from itertools import product, combinations
-from Bmmm.Analysis.RJpsiBranches import branches, paths, muon_branches, cand_branches, event_branches, bc_branches, jpsi_branches, phi_branches, safe_get
+from Bmmm.Analysis.RJpsiBranches import branches, paths, muon_branches, cand_branches, event_branches, bc_branches, safe_get
 from Bmmm.Analysis.RJpsiCandidate import RJpsiCandidate as Candidate
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow, p4_with_mass, masses, compute_mass, is_b_hadron
 from Bmmm.Analysis.RJpsiCuts import cuts
 from Bmmm.Analysis.Handles import handles, handles_mc
 from Bmmm.Analysis.RJPsiGenHistory import * # FIXME! BAD PRACTICE
-from Bmmm.Analysis.RJPsiMuonMatcher import match_candidate_muons, save_bc_gen, ROLE
+from Bmmm.Analysis.RJPsiMuonMatcher import match_candidate_muons, ROLE
 
 ## tighten muon ID
 cuts['rjpsi']['mu_id'] = lambda mu : mu.isMediumMuon() and mu.isPFMuon() and mu.isGlobalMuon()
@@ -194,9 +194,7 @@ def looper(events, options, handles, handles_mc, row_list, start):
                         continue
                     
                     mu3 = muons[k]
-                    
-                    # print(f'numer of muons {nmuons}, jpsi idx {i} {j}, bachelor {k}')
-                    
+                                        
                     cand = Candidate([mu1, mu2], mu3)
                     cutflow['\tcandidates after HLT and 3mu'] += 1
 
@@ -233,6 +231,16 @@ def looper(events, options, handles, handles_mc, row_list, start):
             bc = event.bc_info['bc']
             if bc is not None:
                 bc.bc_code = event.bc_code
+                if event.bc_info['name'] in ['Jpsi_mu_nu', 'Jpsi_tau_nu']:
+
+                    gk = gen_kinematics(event.genpr)
+                    for key in ('q2', 'm_miss2', 'm_miss2_vis', 'e_mu_bc', 'e_mu_jpsi'):
+                        setattr(bc, key, gk[key])
+
+#                     gen_kin_observables = compute_gen_kin_variables(bc)
+#                     bc.q2     = gen_kin_observables['q2']
+#                     bc.m2miss = gen_kin_observables['m2miss']
+#                     bc.ptmiss = gen_kin_observables['ptmiss']
                 for branch, getter in bc_branches.items():
                     event_tofill[branch] = safe_get(getter, bc, verbose=options.verbose, name=branch)
         else:
@@ -363,7 +371,6 @@ def main():
 
     finish = time()
     print('done in %.1f hours' % ((finish - start) / 3600.))
-
 
 ######################################################################################
 #####      ENTRY POINT

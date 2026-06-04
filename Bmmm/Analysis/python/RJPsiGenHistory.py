@@ -292,3 +292,163 @@ def tau_decay_mode(bc):
             print('    direct Bc daughters:', [pdg_name(x) for x in bc_info['daughters']])
             print_gen_history(event.genpr)
 """
+
+
+# ----------------------------------------------------------------------------
+# Gen-truth kinematics of the signal Bc semileptonic decay:
+#   q2, missing mass^2, and the bachelor-muon energy in the Bc and J/psi frames.
+# Boosts are done in pure numpy so this module stays ROOT-free / unit-testable.
+# ----------------------------------------------------------------------------
+CHARMONIA = {JPSI, PSI2S, CHI_C0, CHI_C1, CHI_C2, H_C}
+
+
+def _p4(p):
+    '''(E, px, py, pz) numpy array from a gen particle.'''
+    return np.array([p.energy(), p.px(), p.py(), p.pz()], dtype=float)
+
+
+def _mass2(four):
+    '''Minkowski norm E^2 - |p|^2 of a (E, px, py, pz) array.'''
+    return float(four[0] * four[0] - four[1] * four[1]
+                 - four[2] * four[2] - four[3] * four[3])
+
+
+def _boost_to_rest(four, system):
+    '''Express `four` (E, px, py, pz) in the rest frame of `system` (same format).'''
+    e_sys = system[0]
+    if e_sys <= 0.:
+        return four.copy()
+    beta = system[1:] / e_sys
+    b2 = float(beta.dot(beta))
+    if b2 <= 0. or b2 >= 1.:           # already at rest, or unphysical -> no-op
+        return four.copy()
+    gamma = 1.0 / np.sqrt(1.0 - b2)
+    pvec  = four[1:]
+    bp    = float(beta.dot(pvec))
+    e_new = gamma * (four[0] - bp)
+    p_new = pvec + ((gamma - 1.0) * bp / b2 - gamma * four[0]) * beta
+    return np.array([e_new, p_new[0], p_new[1], p_new[2]])
+
+
+def _dimuon_under(res, _depth=0, _maxdepth=8):
+    '''The two muons of the X -> mu mu vertex inside a charmonium subtree
+    (handles J/psi directly and psi(2S)/chi_c -> J/psi -> mu mu feed-down).'''
+    res = last_copy(res)
+    mus = [last_copy(res.daughter(i)) for i in range(res.numberOfDaughters())
+           if abs(res.daughter(i).pdgId()) == MU]
+    if len(mus) >= 2:
+        return mus[:2]
+    if _depth >= _maxdepth:
+        return mus
+    for i in range(res.numberOfDaughters()):
+        d = res.daughter(i)
+        if d.pdgId() == res.pdgId() or abs(d.pdgId()) == GAMMA:
+            continue
+        found = _dimuon_under(d, _depth + 1, _maxdepth)
+        if len(found) >= 2:
+            return found
+    return mus
+
+
+def _muon_from_tau(tau, _depth=0, _maxdepth=4):
+    '''The muon from tau -> mu nu nu (None otherwise).'''
+    tau = last_copy(tau)
+    for i in range(tau.numberOfDaughters()):
+        if abs(tau.daughter(i).pdgId()) == MU:
+            return last_copy(tau.daughter(i))
+    if _depth < _maxdepth:
+        for i in range(tau.numberOfDaughters()):
+            d = tau.daughter(i)
+            if d.pdgId() == tau.pdgId():
+                continue
+            m = _muon_from_tau(d, _depth + 1, _maxdepth)
+            if m is not None:
+                return m
+    return None
+
+
+def _collect_neutrinos(p, out, _depth=0, _maxdepth=12):
+    '''Append (last copies of) all neutrinos in the subtree of p.'''
+    p = last_copy(p)
+    if _depth > _maxdepth:
+        return
+    for i in range(p.numberOfDaughters()):
+        d = p.daughter(i)
+        if d.pdgId() == p.pdgId():
+            continue
+        if abs(d.pdgId()) in NEUTRINOS:
+            out.append(last_copy(d))
+        else:
+            _collect_neutrinos(d, out, _depth + 1, _maxdepth)
+
+
+def gen_kinematics(genparticles):
+    '''Gen-truth kinematics of the signal Bc semileptonic decay.
+
+    Returns a dict (values are NaN when not computable, e.g. hadronic Bc modes
+    that have no bachelor lepton, or when no Bc is found):
+
+        q2          (p_Bc - p_charmonium)^2  ==  (lepton + neutrino) inv. mass^2  [GeV^2]
+        m_miss2     (sum of the gen neutrinos)^2  ->  ~0 for Bc -> J/psi mu nu    [GeV^2]
+        m_miss2_vis (p_Bc - p_visible)^2 with visible = dimuon + bachelor mu;
+                    equals m_miss2 at truth but is robust if the nu's are pruned  [GeV^2]
+        e_mu_bc     bachelor-muon energy in the Bc   rest frame                   [GeV]
+        e_mu_jpsi   bachelor-muon energy in the J/psi rest frame                  [GeV]
+
+    The charmonium used for q2 is the *direct* Bc daughter (J/psi, or psi(2S)/
+    chi_c/h_c in feed-down); the J/psi frame is defined by the two muons of the
+    X -> mu mu vertex, so it is the true dimuon resonance in every channel.
+    '''
+    out = {'q2': np.nan, 'm_miss2': np.nan, 'm_miss2_vis': np.nan,
+           'e_mu_bc': np.nan, 'e_mu_jpsi': np.nan}
+
+    bcs = find_decayed_bc(genparticles)
+    if not bcs:
+        return out
+    bc = last_copy(bcs[0])
+
+    # direct Bc daughters: the charmonium and the bachelor lepton (mu, or tau->mu)
+    charm, bachelor = None, None
+    for i in range(bc.numberOfDaughters()):
+        d = bc.daughter(i)
+        if d.pdgId() == bc.pdgId():
+            continue
+        ad = abs(d.pdgId())
+        if ad in CHARMONIA and charm is None:
+            charm = last_copy(d)
+        elif ad == MU and bachelor is None:
+            bachelor = last_copy(d)
+        elif ad == TAU and bachelor is None:
+            bachelor = _muon_from_tau(last_copy(d))
+
+    p4_bc = _p4(bc)
+
+    # q^2 : recoil against the directly produced charmonium
+    if charm is not None:
+        out['q2'] = _mass2(p4_bc - _p4(charm))
+
+    # missing mass^2 from the gen neutrino system (exact: 0 for one massless nu)
+    nus = []
+    _collect_neutrinos(bc, nus)
+    if nus:
+        out['m_miss2'] = _mass2(np.sum([_p4(n) for n in nus], axis=0))
+
+    # J/psi four-momentum from the two muons of the X -> mu mu vertex
+    p4_jpsi = None
+    if charm is not None:
+        jpsi_mus = _dimuon_under(charm)
+        if len(jpsi_mus) == 2:
+            p4_jpsi = _p4(jpsi_mus[0]) + _p4(jpsi_mus[1])
+
+    # missing mass^2 from the visible system (robust if neutrinos are pruned)
+    if p4_jpsi is not None and bachelor is not None:
+        out['m_miss2_vis'] = _mass2(p4_bc - (p4_jpsi + _p4(bachelor)))
+
+    # bachelor-muon energy in the Bc and J/psi rest frames
+    if bachelor is not None:
+        p4_mu = _p4(bachelor)
+        out['e_mu_bc'] = _boost_to_rest(p4_mu, p4_bc)[0]
+        if p4_jpsi is not None:
+            out['e_mu_jpsi'] = _boost_to_rest(p4_mu, p4_jpsi)[0]
+
+    return out
