@@ -202,38 +202,6 @@ def match_candidate_muons(cand, genparticles, dr_max=0.03, require_charge=True):
 
 
 # ----------------------------------------------------------------------------
-# convenience fillers (gen particles expose pt/eta/phi/mass/charge and, for the
-# production vertex, vx/vy/vz; a particle's decay vertex == its daughters' vx/vy/vz)
-# ----------------------------------------------------------------------------
-def save_gen_p4(tofill, prefix, g):
-    '''Fill <prefix>_pt/eta/phi/mass/charge for gen particle g (no-op if g is None).'''
-    if g is None:
-        return
-    tofill[prefix + '_pt']     = g.pt()
-    tofill[prefix + '_eta']    = g.eta()
-    tofill[prefix + '_phi']    = g.phi()
-    tofill[prefix + '_mass']   = g.mass()
-    tofill[prefix + '_charge'] = g.charge()
-
-
-def save_bc_gen(tofill, bc, prefix='bc_gen'):
-    '''Fill the Bc four-momentum, production vertex and decay vertex.'''
-    if bc is None:
-        return
-    save_gen_p4(tofill, prefix, bc)
-    tofill[prefix + '_pdgid']   = bc.pdgId()
-    # production vertex = where the Bc was created
-    tofill[prefix + '_prod_vx'] = bc.vx()
-    tofill[prefix + '_prod_vy'] = bc.vy()
-    tofill[prefix + '_prod_vz'] = bc.vz()
-    # decay vertex = production vertex of any Bc daughter
-    dau = bc.daughter(0)
-    tofill[prefix + '_dec_vx']  = dau.vx()
-    tofill[prefix + '_dec_vy']  = dau.vy()
-    tofill[prefix + '_dec_vz']  = dau.vz()
-
-
-# ----------------------------------------------------------------------------
 # minimal self-test (runs with the deltaR fallback; no CMSSW needed):
 #     python -m Bmmm.Analysis.gen_match_3mu
 # ----------------------------------------------------------------------------

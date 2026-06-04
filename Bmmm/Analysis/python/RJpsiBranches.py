@@ -8,7 +8,7 @@ event_branches = {
 
     'ncands'  : lambda ev : ev.ncands                               ,
 
-    #'qscale'  : lambda ev : ev.genInfo.qScale()                     ,
+#     'qscale'  : lambda ev : ev.genInfo.qScale()                     ,
     'npv'     : lambda ev : len(ev.vtx)                             ,
     'npu'     : lambda ev : ev.pu_at_bx0.getPU_NumInteractions()  if ev.mc else np.nan,
     'nti'     : lambda ev : ev.pu_at_bx0.getTrueNumInteractions() if ev.mc else np.nan,
@@ -19,8 +19,6 @@ event_branches = {
     'bs_y0e'  : lambda ev : ev.bs.y0Error()                         ,
     'bs_z0'   : lambda ev : ev.bs.z0()                              ,
     'bs_z0e'  : lambda ev : ev.bs.z0Error()                         ,
-
-    'bc_gen_decay' :  lambda ev : ev.bc_code                        ,
 }
 
 cand_branches = {
@@ -218,7 +216,9 @@ muon_branches = {
 }
 
 # mother B0 or Bs branches
-bs_branches = {
+bc_branches = {
+    'gen_bc_decay' :  lambda ib : ib.bc_code ,
+    
     'gen_b_pt'     :  lambda ib : ib.pt()    ,
     'gen_b_eta'    :  lambda ib : ib.eta()   , 
     'gen_b_phi'    :  lambda ib : ib.phi()   ,
@@ -253,16 +253,6 @@ jpsi_branches = {
     'gen_jpsi_charge' :  lambda ib : ib.charge(),
 }
 
-phi_branches = {
-    'gen_phi_pt'     :  lambda ib : ib.pt()    ,
-    'gen_phi_eta'    :  lambda ib : ib.eta()   , 
-    'gen_phi_phi'    :  lambda ib : ib.phi()   ,
-    'gen_phi_e'      :  lambda ib : ib.energy(),
-    'gen_phi_mass'   :  lambda ib : ib.mass()  ,
-    'gen_phi_pdgid'  :  lambda ib : ib.pdgId() ,
-    'gen_phi_charge' :  lambda ib : ib.charge(),
-}
-
 
 branches =[]
 
@@ -276,15 +266,11 @@ for idx in [1,2,3]:
 for ibranch in cand_branches.keys():
     branches.append(ibranch)
 
-for ibranch in bs_branches.keys():
+for ibranch in bc_branches.keys():
     branches.append(ibranch)
 
-for ibranch in jpsi_branches.keys():
-    branches.append(ibranch)
-
-for ibranch in phi_branches.keys():
-    branches.append(ibranch)
-
+# for ibranch in jpsi_branches.keys():
+#     branches.append(ibranch)
 
 paths = {}
 paths['HLT_DoubleMu4_3_LowMass'] = ['hltDisplacedmumuFilterDoubleMu43LowMass', 'hltDisplacedmumuFilterDoubleMu43LowMass']
