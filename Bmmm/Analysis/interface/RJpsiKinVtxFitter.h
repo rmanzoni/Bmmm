@@ -187,6 +187,17 @@ class RJpsiKinVtxFitter {
         return tree;
     };
 
+    // line-to-line distance: the impact parameter of the track w.r.t. the axis
+    std::pair<double, Measurement1D> jetTrackDistance(const reco::Track & track,
+                                                      const double & dirx, const double & diry, const double & dirz,
+                                                      const reco::Vertex& vertex)
+    {
+        GlobalVector direction(dirx, diry, dirz);
+        std::pair<double, Measurement1D> res =
+            IPTools::jetTrackDistance(getTransientTrack(track), direction, vertex);
+        return res;   // IPTools always negates it; hand back |d|
+    }
+    
     // ------------------------------------------------------------------------
     // impact parameters (thin wrappers around IPTools)
     //

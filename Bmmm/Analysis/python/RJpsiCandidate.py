@@ -173,7 +173,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         # ----- bachelor-muon impact parameters ------------------------------
         self.compute_ip()
 
-        if self.jpsi_good_vtx:
+        if self.jpsi_good_vtx and self.good_vtx:
             visible_p4 = self.jpsi_rfp4 + self.mu.p4()
        
             self.bc_directions = {
@@ -196,6 +196,8 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
                 setattr(self, 'mcorr_%s'   % label, mcorr  )        
             
             self.p4_collinear = (self.mu.p4() + self.jpsi_rfp4) * M_BC / (self.mu.p4() + self.jpsi_rfp4).mass()
+        
+            self.compute_jet_track_distance()
 
     @staticmethod
     def fit_vertex(muons):
@@ -223,6 +225,42 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
             mu1.bestTrack(), mu2.bestTrack(),
             masses['mu'], masses['mu'], masses['jpsi'],   # PDG J/psi = 3.0969 GeV
         )
+
+    def compute_jet_track_distance(self):
+        track = self.mu.bestTrack()
+        
+        # PV reference: beamspot transverse position, PV longitudinal. Built once and
+        # shared by both flight-direction hypotheses (only the IP sign differs between them).
+        pv_ref = ROOT.reco.Vertex(
+            ROOT.reco.Vertex.Point(self.bs.position().x(),    # beamspot x
+                                   self.bs.position().y(),    # beamspot y
+                                   self.pv.position().z()),   # PV z
+            self.pv.error(), self.pv.chi2(), self.pv.ndof(), self.pv.tracksSize()
+        )
+        
+        # 2 x 2:  {direction from jpsi-vtx | from 3mu-vtx}  x  {wrt PV | wrt that same SV}
+        for label, vtx in self.bc_vertices.items():            # {'jpsi': self.jpsi_vtx, 'sv': self.vtx}
+            if not self.jpsi_good_vtx: continue
+            if not self.good_vtx: continue
+            direction  = getattr(self, 'Bdirection_%s' % label)
+            dx, dy, dz = direction.x(), direction.y(), direction.z()
+
+            references = {'pv': pv_ref, 'sv': self.kin_to_reco_vertex(vtx)}
+            for ref, ref_vtx in references.items():
+                jtd = kinfit.jetTrackDistance(track, dx, dy, dz, ref_vtx)
+                #print(f"label:{label}\t ref:{ref}\t jtd.first:{jtd.first}\t jtd.second:{jtd.second.value()}")
+                setattr(self, 'mu_dist_along_b_dir_%s_%s' % (label, ref), jtd.first)
+                
+            # the distance bewteen the two lines is independent of the vertex
+            # just use the last vertex from the previous loop
+            jtd = kinfit.jetTrackDistance(track, dx, dy, dz, ref_vtx) 
+            #print(f"label:{label}\t ref:{ref}\t jtd.first:{jtd.first}\t jtd.second:{jtd.second.value()}")
+            setattr(self, f'mu_dist_to_b_dir_{label}'    , jtd.second.value())
+#             setattr(self, f'mu_dist_to_b_dir_{label}_err', jtd.second.error())
+#             setattr(self, f'mu_dist_to_b_dir_{label}_sig', jtd.second.significance())
+        
+#         import ipdb ; ipdb.set_trace()
+
 
     @staticmethod
     def is_good_vtx(vertex_tree):

@@ -237,6 +237,19 @@ cand_branches = {
     'mu_ip3d_sv_sv_err'  : lambda cand : cand.mu_ip3d_sv_sv_err   ,
     'mu_ip3d_sv_sv_sig'  : lambda cand : cand.mu_ip3d_sv_sv_sig   ,
 
+    'mu_dist_to_b_dir_jpsi'     : lambda cand : abs(cand.mu_dist_to_b_dir_jpsi)    ,
+#     'mu_dist_to_b_dir_jpsi_err' : lambda cand : cand.mu_dist_to_b_dir_jpsi_err,
+#     'mu_dist_to_b_dir_jpsi_sig' : lambda cand : cand.mu_dist_to_b_dir_jpsi_sig,
+ 
+    'mu_dist_to_b_dir_sv'       : lambda cand : abs(cand.mu_dist_to_b_dir_sv)    ,
+#     'mu_dist_to_b_dir_sv_err'   : lambda cand : cand.mu_dist_to_b_dir_sv_err,
+#     'mu_dist_to_b_dir_sv_sig'   : lambda cand : cand.mu_dist_to_b_dir_sv_sig,
+
+    'mu_dist_along_b_dir_jpsi_pv' : lambda cand : cand.mu_dist_along_b_dir_jpsi_pv,
+    'mu_dist_along_b_dir_jpsi_sv' : lambda cand : cand.mu_dist_along_b_dir_jpsi_sv,
+    'mu_dist_along_b_dir_sv_pv'   : lambda cand : cand.mu_dist_along_b_dir_sv_pv  ,
+    'mu_dist_along_b_dir_sv_sv'   : lambda cand : cand.mu_dist_along_b_dir_sv_sv  ,
+
     'trig_match'         : lambda cand : cand.trig_match       ,
 }
 

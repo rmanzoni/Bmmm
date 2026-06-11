@@ -361,7 +361,7 @@ def main():
         maxevents=options.maxevents if options.maxevents >= 0 else events.size()
     )
 
-    fout      = uproot.recreate(options.destination + '/' + options.filename + '.root')
+    fout      = uproot.recreate(options.destination + '/' + options.filename + '.root', compression=uproot.ZSTD(5))
     row_list  = []
     start     = time()
     mytimestamp = datetime.now().strftime('%Y-%m-%d__%Hh%Mm%Ss')
@@ -375,8 +375,18 @@ def main():
     ##########################################################################################
     #####      WRITE TO DISK
     ##########################################################################################
+  
     ntuple = pd.DataFrame(row_list, columns=branches)
     print('\nnumber of selected events', len(ntuple))
+  
+    # columns that must NOT be downcast to float32
+    keep_full = {'run', 'lumi', 'event'}
+    
+    cast = {col: np.float32 for col in ntuple.columns if col not in keep_full and ntuple[col].dtype == np.float64}
+    
+    ntuple = ntuple.astype(cast)
+
+  
     if len(ntuple) > 0:
         fout['tree'] = ntuple
     print('\nntuple saved, processed all desired events?',

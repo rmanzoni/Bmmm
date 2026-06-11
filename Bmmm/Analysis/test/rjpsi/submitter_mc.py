@@ -20,27 +20,27 @@ resubmit = False
 old_files = []
 files = []
 
-# with open('files_BcToJPsiMuMu_inclusive_TuneCP5_13TeV-bcvegpy2-pythia8-evtgen_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1.txt') as f:
-with open('files_HbToJPsiMuMu_3MuFilter_TuneCP5_13TeV-pythia8-evtgen_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1_ext1-v3.txt') as f:
+with open('files_BcToJPsiMuMu_inclusive_TuneCP5_13TeV-bcvegpy2-pythia8-evtgen_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1.txt') as f:
+# with open('files_HbToJPsiMuMu_3MuFilter_TuneCP5_13TeV-pythia8-evtgen_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1_ext1-v3.txt') as f:
     ifiles = f.read().splitlines()
     ifiles = ['root://cms-xrd-global.cern.ch//'+ifile for ifile in ifiles if ifile not in old_files]
     files += ifiles
 
 # random.shuffle(files)
 
-files_per_job = 10
+files_per_job = 1
 chunks = list(map(list, list(zip(*[iter(files)]*files_per_job))))
 
 if len(files)%files_per_job!=0:
     last_idx = len(files)%files_per_job
     chunks += [files[-last_idx:]]
 
-queue = 'standard'; time = 720
-# queue = 'short'   ; time = 60
+# queue = 'standard'; time = 720
+queue = 'short'   ; time = 60
 # queue = 'long'    ; time = 10080
 
-# out_dir = 'RJpsi_10Jun2026_notrig_BcToJPsiMuMu_inclusive_v1'
-out_dir = 'RJpsi_10Jun2026_notrig_Hb_inclusive_v1'
+out_dir = 'RJpsi_11Jun2026_notrig_BcToJPsiMuMu_inclusive_v1'
+# out_dir = 'RJpsi_10Jun2026_notrig_Hb_inclusive_v1'
 
 out_file_name = 'rjpsi'
 
