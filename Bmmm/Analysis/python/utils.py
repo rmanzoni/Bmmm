@@ -16,12 +16,13 @@ from ROOT import KVFitter # VertexDistance3D is contained here, dirt trick!!
 ##########################################################################################
 
 masses = {}
-masses['bs' ] = particle.literals.B_s_0    .mass/1000.
-masses['phi'] = particle.literals.phi_1020 .mass/1000.
-masses['ds' ] = particle.literals.D_s_minus.mass/1000.
-masses['k'  ] = particle.literals.K_plus   .mass/1000.
-masses['pi' ] = particle.literals.pi_plus  .mass/1000.
-masses['mu' ] = particle.literals.mu_plus  .mass/1000.
+masses['bs'  ] = particle.literals.B_s_0    .mass/1000.
+masses['phi' ] = particle.literals.phi_1020 .mass/1000.
+masses['ds'  ] = particle.literals.D_s_minus.mass/1000.
+masses['k'   ] = particle.literals.K_plus   .mass/1000.
+masses['pi'  ] = particle.literals.pi_plus  .mass/1000.
+masses['mu'  ] = particle.literals.mu_plus  .mass/1000.
+masses['jpsi'] = particle.literals.Jpsi_1S  .mass/1000.
 
 ##########################################################################################
 ##########################################################################################

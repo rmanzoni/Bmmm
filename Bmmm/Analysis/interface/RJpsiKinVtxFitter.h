@@ -137,6 +137,57 @@ class RJpsiKinVtxFitter {
     };
 
     // ------------------------------------------------------------------------
+    // two-body fit WITH an invariant-mass constraint on the pair
+    //
+    // The two tracks are fitted to a common vertex while their invariant mass
+    // is constrained to massConstraint (e.g. the J/psi mass on mu mu). Uses the
+    // simultaneous KinematicConstrainedVertexFitter + TwoTrackMassKinematicConstraint.
+    //
+    // The returned tree is structurally identical to the one from Fit(...):
+    //   top particle        -> the mass-constrained pair (e.g. the J/psi)
+    //   currentDecayVertex  -> the dimuon vertex
+    //   the two children    -> the refitted muons, with momenta consistent with
+    //                          BOTH the common vertex and the mass constraint
+    // so it is a drop-in replacement for Fit2Body and all downstream handling
+    // (is_good_vtx, displacement, ...) is unchanged. Returns an empty tree on
+    // failure.
+    // ------------------------------------------------------------------------
+    RefCountedKinematicTree Fit2BodyMassConstraint(const reco::Track & mu1,
+                                                   const reco::Track & mu2,
+                                                   const double      & mmu1,
+                                                   const double      & mmu2,
+                                                   const double      & massConstraint)
+    {
+        // build the two kinematic particles from the transient tracks
+        KinematicParticleFactoryFromTransientTrack pFactory;
+
+        float chi   = 0.0;
+        float ndf   = 0.0;
+        float sigma = 1e-6;
+
+        std::vector<RefCountedKinematicParticle> toFit;
+        toFit.reserve(2);
+
+        ParticleMass m1 = mmu1;
+        ParticleMass m2 = mmu2;
+        toFit.push_back(pFactory.particle(getTransientTrack(mu1), m1, chi, ndf, sigma));
+        toFit.push_back(pFactory.particle(getTransientTrack(mu2), m2, chi, ndf, sigma));
+
+        // invariant-mass constraint on the two-track system (e.g. J/psi)
+        ParticleMass mc = massConstraint;
+        TwoTrackMassKinematicConstraint constraint(mc);
+
+        // simultaneous common-vertex + mass-constrained fit
+        KinematicConstrainedVertexFitter kcvFitter;
+        RefCountedKinematicTree tree = kcvFitter.fit(toFit, &constraint);
+
+        if (tree == 0)        return RefCountedKinematicTree();
+        if (!tree->isValid()) return RefCountedKinematicTree();
+
+        return tree;
+    };
+
+    // ------------------------------------------------------------------------
     // impact parameters (thin wrappers around IPTools)
     //
     //   track            : the track whose IP we want (e.g. the bachelor muon)

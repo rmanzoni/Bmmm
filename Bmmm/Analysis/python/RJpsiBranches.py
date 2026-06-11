@@ -24,11 +24,89 @@ event_branches = {
 cand_branches = {
     # ----- 3-muon (Bc) kinematics -----
     'mass'              : lambda cand : cand.mass()            ,
-    'mcorr'             : lambda cand : cand.mass_corrected()  ,
     'pt'                : lambda cand : cand.pt()              ,
     'eta'               : lambda cand : cand.eta()             ,
     'phi'               : lambda cand : cand.phi()             ,
     'charge'            : lambda cand : cand.charge()          ,
+
+    'q2_coll'           : lambda cand : (cand.p4_collinear - cand.jpsi_rfp4).mass2(),
+    'm_miss2_coll'      : lambda cand : (cand.p4_collinear - cand.jpsi_rfp4 - cand.mu.p4()).mass2() ,
+    'mu_b_e_coll'       : lambda cand : cand.p4_collinear.Dot(cand.mu.p4()) / cand.p4_collinear.mass(),
+
+    'nu1_q2_jpsi'       : lambda cand : (cand.math1_b_p4_jpsi - cand.jpsi_rfp4).mass2()   ,
+    'nu2_q2_jpsi'       : lambda cand : (cand.math2_b_p4_jpsi - cand.jpsi_rfp4).mass2()   ,
+    'nu1_q2_sv'         : lambda cand : (cand.math1_b_p4_sv - cand.jpsi_rfp4).mass2()   ,
+    'nu2_q2_sv'         : lambda cand : (cand.math2_b_p4_sv - cand.jpsi_rfp4).mass2()   ,
+    'nu1_mu_b_e_jpsi'   : lambda cand : cand.math1_b_p4_jpsi.Dot(cand.mu.p4()) / cand.math1_b_p4_jpsi.mass(),
+    'nu2_mu_b_e_jpsi'   : lambda cand : cand.math2_b_p4_jpsi.Dot(cand.mu.p4()) / cand.math2_b_p4_jpsi.mass(),
+    'nu1_mu_b_e_sv'     : lambda cand : cand.math1_b_p4_sv  .Dot(cand.mu.p4()) / cand.math1_b_p4_sv  .mass(),
+    'nu2_mu_b_e_sv'     : lambda cand : cand.math2_b_p4_sv  .Dot(cand.mu.p4()) / cand.math2_b_p4_sv  .mass(),
+
+    'q2_jpsi'           : lambda cand : (cand.bc_full_p4_jpsi - cand.jpsi_rfp4).mass2(),
+    'q2_sv'             : lambda cand : (cand.bc_full_p4_sv   - cand.jpsi_rfp4).mass2(),
+    'm_miss2_jpsi'      : lambda cand : (cand.bc_full_p4_jpsi - cand.jpsi_rfp4 - cand.mu.p4()).mass2() ,
+    'm_miss2_sv'        : lambda cand : (cand.bc_full_p4_sv   - cand.jpsi_rfp4 - cand.mu.p4()).mass2() ,
+    'mu_b_e_jpsi'       : lambda cand : cand.bc_full_p4_jpsi.Dot(cand.mu.p4()) / cand.bc_full_p4_jpsi.mass(),
+    'mu_b_e_sv'         : lambda cand : cand.bc_full_p4_sv  .Dot(cand.mu.p4()) / cand.bc_full_p4_sv  .mass(),
+    'mu_jpsi_e'         : lambda cand : cand.jpsi_rfp4.Dot(cand.mu.p4()) / cand.jpsi_rfp4.mass()  ,
+
+    'p4_par_jpsi'       : lambda cand: cand.p4_par_jpsi  ,
+    'p4_perp_jpsi'      : lambda cand: cand.p4_perp_jpsi ,
+    'mcorr_jpsi'        : lambda cand: cand.mcorr_jpsi   ,
+
+    'p4_par_sv'         : lambda cand: cand.p4_par_sv  ,
+    'p4_perp_sv'        : lambda cand: cand.p4_perp_sv ,
+    'mcorr_sv'          : lambda cand: cand.mcorr_sv   ,
+
+    'q2_gen'            : lambda cand : cand.q2_gen           ,
+    'm_miss2_gen'       : lambda cand : cand.m_miss2_gen      ,
+
+    # ----- 3-muon (Bc) kinematics, jpsi constraint -----
+    'rf_mass'           : lambda cand : cand.rfp4.mass()       ,
+    'rf_pt'             : lambda cand : cand.rfp4.pt()         ,
+    'rf_eta'            : lambda cand : cand.rfp4.eta()        ,
+    'rf_phi'            : lambda cand : cand.rfp4.phi()        ,
+
+    # ----- mathematical neutrino solutions -----
+    'nu1_jpsi_bc_e'          : lambda cand : cand.sols_jpsi[0].p4_parent.energy(),
+    'nu1_jpsi_bc_pt'         : lambda cand : cand.sols_jpsi[0].p4_parent.pt()    ,
+    'nu1_jpsi_bc_eta'        : lambda cand : cand.sols_jpsi[0].p4_parent.eta()   ,
+    'nu1_jpsi_bc_phi'        : lambda cand : cand.sols_jpsi[0].p4_parent.phi()   ,
+    'nu1_jpsi_pz'            : lambda cand : cand.sols_jpsi[0].pz                ,
+    'nu1_jpsi_e'             : lambda cand : cand.sols_jpsi[0].p4_nu.energy()    ,
+    'nu1_jpsi_pt'            : lambda cand : cand.sols_jpsi[0].p4_nu.pt()        ,
+    'nu1_jpsi_eta'           : lambda cand : cand.sols_jpsi[0].p4_nu.eta()       ,
+    'nu1_jpsi_phi'           : lambda cand : cand.sols_jpsi[0].p4_nu.phi()       ,
+
+    'nu2_jpsi_bc_e'          : lambda cand : cand.sols_jpsi[1].p4_parent.energy(),
+    'nu2_jpsi_bc_pt'         : lambda cand : cand.sols_jpsi[1].p4_parent.pt()    ,
+    'nu2_jpsi_bc_eta'        : lambda cand : cand.sols_jpsi[1].p4_parent.eta()   ,
+    'nu2_jpsi_bc_phi'        : lambda cand : cand.sols_jpsi[1].p4_parent.phi()   ,
+    'nu2_jpsi_pz'            : lambda cand : cand.sols_jpsi[1].pz                ,
+    'nu2_jpsi_e'             : lambda cand : cand.sols_jpsi[1].p4_nu.energy()    ,
+    'nu2_jpsi_pt'            : lambda cand : cand.sols_jpsi[1].p4_nu.pt()        ,
+    'nu2_jpsi_eta'           : lambda cand : cand.sols_jpsi[1].p4_nu.eta()       ,
+    'nu2_jpsi_phi'           : lambda cand : cand.sols_jpsi[1].p4_nu.phi()       ,
+
+    'nu1_sv_bc_e'          : lambda cand : cand.sols_sv[0].p4_parent.energy(),
+    'nu1_sv_bc_pt'         : lambda cand : cand.sols_sv[0].p4_parent.pt()    ,
+    'nu1_sv_bc_eta'        : lambda cand : cand.sols_sv[0].p4_parent.eta()   ,
+    'nu1_sv_bc_phi'        : lambda cand : cand.sols_sv[0].p4_parent.phi()   ,
+    'nu1_sv_pz'            : lambda cand : cand.sols_sv[0].pz                ,
+    'nu1_sv_e'             : lambda cand : cand.sols_sv[0].p4_nu.energy()    ,
+    'nu1_sv_pt'            : lambda cand : cand.sols_sv[0].p4_nu.pt()        ,
+    'nu1_sv_eta'           : lambda cand : cand.sols_sv[0].p4_nu.eta()       ,
+    'nu1_sv_phi'           : lambda cand : cand.sols_sv[0].p4_nu.phi()       ,
+
+    'nu2_sv_bc_e'          : lambda cand : cand.sols_sv[1].p4_parent.energy(),
+    'nu2_sv_bc_pt'         : lambda cand : cand.sols_sv[1].p4_parent.pt()    ,
+    'nu2_sv_bc_eta'        : lambda cand : cand.sols_sv[1].p4_parent.eta()   ,
+    'nu2_sv_bc_phi'        : lambda cand : cand.sols_sv[1].p4_parent.phi()   ,
+    'nu2_sv_pz'            : lambda cand : cand.sols_sv[1].pz                ,
+    'nu2_sv_e'             : lambda cand : cand.sols_sv[1].p4_nu.energy()    ,
+    'nu2_sv_pt'            : lambda cand : cand.sols_sv[1].p4_nu.pt()        ,
+    'nu2_sv_eta'           : lambda cand : cand.sols_sv[1].p4_nu.eta()       ,
+    'nu2_sv_phi'           : lambda cand : cand.sols_sv[1].p4_nu.phi()       ,
 
     # ----- J/psi (dimuon) kinematics -----
     'jpsi_mass'         : lambda cand : cand.jpsi.mass()       ,
@@ -37,24 +115,30 @@ cand_branches = {
     'jpsi_phi'          : lambda cand : cand.jpsi.phi()        ,
     'jpsi_charge'       : lambda cand : cand.jpsi.charge()     ,
 
+    # ----- J/psi (dimuon) kinematics -----
+    'jpsi_rf_mass'      : lambda cand : cand.jpsi_rfp4.mass()  ,
+    'jpsi_rf_pt'        : lambda cand : cand.jpsi_rfp4.pt()    ,
+    'jpsi_rf_eta'       : lambda cand : cand.jpsi_rfp4.eta()   ,
+    'jpsi_rf_phi'       : lambda cand : cand.jpsi_rfp4.phi()   ,
+
     # ----- pairwise muon kinematics (pt-sorted muons) -----
     'dr'                : lambda cand : cand.r()               ,
     'dr_max'            : lambda cand : cand.max_dr()          ,
-    'dr_12'             : lambda cand : cand.dr12()            ,
-    'dr_13'             : lambda cand : cand.dr13()            ,
-    'dr_23'             : lambda cand : cand.dr23()            ,
-
-    'charge_12'         : lambda cand : cand.charge12()        ,
-    'charge_13'         : lambda cand : cand.charge13()        ,
-    'charge_23'         : lambda cand : cand.charge23()        ,
-
-    'mass_12'           : lambda cand : cand.mass12()          ,
-    'mass_13'           : lambda cand : cand.mass13()          ,
-    'mass_23'           : lambda cand : cand.mass23()          ,
-
-    'min_mass'          : lambda cand : min([cand.mass12(),
-                                             cand.mass13(),
-                                             cand.mass23()])   ,
+#     'dr_12'             : lambda cand : cand.dr12()            ,
+#     'dr_13'             : lambda cand : cand.dr13()            ,
+#     'dr_23'             : lambda cand : cand.dr23()            ,
+# 
+#     'charge_12'         : lambda cand : cand.charge12()        ,
+#     'charge_13'         : lambda cand : cand.charge13()        ,
+#     'charge_23'         : lambda cand : cand.charge23()        ,
+# 
+#     'mass_12'           : lambda cand : cand.mass12()          ,
+#     'mass_13'           : lambda cand : cand.mass13()          ,
+#     'mass_23'           : lambda cand : cand.mass23()          ,
+# 
+#     'min_mass'          : lambda cand : min([cand.mass12(),
+#                                              cand.mass13(),
+#                                              cand.mass23()])   ,
  
 #     'rf_mass'           : lambda cand : cand.rf_mass()         ,
 #     'rf_mass_err'       : lambda cand : np.sqrt(cand.b4refUnc.At(6,6)),
@@ -99,6 +183,8 @@ cand_branches = {
  
     'cos2d'             : lambda cand : cand.cos2d              ,
     'cos3d'             : lambda cand : cand.cos3d              ,
+
+    'cos3dbs'           : lambda cand : cand.cos3dbs            ,
  
     'lxy'               : lambda cand : cand.lxy.value()        ,
     'lxy_err'           : lambda cand : cand.lxy.error()        ,
@@ -129,29 +215,48 @@ cand_branches = {
     'jpsi_lxyz_sig'     : lambda cand : cand.jpsi_lxyz.significance(),
 
     # ----- bachelor-muon signed 3D impact parameter (IPTools) -----
-    # vs the primary vertex, lifetime-signed along the Bc flight direction
-    'mu_ip3d'           : lambda cand : cand.mu_ip3d          ,
-    'mu_ip3d_err'       : lambda cand : cand.mu_ip3d_err      ,
-    'mu_ip3d_sig'       : lambda cand : cand.mu_ip3d_sig      ,
-    # vs the J/psi vertex, lifetime-signed along the Bc flight direction
-    'mu_jpsi_ip3d'      : lambda cand : cand.mu_jpsi_ip3d     ,
-    'mu_jpsi_ip3d_err'  : lambda cand : cand.mu_jpsi_ip3d_err ,
-    'mu_jpsi_ip3d_sig'  : lambda cand : cand.mu_jpsi_ip3d_sig ,
 
+    # mu_ip3d_jpsi_pv     # jpsi-vertex direction, wrt PV
+    # mu_ip3d_jpsi_sv     # jpsi-vertex direction, wrt the J/ψ vertex
+    # mu_ip3d_sv_pv       # 3μ-vertex direction, wrt PV
+    # mu_ip3d_sv_sv       # 3μ-vertex direction, wrt the 3μ vertex 
 
-    'trig_match'        : lambda cand : cand.trig_match       ,
+    'mu_ip3d_jpsi_pv'    : lambda cand : cand.mu_ip3d_jpsi_pv      ,
+    'mu_ip3d_jpsi_pv_err': lambda cand : cand.mu_ip3d_jpsi_pv_err  ,
+    'mu_ip3d_jpsi_pv_sig': lambda cand : cand.mu_ip3d_jpsi_pv_sig  ,
+
+    'mu_ip3d_jpsi_sv'    : lambda cand : cand.mu_ip3d_jpsi_sv      ,
+    'mu_ip3d_jpsi_sv_err': lambda cand : cand.mu_ip3d_jpsi_sv_err  ,
+    'mu_ip3d_jpsi_sv_sig': lambda cand : cand.mu_ip3d_jpsi_sv_sig  ,
+
+    'mu_ip3d_sv_pv'      : lambda cand : cand.mu_ip3d_sv_pv       ,
+    'mu_ip3d_sv_pv_err'  : lambda cand : cand.mu_ip3d_sv_pv_err   ,
+    'mu_ip3d_sv_pv_sig'  : lambda cand : cand.mu_ip3d_sv_pv_sig   ,
+
+    'mu_ip3d_sv_sv'      : lambda cand : cand.mu_ip3d_sv_sv       ,
+    'mu_ip3d_sv_sv_err'  : lambda cand : cand.mu_ip3d_sv_sv_err   ,
+    'mu_ip3d_sv_sv_sig'  : lambda cand : cand.mu_ip3d_sv_sv_sig   ,
+
+    'trig_match'         : lambda cand : cand.trig_match       ,
 }
 
+helicity_branches = {
+    'cos_theta_v_%s' % k : (lambda c, k=k: getattr(c, 'cos_theta_v_%s' % k, np.nan)) for k in ('jpsi','sv','coll','nu1','nu2')
+}
+helicity_branches.update({'cos_theta_l_%s' % k : (lambda c, k=k: getattr(c, 'cos_theta_l_%s' % k, np.nan)) for k in ('jpsi','sv','coll','nu1','nu2')})
+helicity_branches.update({'chi_%s' % k : (lambda c, k=k: getattr(c, 'chi_%s' % k, np.nan)) for k in ('jpsi','sv','coll','nu1','nu2')})
+
+cand_branches.update(helicity_branches)
 
 muon_branches = {
     'pt'             :  lambda imu : imu.pt()                            ,
     'eta'            :  lambda imu : imu.eta()                           , 
     'phi'            :  lambda imu : imu.phi()                           ,
     'e'              :  lambda imu : imu.energy()                        ,
-#     'rf_pt'          :  lambda imu : imu.rfp4.pt()                       ,
-#     'rf_eta'         :  lambda imu : imu.rfp4.eta()                      , 
-#     'rf_phi'         :  lambda imu : imu.rfp4.phi()                      ,
-#     'rf_e'           :  lambda imu : imu.energy()                        ,
+    'rf_pt'          :  lambda imu : imu.jpsi_rfp4.pt()                  ,
+    'rf_eta'         :  lambda imu : imu.jpsi_rfp4.eta()                 , 
+    'rf_phi'         :  lambda imu : imu.jpsi_rfp4.phi()                 ,
+    'rf_e'           :  lambda imu : imu.energy()                        ,
     'mass'           :  lambda imu : imu.mass()                          ,
     'charge'         :  lambda imu : imu.charge()                        ,
     'id_loose'       :  lambda imu : imu.isLooseMuon()                   ,
@@ -217,13 +322,17 @@ muon_branches = {
 
 # mother B0 or Bs branches
 bc_branches = {
-    'gen_bc_decay' :  lambda ib : ib.bc_code ,
+    'gen_bc_decay'      :  lambda ib : ib.bc_code    ,
     'gen_bc_q2'         :  lambda ib : ib.q2         ,
     'gen_bc_m_miss2'    :  lambda ib : ib.m_miss2    ,
     'gen_bc_m_miss2_vis':  lambda ib : ib.m_miss2_vis,
     'gen_bc_e_mu_bc'    :  lambda ib : ib.e_mu_bc    ,
-    'gen_bc_e_mu_jpsi'  :  lambda ib : ib.e_mu_jpsi  ,
-    
+    'gen_bc_e_mu_jpsi'  :  lambda ib : ib.e_mu_jpsi  , # helicity angles
+    'gen_bc_cos_theta_v':  lambda ib : ib.cos_theta_v, # helicity angles
+    'gen_bc_cos_theta_l':  lambda ib : ib.cos_theta_l, # helicity angles
+    'gen_bc_chi'        :  lambda ib : ib.chi        , # helicity angles
+
+    'gen_b_e'      :  lambda ib : ib.energy(),
     'gen_b_pt'     :  lambda ib : ib.pt()    ,
     'gen_b_eta'    :  lambda ib : ib.eta()   , 
     'gen_b_phi'    :  lambda ib : ib.phi()   ,
