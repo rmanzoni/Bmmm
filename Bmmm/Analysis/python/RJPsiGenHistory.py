@@ -41,6 +41,7 @@ import numpy as np
 # PDG ids of the particles that appear directly in the Bc decay table
 # ----------------------------------------------------------------------------
 BC       = 541
+M_BC     = 6.27447   # PDG Bc+ mass [GeV]; RJPsiNuReco and the candidate/inspector import this
 JPSI     = 443
 PSI2S    = 100443
 CHI_C0   = 10441

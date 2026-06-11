@@ -6,7 +6,11 @@ import numpy as np
 from array import array
 from scipy import stats
 from particle import Particle
-from collections import defaultdict, Callable, OrderedDict
+from collections import defaultdict, OrderedDict
+try:
+    from collections.abc import Callable   # python >= 3.3 (mandatory from 3.10)
+except ImportError:
+    from collections import Callable       # legacy python 2
 
 import ROOT
 ROOT.gSystem.Load('libBmmmAnalysis')
@@ -291,8 +295,10 @@ def convert_cov(m):
 def is_pos_def(x):
     '''
     https://stackoverflow.com/questions/16266720/find-out-if-matrix-is-positive-definite-with-numpy
+    eigvalsh: the covariance matrix is symmetric, so use the symmetric
+    eigensolver (faster and guaranteed real eigenvalues).
     '''
-    return np.all(np.linalg.eigvals(np.nan_to_num(x)) > 0)
+    return np.all(np.linalg.eigvalsh(np.nan_to_num(x)) > 0)
 
 def fix_track(trk, delta=1e-9):
     '''
@@ -353,13 +359,18 @@ def compute_mass(p1, p2, m1, m2, p1p2):
 ##########################################################################################
 
 def compute_IP3D(pv, sv, direction):
+    '''3D distance of the point `pv` from the line through `sv` along `direction`:
+           d = |(sv - pv) x n| / |n|
+       NB: use .R() (3D magnitude). .rho()/.Rho() is the CYLINDRICAL radius
+       sqrt(x^2+y^2) and would return a mixed transverse projection instead of
+       the point-line distance.'''
     pv_to_sv_vector = ROOT.Math.DisplacementVector3D('ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')( 
         sv.x()-pv.x(),
         sv.y()-pv.y(),
         sv.z()-pv.z() 
     )
     
-    ip3d = abs(pv_to_sv_vector.Cross(direction).rho() / direction.rho())
+    ip3d = abs(pv_to_sv_vector.Cross(direction).R() / direction.R())
     return ip3d
 
 
