@@ -3,22 +3,22 @@ from scipy import stats
 from itertools import product, combinations
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from Bmmm.Analysis.utils import masses, is_pos_def, convert_cov, fix_track, compute_IP3D
-from Bmmm.Analysis.RJPsiNuReco import reconstruct
+from Bmmm.Analysis.RJPsiNuReco import reconstruct, M_BC   # M_BC: single source (RJPsiGenHistory)
 
 import ROOT
 ROOT.gSystem.Load('libBmmmAnalysis')
-from ROOT import KVFitter # VertexDistance3D is contained here, dirt trick!!
+# RJpsiKinVtxFitter.h #includes VertexDistance3D/XY and IPTools, so this import
+# also makes ROOT.VertexDistance3D / ROOT.VertexDistanceXY available (same
+# "dirty trick" the old, otherwise-unused KVFitter import was kept around for).
 from ROOT import RJpsiKinVtxFitter
 
-# make these available everywhere in here
-global vtxfit
-vtxfit = KVFitter()
-global tofit
-tofit = ROOT.std.vector('reco::Track')()
-global kinfit
+# single fitter instance shared by all candidates
 kinfit = RJpsiKinVtxFitter()
 
-M_BC = 6.27447
+# ROOT template instantiations, hoisted out of the per-candidate hot loop
+Vector3D      = ROOT.Math.DisplacementVector3D(
+    'ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')
+LorentzVector = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')
 
 class RJpsiCandidate(ROOT.reco.CompositeCandidate):
     '''
@@ -36,9 +36,12 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
 
         super().__init__()
 
+        # covariance check, memoized: muons are shared across candidates within
+        # an event, so do this once per muon, not once per (muon, triplet)
         for imu in jpsi_muons + [mu3]:
-            imu.cov = self.convert_cov(imu.bestTrack().covariance())
-            imu.is_cov_pos_def = self.is_pos_def(imu.cov)
+            if not hasattr(imu, 'cov'):
+                imu.cov = convert_cov(imu.bestTrack().covariance())
+                imu.is_cov_pos_def = is_pos_def(imu.cov)
 
         self.muons      = sorted(jpsi_muons + [mu3], key = lambda x : x.pt(), reverse = True)
         self.jpsi_muons = sorted(jpsi_muons        , key = lambda x : x.pt(), reverse = True)
@@ -68,9 +71,15 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
             coll    : pure collinear (equal-betagamma) p4 -- direction == visible p
             nu1/nu2 : the two solutions of the exact neutrino-pz quadratic
         PV is the hybrid reference (beamspot x,y + PV z) carried by Bdirection_*.
+
+        Every hypothesis needs the refitted J/psi: if the J/psi fit failed
+        (jpsi_rfp4 is None) nothing is set and the branches default to NaN.
         '''
         nan = float('nan')
-    
+
+        if getattr(self, 'jpsi_rfp4', None) is None:
+            return
+
         visible_p4 = self.jpsi_rfp4 + self.mu.p4()
     
         # mu- of the J/psi pair = the two muons that are not the bachelor
@@ -82,22 +91,28 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         bdir_jpsi = getattr(self, 'Bdirection_jpsi', None)
         bdir_sv   = getattr(self, 'Bdirection_sv',   None)
     
-        if bdir_jpsi is not None:
-            _, bc_p4['jpsi'] = self.equal_velocity_p4(bdir_jpsi, visible_p4)
-        if bdir_sv is not None:
-            _, bc_p4['sv']   = self.equal_velocity_p4(bdir_sv,   visible_p4)
+        # equal-velocity hypotheses: reuse the p4s already stored by
+        # compute_vtx_quantities, recompute only if missing
+        for label, bdir in (('jpsi', bdir_jpsi), ('sv', bdir_sv)):
+            if bdir is None:
+                continue
+            p4 = getattr(self, 'bc_full_p4_%s' % label, None)
+            bc_p4[label] = p4 if p4 is not None else self.equal_velocity_p4(bdir, visible_p4)[1]
     
         # pure collinear: equal-velocity along the visible momentum itself
         # (self-consistent: same magnitude AND direction, no flight-direction input)
-        coll_dir = ROOT.Math.XYZVector(visible_p4.px(), visible_p4.py(), visible_p4.pz())
-        _, bc_p4['coll'] = self.equal_velocity_p4(coll_dir, visible_p4)
+        coll = getattr(self, 'p4_collinear', None)
+        if coll is None:
+            coll = visible_p4 * (M_BC / visible_p4.mass())
+        bc_p4['coll'] = coll
     
         # two neutrino solutions of the quadratic (mass-constrained, 3mu-vtx dir).
         # reuse the inspector's math*_b_p4_sv if already computed, else solve here.
         nu1 = getattr(self, 'math1_b_p4_sv', None)
         nu2 = getattr(self, 'math2_b_p4_sv', None)
         if nu1 is None or nu2 is None:
-            nu_dir = bdir_sv if bdir_sv is not None else coll_dir
+            nu_dir = bdir_sv if bdir_sv is not None else \
+                     ROOT.Math.XYZVector(visible_p4.px(), visible_p4.py(), visible_p4.pz())
             sols = reconstruct(visible_p4, nu_dir, m_parent=M_BC, clamp_negative_disc=True)
             if nu1 is None and len(sols) >= 1: nu1 = visible_p4 + sols[0].p4_nu
             if nu2 is None and len(sols) >= 2: nu2 = visible_p4 + sols[1].p4_nu
@@ -163,6 +178,12 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         # ----- beamspot as a reco::Vertex at the PV z position --------------
         self.bs = self.build_beamspot_vertex(beamspot, self.pv.z())
 
+        # ----- hybrid PV: beamspot x,y + PV z, PV covariance ----------------
+        # built ONCE and shared by compute_ip and compute_jet_track_distance,
+        # so the signed-IP-wrt-PV and the axis distances use the identical
+        # reference vertex (and the flight_direction convention).
+        self.pv_bs = self.build_hybrid_pv(self.bs, self.pv)
+
         # ----- displacement / pointing-angle quantities --------------------
         # the 3-muon vertex uses the full candidate momentum (self),
         # the J/psi vertex uses the dimuon momentum (self.jpsi)
@@ -173,31 +194,40 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         # ----- bachelor-muon impact parameters ------------------------------
         self.compute_ip()
 
-        if self.jpsi_good_vtx and self.good_vtx:
-            visible_p4 = self.jpsi_rfp4 + self.mu.p4()
-       
-            self.bc_directions = {
-                'jpsi': getattr(self, 'Bdirection_jpsi', None), 
-                'sv'  : getattr(self, 'Bdirection_sv', None),
-            }
-            
-            for label, direction in self.bc_directions.items():
-                if direction is None: continue
+        # ----- Bc-momentum hypotheses, one per flight-direction label -------
+        # mcorr / p4_par / p4_perp need only the direction (they use the raw
+        # 3-muon p4), so they are filled for every label whose own vertex fit
+        # succeeded. The equal-velocity p4 and p4_collinear additionally need
+        # the refitted J/psi, hence the extra jpsi_rfp4 guard.
+        self.bc_directions = {
+            'jpsi': getattr(self, 'Bdirection_jpsi', None),
+            'sv'  : getattr(self, 'Bdirection_sv'  , None),
+        }
+
+        visible_p4 = (self.jpsi_rfp4 + self.mu.p4()) if self.jpsi_rfp4 is not None else None
+
+        for label, direction in self.bc_directions.items():
+            if direction is None:
+                continue
+
+            p4_par  = self.p4().Vect().Dot(direction.unit())
+            p4_perp = np.sqrt(max(0., self.p4().Vect().Mag2() - p4_par * p4_par))
+            mcorr   = np.sqrt(self.p4().mass()**2 + p4_perp**2) + p4_perp
+            setattr(self, 'p4_par_%s'  % label, p4_par )
+            setattr(self, 'p4_perp_%s' % label, p4_perp)
+            setattr(self, 'mcorr_%s'   % label, mcorr  )
+
+            if visible_p4 is not None:
                 p3, p4 = self.equal_velocity_p4(direction, visible_p4)
                 setattr(self, 'bc_full_p_%s'  % label, p3)
-                setattr(self, 'bc_full_p4_%s' % label, p4)        
-                
-                p4_par  = self.p4().Vect().Dot(direction.unit())                   
-                p4_perp = np.sqrt(self.p4().Vect().Mag2() - p4_par*p4_par)
-                mcorr   = np.sqrt(self.p4().mass()*self.p4().mass() + p4_perp*p4_perp) + p4_perp
+                setattr(self, 'bc_full_p4_%s' % label, p4)
 
-                setattr(self, 'p4_par_%s'  % label, p4_par )        
-                setattr(self, 'p4_perp_%s' % label, p4_perp)        
-                setattr(self, 'mcorr_%s'   % label, mcorr  )        
-            
-            self.p4_collinear = (self.mu.p4() + self.jpsi_rfp4) * M_BC / (self.mu.p4() + self.jpsi_rfp4).mass()
-        
-            self.compute_jet_track_distance()
+        if visible_p4 is not None:
+            # scaling the whole visible 4-vector by M_BC/m_vis is exactly the
+            # equal-velocity p4 along the visible direction
+            self.p4_collinear = visible_p4 * (M_BC / visible_p4.mass())
+
+        self.compute_jet_track_distance()
 
     @staticmethod
     def fit_vertex(muons):
@@ -227,39 +257,40 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         )
 
     def compute_jet_track_distance(self):
+        '''
+        Distances of the bachelor-muon track from the Bc flight axis, from
+        IPTools::jetTrackDistance (linearized track):
+
+          mu_dist_along_b_dir_<dir>_<ref> : signed distance ALONG the axis, from
+                                            the reference vertex to the point of
+                                            closest approach (up/downstream)
+          mu_dist_to_b_dir_<dir>          : line-to-line distance between the
+                                            track and the axis; independent of
+                                            the anchor vertex, so one value per
+                                            direction
+
+        Same 2x2 grid, per-label gating and hybrid PV (self.pv_bs) as compute_ip.
+        '''
         track = self.mu.bestTrack()
-        
-        # PV reference: beamspot transverse position, PV longitudinal. Built once and
-        # shared by both flight-direction hypotheses (only the IP sign differs between them).
-        pv_ref = ROOT.reco.Vertex(
-            ROOT.reco.Vertex.Point(self.bs.position().x(),    # beamspot x
-                                   self.bs.position().y(),    # beamspot y
-                                   self.pv.position().z()),   # PV z
-            self.pv.error(), self.pv.chi2(), self.pv.ndof(), self.pv.tracksSize()
-        )
-        
+
         # 2 x 2:  {direction from jpsi-vtx | from 3mu-vtx}  x  {wrt PV | wrt that same SV}
-        for label, vtx in self.bc_vertices.items():            # {'jpsi': self.jpsi_vtx, 'sv': self.vtx}
-            if not self.jpsi_good_vtx: continue
-            if not self.good_vtx: continue
+        for label, vtx in self.bc_vertices.items():
+            if not self.bc_vtx_valid[label]:
+                continue
             direction  = getattr(self, 'Bdirection_%s' % label)
             dx, dy, dz = direction.x(), direction.y(), direction.z()
 
-            references = {'pv': pv_ref, 'sv': self.kin_to_reco_vertex(vtx)}
+            references = {'pv': self.pv_bs, 'sv': self.kin_to_reco_vertex(vtx)}
+            jtd = None
             for ref, ref_vtx in references.items():
                 jtd = kinfit.jetTrackDistance(track, dx, dy, dz, ref_vtx)
-                #print(f"label:{label}\t ref:{ref}\t jtd.first:{jtd.first}\t jtd.second:{jtd.second.value()}")
                 setattr(self, 'mu_dist_along_b_dir_%s_%s' % (label, ref), jtd.first)
-                
-            # the distance bewteen the two lines is independent of the vertex
-            # just use the last vertex from the previous loop
-            jtd = kinfit.jetTrackDistance(track, dx, dy, dz, ref_vtx) 
-            #print(f"label:{label}\t ref:{ref}\t jtd.first:{jtd.first}\t jtd.second:{jtd.second.value()}")
-            setattr(self, f'mu_dist_to_b_dir_{label}'    , jtd.second.value())
-#             setattr(self, f'mu_dist_to_b_dir_{label}_err', jtd.second.error())
-#             setattr(self, f'mu_dist_to_b_dir_{label}_sig', jtd.second.significance())
-        
-#         import ipdb ; ipdb.set_trace()
+
+            # the distance between the two lines is independent of the vertex:
+            # reuse the last result instead of making a third C++ call
+            setattr(self, 'mu_dist_to_b_dir_%s' % label, jtd.second.value())
+#             setattr(self, 'mu_dist_to_b_dir_%s_err' % label, jtd.second.error())
+#             setattr(self, 'mu_dist_to_b_dir_%s_sig' % label, jtd.second.significance())
 
 
     @staticmethod
@@ -286,6 +317,21 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         return ROOT.reco.Vertex(bs_point, bs_error, chi2, ndof, 3)
 
     @staticmethod
+    def build_hybrid_pv(bs, pv):
+        '''
+        Hybrid primary vertex: beamspot transverse position + PV longitudinal
+        position, with the PV covariance. Matches the flight_direction convention
+        (transverse from the beamspot, longitudinal from the PV), so every
+        wrt-PV quantity uses one and the same reference point.
+        '''
+        return ROOT.reco.Vertex(
+            ROOT.reco.Vertex.Point(bs.position().x(),   # beamspot x
+                                   bs.position().y(),   # beamspot y
+                                   pv.position().z()),  # PV z
+            pv.error(), pv.chi2(), pv.ndof(), pv.tracksSize()
+        )
+
+    @staticmethod
     def kin_to_reco_vertex(kin_vtx, ndim=2):
         '''
         Wrap a KinematicVertex into a reco::Vertex (its position + 3x3 covariance),
@@ -299,7 +345,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
     def compute_displacement(self, vertex_tree, good_vtx, cand, prefix=''):
         '''
         For a single fitted vertex, compute and store (with the given prefix):
-          {prefix}vtx       : the KinematicVertex
+          {prefix}vtx       : the KinematicVertex (None if the fit failed)
           {prefix}vtx_chi2  : vertex chi2
           {prefix}vtx_ndof  : vertex ndof
           {prefix}vtx_prob  : vertex fit probability
@@ -307,6 +353,9 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
           {prefix}lxyz      : 3D distance from the primary vertex (Measurement1D)
           {prefix}cos2d     : cosine of the 2D pointing angle (beamspot -> SV vs pT)
           {prefix}cos3d     : cosine of the 3D pointing angle (PV -> SV vs p)
+          {prefix}cos3dbs   : as cos3d, but with the hybrid reference point
+                              (beamspot x,y + PV z), i.e. the same convention as
+                              flight_direction and the IP code
 
         Measurement1D objects expose .value(), .error() and .significance().
         'cand' is the (composite) candidate whose momentum defines the pointing
@@ -314,10 +363,10 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         J/psi vertex.
         '''
 
-        # if the fit failed, store NaNs and return
+        # if the fit failed, store None/NaNs and return
         if not good_vtx:
             setattr(self, prefix + 'vtx', None)
-            for q in ['vtx', 'lxy', 'lxyz', 'cos2d', 'cos3d']:
+            for q in ['vtx_chi2', 'vtx_ndof', 'vtx_prob', 'lxy', 'lxyz', 'cos2d', 'cos3d', 'cos3dbs']:
                 setattr(self, prefix + q, np.nan)
             return
 
@@ -330,7 +379,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         ndof = vtx.degreesOfFreedom()
         setattr(self, prefix + 'vtx_chi2', chi2)
         setattr(self, prefix + 'vtx_ndof', ndof)
-        setattr(self, prefix + 'vtx_prob', 1. - stats.chi2.cdf(chi2, ndof))
+        setattr(self, prefix + 'vtx_prob', stats.chi2.sf(chi2, ndof))
 
         # 2D distance from the beamspot (significance via Measurement1D)
         lxy = ROOT.VertexDistanceXY().distance(self.bs, vtx.vertexState())
@@ -339,10 +388,6 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         # 3D distance from the primary vertex (significance via Measurement1D)
         lxyz = ROOT.VertexDistance3D().distance(self.pv, vtx.vertexState())
         setattr(self, prefix + 'lxyz', lxyz)
-
-        # 3-vector helper
-        Vector3D = ROOT.Math.DisplacementVector3D(
-            'ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')
 
         # 2D pointing angle: transverse displacement always from the beamspot
         vect_lxy = Vector3D(
@@ -364,44 +409,53 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         setattr(self, prefix + 'cos3d',
                 vect_p.Dot(vect_lxyz) / (vect_p.R() * vect_lxyz.R()) if vect_lxyz.R() > 0. else np.nan)
 
+        # 3D pointing angle, hybrid reference (beamspot x,y + PV z): consistent
+        # with flight_direction, so cos3dbs ~ angle(Bdirection, p)
+        vect_lxyz_bs = Vector3D(
+            vtx.position().x() - self.bs.position().x(),
+            vtx.position().y() - self.bs.position().y(),
+            vtx.position().z() - self.pv.position().z(),
+        )
+        setattr(self, prefix + 'cos3dbs',
+                vect_p.Dot(vect_lxyz_bs) / (vect_p.R() * vect_lxyz_bs.R()) if vect_lxyz_bs.R() > 0. else np.nan)
+
     def compute_ip(self):
         '''
-        Signed 3D impact parameter of the bachelor muon (self.mu), computed twice:
-          - w.r.t. the primary vertex        -> mu_ip3d / mu_ip3d_err / mu_ip3d_sig
-          - w.r.t. the J/psi (dimuon) vertex -> mu_jpsi_ip3d / _err / _sig
+        Signed 3D impact parameters of the bachelor muon (self.mu), on a 2x2 grid:
 
-        Both are lifetime-signed along the Bc flight direction (PV -> 3-muon SV),
-        using IPTools::signedImpactParameter3D (wrapped in RJpsiKinVtxFitter).
-        The bachelor muon is NOT part of the J/psi vertex fit, so its IP w.r.t.
-        that vertex is unbiased and small for genuine Bc -> J/psi mu decays.
+            flight direction  in {jpsi, sv}  (PV -> J/psi vertex | PV -> 3mu vertex)
+          x reference vertex  in {pv, sv}    (hybrid PV | that hypothesis's OWN vertex)
+
+        stored as  mu_ip3d_<dir>_<ref>[_err|_sig], lifetime-signed along the given
+        flight direction with IPTools::signedImpactParameter3D (wrapped in
+        RJpsiKinVtxFitter). The bachelor muon is NOT part of either vertex fit, so
+        its IP w.r.t. those vertices is unbiased and small for true Bc -> J/psi mu nu.
+
+        Each hypothesis is computed independently: a label is filled whenever its
+        OWN vertex fit succeeded (jpsi_good_vtx / good_vtx), so e.g. the jpsi-based
+        quantities survive a failed 3-muon fit. Missing hypotheses are simply left
+        unset and end up NaN in the ntuple via safe_get.
         '''
+        # per-label vertex and validity: each flight-direction hypothesis is tied
+        # to its own secondary vertex
+        self.bc_vertices  = {'jpsi': self.jpsi_vtx     , 'sv': self.vtx     }
+        self.bc_vtx_valid = {'jpsi': self.jpsi_good_vtx, 'sv': self.good_vtx}
 
-        # Bc flight direction (PV -> SV), one per vertex hypothesis
-        self.bc_vertices = {'jpsi': self.jpsi_vtx, 'sv': self.vtx}
         for label, vtx in self.bc_vertices.items():
-            if not self.jpsi_good_vtx: continue
-            if not self.good_vtx: continue
+            if not self.bc_vtx_valid[label]:
+                continue
             setattr(self, 'Bdirection_%s' % label, self.flight_direction(vtx, self.bs, self.pv))
 
         track = self.mu.bestTrack()
-        
-        # PV reference: beamspot transverse position, PV longitudinal. Built once and
-        # shared by both flight-direction hypotheses (only the IP sign differs between them).
-        pv_ref = ROOT.reco.Vertex(
-            ROOT.reco.Vertex.Point(self.bs.position().x(),    # beamspot x
-                                   self.bs.position().y(),    # beamspot y
-                                   self.pv.position().z()),   # PV z
-            self.pv.error(), self.pv.chi2(), self.pv.ndof(), self.pv.tracksSize()
-        )
-        
+
         # 2 x 2:  {direction from jpsi-vtx | from 3mu-vtx}  x  {wrt PV | wrt that same SV}
-        for label, vtx in self.bc_vertices.items():            # {'jpsi': self.jpsi_vtx, 'sv': self.vtx}
-            if not self.jpsi_good_vtx: continue
-            if not self.good_vtx: continue
+        for label, vtx in self.bc_vertices.items():
+            if not self.bc_vtx_valid[label]:
+                continue
             direction  = getattr(self, 'Bdirection_%s' % label)
             dx, dy, dz = direction.x(), direction.y(), direction.z()
-        
-            references = {'pv': pv_ref, 'sv': self.kin_to_reco_vertex(vtx)}
+
+            references = {'pv': self.pv_bs, 'sv': self.kin_to_reco_vertex(vtx)}
             for ref, ref_vtx in references.items():
                 ip = kinfit.signedIP3D(track, dx, dy, dz, ref_vtx)
                 setattr(self, 'mu_ip3d_%s_%s'     % (label, ref), ip.value())
@@ -418,7 +472,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         v  = kin_particle.currentState().kinematicParameters().vector()
         px, py, pz, m = v.At(3), v.At(4), v.At(5), v.At(6)
         e  = np.sqrt(px*px + py*py + pz*pz + m*m)
-        return ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')(px, py, pz, e)
+        return LorentzVector(px, py, pz, e)
 
     @staticmethod
     def flight_direction(vtx, bs, pv):
@@ -441,9 +495,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         Returns (p3, p4): a ROOT XYZVector and a PxPyPzE4D LorentzVector.
         '''
         p3 = direction.unit() * (M_BC / visible_p4.mass() * visible_p4.P())
-        p4 = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')(
-            p3.x(), p3.y(), p3.z(), np.sqrt(M_BC**2 + p3.Mag2())
-        )
+        p4 = LorentzVector(p3.x(), p3.y(), p3.z(), np.sqrt(M_BC**2 + p3.Mag2()))
         return p3, p4
 
     def compute_jpsi_refit(self):
@@ -452,10 +504,19 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         the refitted (constrained) J/psi momentum:
             self.jpsi_mu1_rfp4, self.jpsi_mu2_rfp4  -> refitted muon 4-momenta
             self.jpsi_rfp4                          -> refitted, mass-constrained J/psi
+            self.rfp4                               -> jpsi_rfp4 + bachelor-mu p4
         Children follow the order given to the fit: jpsi_muons[0] -> mu1, [1] -> mu2.
+
+        The refit p4 is also stored on the muon objects (imu.jpsi_rfp4) for the
+        per-muon branches. Muons are SHARED between candidates within an event, so
+        these attributes are reset to None on all three muons first: a muon refit
+        in a previous candidate must not leak its old momentum into this one (e.g.
+        when it is the bachelor here, or when this candidate's fit failed).
         '''
-        for q in ['jpsi_mu1_rfp4', 'jpsi_mu2_rfp4', 'jpsi_rfp4']:
+        for q in ['jpsi_mu1_rfp4', 'jpsi_mu2_rfp4', 'jpsi_rfp4', 'rfp4']:
             setattr(self, q, None)
+        for imu in self.muons:
+            imu.jpsi_rfp4 = None
     
         if not self.jpsi_good_vtx:
             return
@@ -466,11 +527,14 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         self.jpsi_rfp4 = self.refitted_p4(tree.currentParticle())
     
         tree.movePointerToTheFirstChild()                   # first refitted muon
-        self.jpsi_muons[0].jpsi_rfp4 = self.refitted_p4(tree.currentParticle())
+        self.jpsi_mu1_rfp4 = self.refitted_p4(tree.currentParticle())
         tree.movePointerToTheNextChild()                    # second refitted muon
-        self.jpsi_muons[1].jpsi_rfp4 = self.refitted_p4(tree.currentParticle())
+        self.jpsi_mu2_rfp4 = self.refitted_p4(tree.currentParticle())
 
-        self.rfp4 = self.jpsi_rfp4 + self.mu.p4()        
+        self.jpsi_muons[0].jpsi_rfp4 = self.jpsi_mu1_rfp4
+        self.jpsi_muons[1].jpsi_rfp4 = self.jpsi_mu2_rfp4
+
+        self.rfp4 = self.jpsi_rfp4 + self.mu.p4()
 
 
     ##########################################################################
@@ -480,7 +544,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
     @staticmethod
     def _np4(p4):
         '''[E, px, py, pz] from a four-vector, or from a (p4, ...) tuple as
-        returned by buildP4 / equal_velocity_p4.'''
+        returned by refitted_p4 / equal_velocity_p4.'''
         if not hasattr(p4, 'energy') and isinstance(p4, (tuple, list)):
             p4 = p4[0]
         return np.array([p4.energy(), p4.px(), p4.py(), p4.pz()], dtype=float)
@@ -524,8 +588,6 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         '''
         nan = float('nan')
         cos_v = cos_l = chi = nan
-    
-#         import ipdb ; ipdb.set_trace()
     
         p_bc   = RJpsiCandidate._np4(p4_bc)
         p_jpsi = RJpsiCandidate._np4(p4_jpsi)
@@ -597,15 +659,3 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         return self.muons[0].charge() + self.muons[2].charge()
     def charge23(self):
         return self.muons[1].charge() + self.muons[2].charge()
-
-    ##########################################################################
-    #####      MISC HELPERS
-    ##########################################################################
-    def convert_cov(self, m):
-        return np.array([[m(i,j) for j in range(m.kCols)] for i in range(m.kRows)])
-
-    def is_pos_def(self, x):
-        '''
-        https://stackoverflow.com/questions/16266720/find-out-if-matrix-is-positive-definite-with-numpy
-        '''
-        return np.all(np.linalg.eigvals(x) > 0)
