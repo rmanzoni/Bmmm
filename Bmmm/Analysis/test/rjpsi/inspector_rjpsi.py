@@ -33,7 +33,9 @@ from Bmmm.Analysis.RJpsiBranches import branches, paths, muon_branches, cand_bra
 from Bmmm.Analysis.RJpsiCandidate import RJpsiCandidate as Candidate
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow, p4_with_mass, masses, compute_mass, is_b_hadron
 from Bmmm.Analysis.RJpsiCuts import cuts
-from Bmmm.Analysis.Handles import handles, handles_mc
+# from Bmmm.Analysis.Handles import handles, handles_mc
+from Bmmm.Analysis.Handles import handles_mc
+from Bmmm.Analysis.Handles import handles_skim as handles # includes BS constrained vertices
 from Bmmm.Analysis.RJPsiGenHistory import BcGenDecay, gen_kinematics, gen_helicity_angles
 from Bmmm.Analysis.RJPsiMuonMatcher import match_candidate_muons, signal_gen_muons, ROLE
 from Bmmm.Analysis.RJPsiNuReco import gen_nu_reco, reconstruct, solve_nu_pz, pick_closest, M_BC

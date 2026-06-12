@@ -399,8 +399,7 @@ for ibranch in bc_branches.keys():
 #     branches.append(ibranch)
 
 paths = {}
-paths['HLT_DoubleMu4_3_LowMass'] = ['hltDisplacedmumuFilterDoubleMu43LowMass']
-
+paths['HLT_DoubleMu4_3_LowMass'] = ['hltDisplacedmumuFilterDoubleMu43LowMass', 'hltDisplacedmumuFilterDoubleMu43LowMass']
 
 branches += paths
 branches += [path+'_ps' for path in paths]

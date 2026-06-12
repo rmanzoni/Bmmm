@@ -97,6 +97,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
             if bdir is None:
                 continue
             p4 = getattr(self, 'bc_full_p4_%s' % label, None)
+#             import ipdb ; ipdb.set_trace()
             bc_p4[label] = p4 if p4 is not None else self.equal_velocity_p4(bdir, visible_p4)[1]
     
         # pure collinear: equal-velocity along the visible momentum itself

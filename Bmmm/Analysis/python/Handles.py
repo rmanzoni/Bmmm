@@ -18,3 +18,18 @@ handles['trg_ps' ] = (('patTrigger'    , '')               , Handle('pat::Packed
 handles['bs'     ] = ('offlineBeamSpot'                    , Handle('reco::BeamSpot')                           )
 handles['tobjs'  ] = ('slimmedPatTrigger'                  , Handle('std::vector<pat::TriggerObjectStandAlone>'))
 handles['jets'   ] = ('slimmedJets'                        , Handle('std::vector<pat::Jet>')                    )
+
+
+
+
+##########################################################################################
+handles_skim = OrderedDict()
+handles_skim['muons'  ] = (('selectedMuons'            , ''      , 'SKIM'), Handle('std::vector<pat::Muon>')                   )
+handles_skim['trk'    ] = (('unpackedTracksAndVertices', ''      , 'SKIM'), Handle('vector<reco::Track>')                      )
+handles_skim['vtx'    ] = (('primaryVertexRefit'       , 'WithBS', 'SKIM'), Handle('std::vector<reco::Vertex>')                )
+handles_skim['trg_res'] = (('TriggerResults'           , ''      , 'HLT' ), Handle('edm::TriggerResults'        )              )
+handles_skim['trg_ps' ] = (('patTrigger'               , ''              ), Handle('pat::PackedTriggerPrescales')              )
+handles_skim['bs'     ] = ('offlineBeamSpot'                              , Handle('reco::BeamSpot')                           )
+handles_skim['tobjs'  ] = ('slimmedPatTrigger'                            , Handle('std::vector<pat::TriggerObjectStandAlone>'))
+handles_skim['jets'   ] = ('slimmedJets'                                  , Handle('std::vector<pat::Jet>')                    )
+
