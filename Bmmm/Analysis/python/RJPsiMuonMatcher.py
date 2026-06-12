@@ -146,10 +146,14 @@ def signal_gen_muons(genparticles):
 # ----------------------------------------------------------------------------
 # reco-side: one-to-one match of the candidate's muons to the gen targets
 # ----------------------------------------------------------------------------
-def match_candidate_muons(cand, genparticles, dr_max=0.03, require_charge=True):
+def match_candidate_muons(cand, genparticles, dr_max=0.03, require_charge=True, info=None):
     '''Assign mu.gen_role / mu.gen_match / mu.gen_dr to cand.mu1,mu2,mu3.
     Returns a summary dict (found_bc, n_jpsi_matched, bachelor_matched,
-    bachelor_from_tau, jpsi_reco_idx, bachelor_reco_idx).'''
+    bachelor_from_tau, jpsi_reco_idx, bachelor_reco_idx).
+
+    `info` is the dict returned by signal_gen_muons(genparticles). The gen side
+    is identical for every candidate in an event, so the caller can compute it
+    once per event and pass it in; if None it is computed here (back-compatible).'''
     reco_muons = cand.muons
 
     for rmu in reco_muons:
@@ -157,7 +161,8 @@ def match_candidate_muons(cand, genparticles, dr_max=0.03, require_charge=True):
         rmu.gen_match = None
         rmu.gen_dr    = float('nan')
 
-    info = signal_gen_muons(genparticles)
+    if info is None:
+        info = signal_gen_muons(genparticles)
     summary = {
         'found_bc'          : info is not None,
         'n_jpsi_matched'    : 0,
