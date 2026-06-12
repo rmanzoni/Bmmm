@@ -195,7 +195,7 @@ class RJpsiKinVtxFitter {
         GlobalVector direction(dirx, diry, dirz);
         std::pair<double, Measurement1D> res =
             IPTools::jetTrackDistance(getTransientTrack(track), direction, vertex);
-        return res;   // IPTools always negates it; hand back |d|
+        return res;   // raw IPTools result (.first along-axis, .second line-to-line); sign handled Python-side
     }
     
     // ------------------------------------------------------------------------
