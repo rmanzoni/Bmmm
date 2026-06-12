@@ -178,7 +178,7 @@ cand_branches = {
     'sv_z'              : lambda cand : cand.vtx.position().z() ,
     
     'sv_chi2'           : lambda cand : cand.vtx_chi2           ,
-    'sv_ndof'           : lambda cand : cand.vtx_ndofom()       ,
+    'sv_ndof'           : lambda cand : cand.vtx_ndof          ,
     'sv_prob'           : lambda cand : cand.vtx_prob           ,
  
     'cos2d'             : lambda cand : cand.cos2d              ,
@@ -269,7 +269,7 @@ muon_branches = {
     'rf_pt'          :  lambda imu : imu.jpsi_rfp4.pt()                  ,
     'rf_eta'         :  lambda imu : imu.jpsi_rfp4.eta()                 , 
     'rf_phi'         :  lambda imu : imu.jpsi_rfp4.phi()                 ,
-    'rf_e'           :  lambda imu : imu.energy()                        ,
+    'rf_e'           :  lambda imu : imu.jpsi_rfp4.energy()             ,
     'mass'           :  lambda imu : imu.mass()                          ,
     'charge'         :  lambda imu : imu.charge()                        ,
     'id_loose'       :  lambda imu : imu.isLooseMuon()                   ,
@@ -349,7 +349,6 @@ bc_branches = {
     'gen_b_pt'     :  lambda ib : ib.pt()    ,
     'gen_b_eta'    :  lambda ib : ib.eta()   , 
     'gen_b_phi'    :  lambda ib : ib.phi()   ,
-    'gen_b_e'      :  lambda ib : ib.energy(),
     'gen_b_mass'   :  lambda ib : ib.mass()  ,
     'gen_b_pdgid'  :  lambda ib : ib.pdgId() ,
     'gen_b_charge' :  lambda ib : ib.charge(),
@@ -400,7 +399,7 @@ for ibranch in bc_branches.keys():
 #     branches.append(ibranch)
 
 paths = {}
-paths['HLT_DoubleMu4_3_LowMass'] = ['hltDisplacedmumuFilterDoubleMu43LowMass', 'hltDisplacedmumuFilterDoubleMu43LowMass']
+paths['HLT_DoubleMu4_3_LowMass'] = ['hltDisplacedmumuFilterDoubleMu43LowMass']
 
 
 branches += paths
