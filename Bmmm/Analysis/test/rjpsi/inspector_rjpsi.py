@@ -35,16 +35,11 @@ from Bmmm.Analysis.utils import drop_hlt_version, cutflow, p4_with_mass, masses,
 from Bmmm.Analysis.RJpsiCuts import cuts
 from Bmmm.Analysis.Handles import handles, handles_mc
 from Bmmm.Analysis.RJPsiGenHistory import BcGenDecay, gen_kinematics, gen_helicity_angles
-from Bmmm.Analysis.RJPsiMuonMatcher import match_candidate_muons, ROLE
-from Bmmm.Analysis.RJPsiNuReco import gen_nu_reco, reconstruct, solve_nu_pz, pick_closest
-
-M_BC = 6.27447
-
-_JPSI_MASS = 3.0969 # GeV
+from Bmmm.Analysis.RJPsiMuonMatcher import match_candidate_muons, signal_gen_muons, ROLE
+from Bmmm.Analysis.RJPsiNuReco import gen_nu_reco, reconstruct, solve_nu_pz, pick_closest, M_BC
 
 # pre-compute constants used in the hot loop
-_JET_MATCH_DR2 = 0.2 ** 2
-_GEN_MATCH_DR2 = 0.02 ** 2
+_JET_MATCH_DR2 = cuts['rjpsi']['jet_dr'] ** 2
 
 # template for candidate-level NaN initialisation: covers muon, cand, bs, jpsi, phi branches
 _TRIGGER_KEYS = set(k for p in paths for k in (p, p + '_ps'))
@@ -132,17 +127,19 @@ def looper(events, options, handles, handles_mc, row_list, start):
         good_tobjs      = {key: []    for key in paths}
         good_tobjs_seen = {key: set() for key in paths}
 
-        for to in event.tobjs:
-            if to.pt() < 3. or abs(to.eta()) >= 2.6:
-                continue
-            to.unpackNamesAndLabels(event.object(), event.trg_res)
-            for k, v in paths.items():
-                if trigger_tofill[k] != 1:
+        # only worth unpacking filter labels if some path actually fired
+        if hlt_passed:
+            for to in event.tobjs:
+                if to.pt() < cuts['rjpsi']['to_pt'] or abs(to.eta()) >= cuts['rjpsi']['to_eta']:
                     continue
-                for ilabel in v:
-                    if to.hasFilterLabel(ilabel) and id(to) not in good_tobjs_seen[k]:
-                        good_tobjs[k].append(to)
-                        good_tobjs_seen[k].add(id(to))
+                to.unpackNamesAndLabels(event.object(), event.trg_res)
+                for k, v in paths.items():
+                    if trigger_tofill[k] != 1:
+                        continue
+                    for ilabel in v:
+                        if to.hasFilterLabel(ilabel) and id(to) not in good_tobjs_seen[k]:
+                            good_tobjs[k].append(to)
+                            good_tobjs_seen[k].add(id(to))
 
         ######################################################################################
         #####      MUON SELECTION
@@ -165,21 +162,28 @@ def looper(events, options, handles, handles_mc, row_list, start):
         cands = []
 
         nmuons = len(muons)
-        for i in range(nmuons):
-            for j in range(i + 1, nmuons):
-                mu1, mu2 = muons[i], muons[j]
+        for ii in range(nmuons):
+            for jj in range(ii + 1, nmuons):
+                mu1, mu2 = muons[ii], muons[jj]
         
                 if mu1.charge() + mu2.charge() != 0:
                     continue
 
                 if mu1.pt()<cuts['rjpsi']['tight_mu_pt'] or mu2.pt()<cuts['rjpsi']['tight_mu_pt']:
                     continue
-                
-                for k in range(nmuons):
-                    if k == i or k == j:
+
+                # J/psi mass window on the dimuon, hoisted out of the bachelor loop:
+                # if this OS pair is not a J/psi there is no point looping over the
+                # third muon at all. Uses the same J/psi mass as the vertex constraint.
+                if np.abs((mu1.p4() + mu2.p4()).mass() - masses['jpsi']) > cuts['rjpsi']['jpsi_mass_window']:
+                    continue
+                cutflow['\tpass jpsi mass cut (pair)'] += 1
+
+                for kk in range(nmuons):
+                    if kk == ii or kk == jj:
                         continue
                     
-                    mu3 = muons[k]
+                    mu3 = muons[kk]
                                         
                     cand = Candidate([mu1, mu2], mu3)
                     cutflow['\tcandidates after HLT and 3mu'] += 1
@@ -188,10 +192,6 @@ def looper(events, options, handles, handles_mc, row_list, start):
                         continue
                     cutflow['\tpass 3mu mass cut'] += 1
 
-                    if np.abs(cand.jpsi.mass()-_JPSI_MASS)>cuts['rjpsi']['jpsi_mass_window']:
-                        continue
-                        
-                    cutflow['\tpass jpsi mass cut'] += 1
                     cands.append(cand)
                     
         if len(cands) == 0:
@@ -200,7 +200,7 @@ def looper(events, options, handles, handles_mc, row_list, start):
         event.ncands = len(cands)
         cutflow['at least one cand pass presel'] += 1
 
-        cands.sort(key=lambda x: (abs(x.charge()) == 0, x.pt(), -np.abs(cand.jpsi.mass()-_JPSI_MASS)), reverse=True)
+        cands.sort(key=lambda x: (abs(x.charge()) == 0, x.pt(), -np.abs(x.jpsi.mass() - masses['jpsi'])), reverse=True)
         
         ######################################################################################
         #####      EVENT-LEVEL TOFILL — filled ONCE, shared across all candidates
@@ -212,27 +212,37 @@ def looper(events, options, handles, handles_mc, row_list, start):
         ######################################################################################
         #####      BC MC TRUTH CLASSIFIER
         ######################################################################################
+        gen_info = None   # signal_gen_muons() result, reused by every candidate's matcher
+        bc       = None
         if options.mc:
             event.bc_gen = BcGenDecay.from_genparticles(event.genpr)
-#             import ipdb ; ipdb.set_trace()          
-            bc = event.bc_gen.bc
-            bc.bc_code = event.bc_gen.code
+
+            # from_genparticles returns None for samples with no decayed Bc
+            # (e.g. the entire HbToPsiX background) -> leave bc None and NaN-fill
+            if event.bc_gen is not None:
+                bc = event.bc_gen.bc
+
             if bc is not None:
+                bc.bc_code = event.bc_gen.code
+
                 if event.bc_gen.name in ['Jpsi_mu_nu', 'Jpsi_tau_nu']:
-                    gk = gen_kinematics(event.genpr)
+                    gk = gen_kinematics(event.bc_gen)
                     for key in ('q2', 'm_miss2', 'm_miss2_vis', 'e_mu_bc', 'e_mu_jpsi'):
                         setattr(bc, key, gk[key])
 
-                    ha = gen_helicity_angles(event.genpr)
+                    ha = gen_helicity_angles(event.bc_gen)
                     for key in ('cos_theta_v', 'cos_theta_l', 'chi'):
                         setattr(bc, key, ha[key])
 
-#                     import ipdb ; ipdb.set_trace()
-#                     r = gen_nu_reco(event.bc_gen)
-#                     sols = reconstruct(p4_3mu, flight_dir, m_parent=M_BC)   # list of (pz, p4_nu, p4_parent, parent_mass)
-
                 for branch, getter in bc_branches.items():
                     event_tofill[branch] = safe_get(getter, bc, verbose=options.verbose, name=branch)
+            else:
+                for branch in bc_branches:
+                    event_tofill[branch] = np.nan
+
+            # gen muon collection for reco<->gen matching: identical for every
+            # candidate, so build it once per event
+            gen_info = signal_gen_muons(event.genpr)
         else:
             for branch in bc_branches:
                 event_tofill[branch] = np.nan
@@ -243,9 +253,18 @@ def looper(events, options, handles, handles_mc, row_list, start):
         for icand in cands:
 
             if options.mc:
-                # run the reco<->gen matching once; it tags final_cand.mu1/mu2/mu3
-                match_candidate_muons(icand, event.genpr, dr_max=0.04)
-            
+                # reco<->gen matching; tags each muon's gen_role/gen_match/gen_dr.
+                # gen_info is computed once per event and reused here.
+                match_candidate_muons(icand, event.genpr, dr_max=0.04, info=gen_info)
+
+            # trigger matching (informational, NOT a selection cut): does the
+            # candidate have >=2 muons within hlt_dr of the fired HLT objects?
+            hlt_objs = good_tobjs.get(cuts['rjpsi']['hlt'], [])
+            icand.trig_match = sum(
+                deltaR(imu, to) < cuts['rjpsi']['hlt_dr']
+                for imu, to in product(icand.muons, hlt_objs)
+            ) >= 2
+
             icand.compute_vtx_quantities(event.vtx, event.bs)
 
             # start from NaN for all candidate-level branches
@@ -277,34 +296,46 @@ def looper(events, options, handles, handles_mc, row_list, start):
                     cand_tofill['mu%d_%s' % (idx, branch)] = mygetter
 
 
-            # flight-direction hypotheses: jpsi = dimuon (2mu) vertex, sv = 3mu vertex
-            if getattr(icand, 'Bdirection_jpsi', None) is not None or \
-               getattr(icand, 'Bdirection_sv',   None) is not None:
-            
+            # ---- neutrino reconstruction + reco helicity angles ---------------------
+            # everything here needs the refitted, mass-constrained J/psi. With
+            # per-label vertex gating Bdirection_sv can exist while the J/psi fit
+            # failed (jpsi_rfp4 is None), so guard on it explicitly.
+            have_dir = (getattr(icand, 'Bdirection_jpsi', None) is not None or
+                        getattr(icand, 'Bdirection_sv',   None) is not None)
+
+            if have_dir and icand.jpsi_rfp4 is not None:
+
                 visible_p4   = icand.jpsi_rfp4 + icand.mu.p4()
                 visible_mass = visible_p4.mass()
-            
-                # exact 2-fold neutrino-pz reconstruction, one set of solutions per flight direction
+
+                # exact 2-fold neutrino-pz reconstruction, one set of solutions per
+                # flight direction. Solve with the SAME refitted visible p4 that the
+                # solutions are added back to, otherwise the Bc mass constraint that
+                # defines the quadratic is violated.
                 for label in ('jpsi', 'sv'):
                     bdir = getattr(icand, 'Bdirection_%s' % label, None)
                     if bdir is None:
                         continue
-                    sols = reconstruct(icand.p4(), bdir, m_parent=M_BC, clamp_negative_disc=True)
+                    sols = reconstruct(visible_p4, bdir, m_parent=M_BC, clamp_negative_disc=True)
+                    if len(sols) < 2:
+                        continue
                     setattr(icand, 'sols_%s'       % label, sols)
                     setattr(icand, 'math1_b_p4_%s' % label, visible_p4 + sols[0].p4_nu)
                     setattr(icand, 'math2_b_p4_%s' % label, visible_p4 + sols[1].p4_nu)
-            
-                # gen-level equal-betagamma reference: TRUE Bc flight direction, independent of the
-                # reco vertex choice -> a single value, deliberately outside the loop above
-                gen_dir   = ROOT.Math.XYZVector(bc.daughter(0).vx() - bc.vx(),
-                                                bc.daughter(0).vy() - bc.vy(),
-                                                bc.daughter(0).vz() - bc.vz())
-                bc_gen_p  = gen_dir.unit() * M_BC / visible_mass * visible_p4.P()
-                bc_gen_p4 = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')(
-                    bc_gen_p.x(), bc_gen_p.y(), bc_gen_p.z(), np.sqrt(M_BC**2 + bc_gen_p.Mag2()))
-            
-                icand.q2_gen      = (bc_gen_p4 - icand.jpsi_rfp4).mass2()
-                icand.m_miss2_gen = (bc_gen_p4 - icand.jpsi_rfp4 - icand.mu.p4()).mass2()
+
+                # gen-level equal-betagamma reference: TRUE Bc flight direction,
+                # independent of the reco vertex choice. MC only, and only when a
+                # decayed Bc was actually found (bc is None for the Hb background).
+                if options.mc and bc is not None:
+                    gen_dir   = ROOT.Math.XYZVector(bc.daughter(0).vx() - bc.vx(),
+                                                    bc.daughter(0).vy() - bc.vy(),
+                                                    bc.daughter(0).vz() - bc.vz())
+                    bc_gen_p  = gen_dir.unit() * M_BC / visible_mass * visible_p4.P()
+                    bc_gen_p4 = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')(
+                        bc_gen_p.x(), bc_gen_p.y(), bc_gen_p.z(), np.sqrt(M_BC**2 + bc_gen_p.Mag2()))
+
+                    icand.q2_gen      = (bc_gen_p4 - icand.jpsi_rfp4).mass2()
+                    icand.m_miss2_gen = (bc_gen_p4 - icand.jpsi_rfp4 - icand.mu.p4()).mass2()
 
                 icand.compute_helicity_angles()
                       
@@ -381,7 +412,15 @@ def main():
   
     # columns that must NOT be downcast to float32
     keep_full = {'run', 'lumi', 'event'}
-    
+
+    # boolean branches (good_vtx, trig_match, id_*, ...) come back as NaN via
+    # safe_get when unset, giving object-dtype columns that uproot cannot write.
+    # Coerce every non-protected object column to numeric (True/False -> 1.0/0.0,
+    # anything else -> NaN) so the float32 cast below is well defined.
+    for col in ntuple.columns:
+        if col not in keep_full and ntuple[col].dtype == object:
+            ntuple[col] = pd.to_numeric(ntuple[col], errors='coerce')
+
     cast = {col: np.float32 for col in ntuple.columns if col not in keep_full and ntuple[col].dtype == np.float64}
     
     ntuple = ntuple.astype(cast)
