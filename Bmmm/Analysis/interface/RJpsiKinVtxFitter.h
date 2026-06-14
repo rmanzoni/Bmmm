@@ -38,6 +38,17 @@
 #include "DataFormats/GeometryVector/interface/GlobalVector.h"
 #include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
 
+// beamspot-constrained primary-vertex refit, AdaptiveVertexFitter
+// (RecoVertex/AdaptiveVertexFit + DataFormats/BeamSpot in the package BuildFile.xml).
+// This mirrors the PVRefitter from the BPH vertexing+isolation slides (backup):
+// AdaptiveVertexFitter + per-track setBeamSpot(bs) + fitter.vertex(tracks, bs).
+#include "RecoVertex/AdaptiveVertexFit/interface/AdaptiveVertexFitter.h"
+#include "RecoVertex/VertexPrimitives/interface/TransientVertex.h"
+#include "DataFormats/BeamSpot/interface/BeamSpot.h"
+#include "DataFormats/Math/interface/deltaPhi.h"
+
+#include <cmath>
+
 #include <vector>
 #include <cstddef>
 #include <limits>
@@ -249,6 +260,73 @@ class RJpsiKinVtxFitter {
         std::pair<bool, Measurement1D> res =
             IPTools::signedDecayLength3D(getTransientTrack(track), direction, vertex);
         return res.first ? res.second : nanMeasurement();
+    };
+
+    // ------------------------------------------------------------------------
+    // beamspot-constrained primary-vertex refit, with a set of tracks removed
+    //
+    // Reproduces the PVRefitter from the BPH vertexing+isolation slides (backup
+    // slide): AdaptiveVertexFitter, the transverse beamspot constraint applied
+    // BOTH per track (setBeamSpot) and to the fit (vertex(tracks, beamspot)),
+    // returning a reco::Vertex via the TransientVertex conversion (its 3D
+    // position + covariance come from the fit).
+    //
+    //   pv              : the primary vertex to refit. Its OWN constituent
+    //                     tracks (weight >= minWeight) are the refit input, so
+    //                     pv must still carry its track references -- true for
+    //                     the freshly-run primaryVertexRefit:WithBS, false for
+    //                     the slimmed offlinePrimaryVertices, which drops them.
+    //   tracksToRemove  : tracks to drop from the refit (the signal muons). A PV
+    //                     track is removed if it matches one of these in charge,
+    //                     dR < drMatch and |dpt| < relPtMatch * pt -- a proximity
+    //                     match, since the muon best-track and the unpacked PV
+    //                     track live in different collections.
+    //   beamspot        : the transverse beamspot constraint.
+    //
+    // Returns an INVALID reco::Vertex on failure (fewer than two surviving
+    // tracks or an invalid fit); check .isValid() on the Python side and fall
+    // back to the hybrid/bare-beamspot PV there.
+    // ------------------------------------------------------------------------
+    reco::Vertex refitPVRemovingTracks(const reco::Vertex&             pv,
+                                       const std::vector<reco::Track>& tracksToRemove,
+                                       const reco::BeamSpot&           beamspot,
+                                       const double                    minWeight  = 0.5,
+                                       const double                    drMatch    = 0.01,
+                                       const double                    relPtMatch = 0.05)
+    {
+        std::vector<reco::TransientTrack> ttks;
+
+        for (reco::Vertex::trackRef_iterator it = pv.tracks_begin(); it != pv.tracks_end(); ++it) {
+            if (pv.trackWeight(*it) < minWeight) continue;
+
+            const reco::Track& trk = **it;
+
+            bool is_removed = false;
+            for (std::size_t i = 0; i < tracksToRemove.size(); ++i) {
+                const reco::Track& m = tracksToRemove[i];
+                if (trk.charge() != m.charge()) continue;
+                const double deta = trk.eta() - m.eta();
+                const double dphi = reco::deltaPhi(trk.phi(), m.phi());
+                const double dr   = std::sqrt(deta * deta + dphi * dphi);
+                if (dr < drMatch && std::fabs(trk.pt() - m.pt()) < relPtMatch * m.pt()) {
+                    is_removed = true;
+                    break;
+                }
+            }
+            if (is_removed) continue;
+
+            reco::TransientTrack tt = getTransientTrack(trk);
+            tt.setBeamSpot(beamspot);                        // per-track BS (slides)
+            ttks.push_back(tt);
+        }
+
+        if (ttks.size() < 2) return reco::Vertex();          // invalid
+
+        AdaptiveVertexFitter fitter;
+        TransientVertex tv = fitter.vertex(ttks, beamspot);  // beamspot constraint
+        if (!tv.isValid()) return reco::Vertex();            // invalid
+
+        return reco::Vertex(tv);                             // TransientVertex -> reco::Vertex
     };
 
   private:

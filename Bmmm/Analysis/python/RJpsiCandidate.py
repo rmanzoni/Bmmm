@@ -20,6 +20,26 @@ Vector3D      = ROOT.Math.DisplacementVector3D(
     'ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')
 LorentzVector = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')
 
+# ----- signal-muon <-> track/candidate matching ----------------------------
+# the muon best-track and the unpacked / packed candidate live in different
+# collections, so they are matched by proximity, not by reference. Keep in sync
+# with the C++ refitPVRemovingTracks defaults (drMatch / relPtMatch).
+_MU_TRK_DR_MATCH    = 0.01    # dR(cand, muon) match window
+_MU_TRK_RELPT_MATCH = 0.05    # |pt_cand - pt_mu| / pt_mu match window
+
+# ----- PF isolation (replicates the muon-POG PFIsolation, custom PV) ---------
+# pdgId sets and selections from the BPH vertexing+isolation slides (slides 18, 24).
+_ISO_CONES        = (0.3, 0.4)                              # cone radii; suffixes 03, 04
+_ISO_CH_ALL_IDS   = (211, 321, 11, 13, 2212, 999211)       # all charged iso candidates
+_ISO_CH_HAD_IDS   = (211, 321, 2212, 999211)               # charged-hadron sum (NO leptons)
+_ISO_NH_IDS       = (111, 130, 310, 2112)                  # neutral hadrons
+_ISO_PH_IDS       = (22,)                                  # photons
+_ISO_DR_VETO_CH   = 1e-4                                   # inner veto, charged
+_ISO_DR_VETO_NH   = 1e-2                                   # inner veto, neutral
+_ISO_PU_DR_VETO   = 0.01                                   # PU charged inner veto
+_ISO_NEUTRAL_PT   = 0.5                                    # min pt, neutral candidates
+_ISO_PU_PT        = 0.5                                    # min pt, PU charged candidates
+
 class RJpsiCandidate(ROOT.reco.CompositeCandidate):
     '''
     Bc -> J/psi(-> mu mu) mu candidate.
@@ -133,7 +153,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
     ##########################################################################
     #####      VERTEXING
     ##########################################################################
-    def compute_vtx_quantities(self, vertices, beamspot):
+    def compute_vtx_quantities(self, vertices, beamspot, pf=None):
         '''
         Fit the J/psi (2-muon) and the full (3-muon) vertices, choose the
         primary vertex and, for each of the two secondary vertices, compute:
@@ -145,6 +165,14 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
 
         Quantities for the 3-muon vertex are stored with no prefix, those for the
         J/psi vertex with a 'jpsi_' prefix (e.g. self.lxy vs self.jpsi_lxy).
+
+        The chosen PV is refit, beamspot-constrained and with the three signal
+        muons removed (refit_primary_vertex), and that refit replaces the hybrid
+        PV as the single wrt-PV reference (self.pv_bs).
+
+        `pf` (optional) is the packedPFCandidates collection (event.pf). When
+        given it enables the custom PF isolation of the bachelor muon and the
+        J/psi (compute_isolation), recomputed against the refit PV.
         '''
 
         # ----- fit the two vertices (generalized N-body fitter) -------------
@@ -169,21 +197,32 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
                 ip3d = compute_IP3D(ivtx, sv.position(), self.p4().Vect())
                 if ip3d < ip3d_min:
                     pv_idx, ip3d_min = idx, ip3d
-            self.pv = vertices[pv_idx]
+            self.pv_idx = pv_idx
+            self.pv     = vertices[pv_idx]
         else:
-            self.pv = sorted(
-                [vtx for vtx in vertices],
-                key = lambda vtx : abs(self.muons[0].bestTrack().dz(vtx.position())),
-            )[0]
+            self.pv_idx = min(
+                range(len(vertices)),
+                key = lambda i: abs(self.muons[0].bestTrack().dz(vertices[i].position())),
+            )
+            self.pv = vertices[self.pv_idx]
 
         # ----- beamspot as a reco::Vertex at the PV z position --------------
         self.bs = self.build_beamspot_vertex(beamspot, self.pv.z())
 
-        # ----- hybrid PV: beamspot x,y + PV z, PV covariance ----------------
-        # built ONCE and shared by compute_ip and compute_jet_track_distance,
-        # so the signed-IP-wrt-PV and the axis distances use the identical
-        # reference vertex (and the flight_direction convention).
-        self.pv_bs = self.build_hybrid_pv(self.bs, self.pv)
+        # ----- primary vertex used as the reference for IP / displacement /
+        #       isolation ------------------------------------------------------
+        # Preferred: a per-candidate, beamspot-constrained AdaptiveVertexFitter
+        # refit of the chosen PV with the three signal muons removed
+        # (refit_primary_vertex) -- a properly formed reco::Vertex with its own
+        # 3D covariance and the beamspot info, as prescribed by the BPH slides.
+        # Fallback (no unpacked PV track refs, e.g. a sample without the refit
+        # collection): the Run2 hybrid PV (beamspot x,y + PV z, PV covariance).
+        # Either way the result is self.pv_bs, built ONCE and shared by
+        # compute_displacement, compute_ip, compute_jet_track_distance and
+        # compute_isolation, so every wrt-PV quantity uses the same reference.
+        self.refit_primary_vertex(beamspot)
+        self.pv_bs = self.pv_refit if self.pv_refit_valid \
+                     else self.build_hybrid_pv(self.bs, self.pv)
 
         # ----- displacement / pointing-angle quantities --------------------
         # the 3-muon vertex uses the full candidate momentum (self),
@@ -229,6 +268,10 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
             self.p4_collinear = visible_p4 * (M_BC / visible_p4.mass())
 
         self.compute_jet_track_distance()
+
+        # ----- PF isolation of the bachelor muon and the J/psi, recomputed
+        #       against the refit PV (no-op if pf is None) ---------------------
+        self.compute_isolation(pf, vertices)
 
     @staticmethod
     def fit_vertex(muons):
@@ -350,13 +393,19 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
           {prefix}vtx_chi2  : vertex chi2
           {prefix}vtx_ndof  : vertex ndof
           {prefix}vtx_prob  : vertex fit probability
-          {prefix}lxy       : 2D distance from the beamspot      (Measurement1D)
-          {prefix}lxyz      : 3D distance from the primary vertex (Measurement1D)
-          {prefix}cos2d     : cosine of the 2D pointing angle (beamspot -> SV vs pT)
-          {prefix}cos3d     : cosine of the 3D pointing angle (PV -> SV vs p)
-          {prefix}cos3dbs   : as cos3d, but with the hybrid reference point
-                              (beamspot x,y + PV z), i.e. the same convention as
-                              flight_direction and the IP code
+          {prefix}lxy       : 2D distance from the refit PV     (Measurement1D)
+          {prefix}lxyz      : 3D distance from the refit PV      (Measurement1D)
+          {prefix}cos2d     : cosine of the 2D pointing angle (refit PV -> SV vs pT)
+          {prefix}cos3d     : cosine of the 3D pointing angle (refit PV -> SV vs p)
+          {prefix}cos3dbs   : cos3d wrt the bare hybrid reference (beamspot x,y +
+                              PV z), i.e. the pre-refit convention -- kept as a
+                              fixed before/after comparator
+
+        All wrt-PV displacement quantities use self.pv_bs: the per-candidate
+        beamspot-constrained, signal-removed refit when available, otherwise the
+        Run2 hybrid PV. Per the BPH slides this is the best reference in both the
+        transverse plane (beamspot constraint) and 3D (signal-track removal); the
+        bare-beamspot quantity is retained only as cos3dbs for validation.
 
         Measurement1D objects expose .value(), .error() and .significance().
         'cand' is the (composite) candidate whose momentum defines the pointing
@@ -382,36 +431,38 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         setattr(self, prefix + 'vtx_ndof', ndof)
         setattr(self, prefix + 'vtx_prob', stats.chi2.sf(chi2, ndof))
 
-        # 2D distance from the beamspot (significance via Measurement1D)
-        lxy = ROOT.VertexDistanceXY().distance(self.bs, vtx.vertexState())
+        # 2D distance from the refit PV (significance via Measurement1D)
+        lxy = ROOT.VertexDistanceXY().distance(self.pv_bs, vtx.vertexState())
         setattr(self, prefix + 'lxy', lxy)
 
-        # 3D distance from the primary vertex (significance via Measurement1D)
-        lxyz = ROOT.VertexDistance3D().distance(self.pv, vtx.vertexState())
+        # 3D distance from the refit PV (significance via Measurement1D)
+        lxyz = ROOT.VertexDistance3D().distance(self.pv_bs, vtx.vertexState())
         setattr(self, prefix + 'lxyz', lxyz)
 
-        # 2D pointing angle: transverse displacement always from the beamspot
+        # 2D pointing angle: transverse displacement from the refit PV
         vect_lxy = Vector3D(
-            vtx.position().x() - self.bs.position().x(),
-            vtx.position().y() - self.bs.position().y(),
+            vtx.position().x() - self.pv_bs.position().x(),
+            vtx.position().y() - self.pv_bs.position().y(),
             0.,
         )
         vect_pt = Vector3D(cand.px(), cand.py(), 0.)
         setattr(self, prefix + 'cos2d',
                 vect_pt.Dot(vect_lxy) / (vect_pt.R() * vect_lxy.R()) if vect_lxy.R() > 0. else np.nan)
 
-        # 3D pointing angle: full displacement from the primary vertex
+        # 3D pointing angle: full displacement from the refit PV (consistent with
+        # flight_direction, so cos3d ~ angle(Bdirection, p))
         vect_lxyz = Vector3D(
-            vtx.position().x() - self.pv.position().x(),
-            vtx.position().y() - self.pv.position().y(),
-            vtx.position().z() - self.pv.position().z(),
+            vtx.position().x() - self.pv_bs.position().x(),
+            vtx.position().y() - self.pv_bs.position().y(),
+            vtx.position().z() - self.pv_bs.position().z(),
         )
         vect_p = Vector3D(cand.px(), cand.py(), cand.pz())
         setattr(self, prefix + 'cos3d',
                 vect_p.Dot(vect_lxyz) / (vect_p.R() * vect_lxyz.R()) if vect_lxyz.R() > 0. else np.nan)
 
-        # 3D pointing angle, hybrid reference (beamspot x,y + PV z): consistent
-        # with flight_direction, so cos3dbs ~ angle(Bdirection, p)
+        # 3D pointing angle wrt the BARE hybrid PV (beamspot x,y + PV z), always,
+        # regardless of the refit: a fixed pre-refit comparator. Equals cos3d when
+        # the refit is unavailable (then self.pv_bs is itself the hybrid).
         vect_lxyz_bs = Vector3D(
             vtx.position().x() - self.bs.position().x(),
             vtx.position().y() - self.bs.position().y(),
@@ -445,7 +496,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         for label, vtx in self.bc_vertices.items():
             if not self.bc_vtx_valid[label]:
                 continue
-            setattr(self, 'Bdirection_%s' % label, self.flight_direction(vtx, self.bs, self.pv))
+            setattr(self, 'Bdirection_%s' % label, self.flight_direction(vtx, self.pv_bs))
 
         track = self.mu.bestTrack()
 
@@ -462,7 +513,176 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
                 setattr(self, 'mu_ip3d_%s_%s'     % (label, ref), ip.value())
                 setattr(self, 'mu_ip3d_%s_%s_err' % (label, ref), ip.error())
                 setattr(self, 'mu_ip3d_%s_%s_sig' % (label, ref), ip.significance())
-        
+
+    ##########################################################################
+    #####      PRIMARY-VERTEX REFIT  (AVF, beamspot-constrained, muons out)
+    ##########################################################################
+    def refit_primary_vertex(self, beamspot):
+        '''
+        Per-candidate primary vertex: AdaptiveVertexFitter refit of the chosen PV
+        with the transverse beamspot constraint and the three signal muons
+        removed from its track list (RJpsiKinVtxFitter.refitPVRemovingTracks,
+        which reproduces the BPH-slides PVRefitter). Replaces the Run2 hybrid PV
+        (beamspot x,y + PV z) with a properly formed reco::Vertex carrying its
+        own 3D covariance and the beamspot information.
+
+        Sets:
+          self.pv_refit       : the refitted reco::Vertex (invalid on failure)
+          self.pv_refit_valid : bool, True iff a valid refit was obtained
+
+        Requires self.pv to still carry its track references (true for
+        primaryVertexRefit:WithBS, false for the slimmed offlinePrimaryVertices).
+        On any failure -- too few surviving tracks, fit failure, no track refs --
+        pv_refit_valid is False and the caller falls back to the hybrid PV, so
+        Run2 behaviour is unchanged.
+        '''
+        self.pv_refit       = None
+        self.pv_refit_valid = False
+
+        try:
+            mu_tracks = ROOT.std.vector('reco::Track')()
+            for imu in self.muons:
+                mu_tracks.push_back(imu.bestTrack())
+
+            refit = kinfit.refitPVRemovingTracks(
+                self.pv, mu_tracks, beamspot,
+                0.5,                  # minWeight: standard PV track-weight cut
+                _MU_TRK_DR_MATCH,     # drMatch
+                _MU_TRK_RELPT_MATCH,  # relPtMatch
+            )
+
+            if refit.isValid():
+                self.pv_refit       = refit
+                self.pv_refit_valid = True
+        except Exception:
+            # any PyROOT / missing-track-ref issue -> silent fall back to hybrid
+            self.pv_refit_valid = False
+
+    def is_signal_muon_cand(self, cand,
+                            dr_max=_MU_TRK_DR_MATCH,
+                            rel_pt_max=_MU_TRK_RELPT_MATCH):
+        '''
+        True if the candidate `cand` (a PF candidate or a track) is one of the
+        three signal muons, matched by charge, dR and relative pt. The muon and
+        the PF candidate are in different collections, so this is a proximity
+        match, identical in spirit to the C++ PV-refit removal.
+        '''
+        for imu in self.muons:
+            if cand.charge() != imu.charge():
+                continue
+            if (deltaR(imu.eta(), imu.phi(), cand.eta(), cand.phi()) < dr_max and
+                    abs(cand.pt() - imu.pt()) < rel_pt_max * imu.pt()):
+                return True
+        return False
+
+    ##########################################################################
+    #####      PF ISOLATION  (muon-POG algorithm, recomputed vs the refit PV)
+    ##########################################################################
+    def compute_isolation(self, pf, vertices):
+        '''
+        PF isolation of the bachelor muon (self.mu) and the J/psi (self.jpsi),
+        recomputed against the custom PV (refit, signal-removed, beamspot-
+        constrained, min-IP3D), faithfully replicating the muon-POG PFIsolation
+        algorithm with the PV assumption swapped -- the prescription from the BPH
+        vertexing+isolation slides (slides 13-20, 24).
+
+        Charged candidates are split into PV vs PU by CLOSEST-Z VERTEX
+        ASSOCIATION against the beamspot-constrained vertex collection with the
+        chosen PV replaced by the custom refit: a candidate is "from PV" iff its
+        nearest-in-z vertex IS the custom PV. (A flat dz cut is deliberately NOT
+        used: the slides show it lets pileup through, since vertices sit <1 mm
+        apart.) Neutrals are summed with a pt>0.5 threshold and an inner veto.
+
+        For each object O in {mu, jpsi} and cone R in {03, 04}:
+          O_iso_ch_RR / O_iso_ch_clean_RR : charged-hadron sum from the custom PV
+                                            (pdgId 211/321/2212/999211, no leptons);
+                                            'clean' also removes the 3 signal muons
+          O_iso_pu_RR / O_iso_pu_clean_RR : charged sum NOT from the custom PV
+                                            (leptons included; dR>0.01, pt>0.5)
+          O_iso_nh_RR                     : neutral-hadron sum (111/130/310/2112)
+          O_iso_ph_RR                     : photon sum (22)
+          O_iso_RR    / O_iso_clean_RR    : ch + max(0, nh + ph - 0.5*pu)
+          O_reliso_RR / O_reliso_clean_RR : the above divided by pt(O)
+
+        No-op (branches left NaN via safe_get) when pf is None.
+        '''
+        if pf is None:
+            return
+
+        custom_pv = self.pv_bs
+
+        # association collection: the BS-constrained PVs, with the chosen PV
+        # swapped for the custom (signal-removed) refit, so that
+        # "closest-z vertex IS custom_pv" is a meaningful PV/PU tag
+        assoc = list(vertices)
+        if 0 <= self.pv_idx < len(assoc):
+            assoc[self.pv_idx] = custom_pv
+
+        # ---- classify each PF candidate ONCE per candidate (not per cone/obj)
+        # charged: (eta, phi, pt, pdg, from_pv, is_signal)
+        # neutral: (eta, phi, pt, pdg)
+        charged, neutral = [], []
+        for cand in pf:
+            pdg = abs(cand.pdgId())
+            if pdg in _ISO_CH_ALL_IDS:
+                vz     = cand.vz()
+                best   = min(assoc, key=lambda v: abs(v.position().z() - vz))
+                charged.append((cand.eta(), cand.phi(), cand.pt(), pdg,
+                                best is custom_pv, self.is_signal_muon_cand(cand)))
+            elif pdg in _ISO_NH_IDS or pdg in _ISO_PH_IDS:
+                pt = cand.pt()
+                if pt > _ISO_NEUTRAL_PT:
+                    neutral.append((cand.eta(), cand.phi(), pt, pdg))
+
+        objects = (('mu', self.mu), ('jpsi', self.jpsi))
+
+        for cone in _ISO_CONES:
+            rr = '%02d' % int(round(cone * 10))
+            for name, obj in objects:
+                oe, op, opt = obj.eta(), obj.phi(), obj.pt()
+
+                ch = ch_clean = pu = pu_clean = nh = ph = 0.
+
+                # charged: charged-hadron-from-PV sum + pileup sum
+                for c_eta, c_phi, c_pt, pdg, from_pv, is_sig in charged:
+                    dr = deltaR(oe, op, c_eta, c_phi)
+                    if dr >= cone or dr <= _ISO_DR_VETO_CH:
+                        continue
+                    if from_pv:
+                        if pdg in _ISO_CH_HAD_IDS:        # no leptons in CH sum
+                            ch += c_pt
+                            if not is_sig:
+                                ch_clean += c_pt
+                    else:
+                        if dr > _ISO_PU_DR_VETO and c_pt > _ISO_PU_PT:
+                            pu += c_pt                    # leptons included in PU
+                            if not is_sig:
+                                pu_clean += c_pt
+
+                # neutral hadrons + photons (no PV association, no signal removal)
+                for n_eta, n_phi, n_pt, pdg in neutral:
+                    dr = deltaR(oe, op, n_eta, n_phi)
+                    if dr >= cone or dr <= _ISO_DR_VETO_NH:
+                        continue
+                    if pdg in _ISO_NH_IDS:
+                        nh += n_pt
+                    elif pdg in _ISO_PH_IDS:
+                        ph += n_pt
+
+                iso       = ch       + max(0., nh + ph - 0.5 * pu)
+                iso_clean = ch_clean + max(0., nh + ph - 0.5 * pu_clean)
+
+                setattr(self, '%s_iso_ch_%s'       % (name, rr), ch)
+                setattr(self, '%s_iso_ch_clean_%s' % (name, rr), ch_clean)
+                setattr(self, '%s_iso_pu_%s'       % (name, rr), pu)
+                setattr(self, '%s_iso_pu_clean_%s' % (name, rr), pu_clean)
+                setattr(self, '%s_iso_nh_%s'       % (name, rr), nh)
+                setattr(self, '%s_iso_ph_%s'       % (name, rr), ph)
+                setattr(self, '%s_iso_%s'          % (name, rr), iso)
+                setattr(self, '%s_iso_clean_%s'    % (name, rr), iso_clean)
+                setattr(self, '%s_reliso_%s'       % (name, rr), iso       / opt if opt > 0. else np.nan)
+                setattr(self, '%s_reliso_clean_%s' % (name, rr), iso_clean / opt if opt > 0. else np.nan)
+
     @staticmethod
     def refitted_p4(kin_particle):
         '''
@@ -476,16 +696,18 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         return LorentzVector(px, py, pz, e)
 
     @staticmethod
-    def flight_direction(vtx, bs, pv):
+    def flight_direction(vtx, pv_ref):
         '''
-        PV -> SV flight direction. Transverse part from the beamspot,
-        longitudinal from the PV (matches the corrected-mass / IP convention).
+        pv_ref -> SV flight direction in full 3D from the single reference vertex
+        pv_ref (the refit PV when available, otherwise the Run2 hybrid PV
+        beamspot x,y + PV z). With the hybrid this reproduces the old
+        transverse-from-beamspot / longitudinal-from-PV convention exactly.
         '''
         sv = vtx.position()
         return ROOT.Math.XYZVector(
-            sv.x() - bs.position().x(),
-            sv.y() - bs.position().y(),
-            sv.z() - pv.position().z(),
+            sv.x() - pv_ref.position().x(),
+            sv.y() - pv_ref.position().y(),
+            sv.z() - pv_ref.position().z(),
         ) 
 
     @staticmethod

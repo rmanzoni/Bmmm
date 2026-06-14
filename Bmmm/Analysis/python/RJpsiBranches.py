@@ -250,6 +250,17 @@ cand_branches = {
     'mu_dist_along_b_dir_sv_pv'   : lambda cand : cand.mu_dist_along_b_dir_sv_pv  ,
     'mu_dist_along_b_dir_sv_sv'   : lambda cand : cand.mu_dist_along_b_dir_sv_sv  ,
 
+    # ----- per-candidate PV (AVF beamspot-constrained refit, signal muons out) -----
+    # cand.pv_bs is the active PV reference: the refit when valid, else the Run2
+    # hybrid PV; pv_refit_valid tells the two apart.
+    'pv_refit_valid'    : lambda cand : int(cand.pv_refit_valid)  ,
+    'pv_x'              : lambda cand : cand.pv_bs.position().x() ,
+    'pv_y'              : lambda cand : cand.pv_bs.position().y() ,
+    'pv_z'              : lambda cand : cand.pv_bs.position().z() ,
+    'pv_ntrk'           : lambda cand : cand.pv_bs.tracksSize()   ,
+    'pv_chi2'           : lambda cand : cand.pv_bs.chi2()         ,
+    'pv_ndof'           : lambda cand : cand.pv_bs.ndof()         ,
+
     'trig_match'         : lambda cand : cand.trig_match       ,
 }
 
@@ -260,6 +271,19 @@ helicity_branches.update({'cos_theta_l_%s' % k : (lambda c, k=k: getattr(c, 'cos
 helicity_branches.update({'chi_%s' % k : (lambda c, k=k: getattr(c, 'chi_%s' % k, np.nan)) for k in ('jpsi','sv','coll','nu1','nu2')})
 
 cand_branches.update(helicity_branches)
+
+# ----- custom PF isolation (bachelor mu + J/psi, recomputed vs the refit PV) -----
+# generated to match the attributes set by RJpsiCandidate.compute_isolation:
+#   <obj>_<quantity>_<RR>,  obj in {mu, jpsi}, RR in {03, 04}
+# missing (e.g. pf not available) -> NaN via getattr default.
+iso_branches = {}
+for _obj in ('mu', 'jpsi'):
+    for _rr in ('03', '04'):
+        for _q in ('iso_ch', 'iso_ch_clean', 'iso_pu', 'iso_pu_clean',
+                   'iso_nh', 'iso_ph', 'iso', 'iso_clean', 'reliso', 'reliso_clean'):
+            _name = '%s_%s_%s' % (_obj, _q, _rr)
+            iso_branches[_name] = (lambda c, n=_name: getattr(c, n, np.nan))
+cand_branches.update(iso_branches)
 
 muon_branches = {
     'pt'             :  lambda imu : imu.pt()                            ,

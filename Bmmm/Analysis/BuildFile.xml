@@ -13,10 +13,13 @@
 <use name="DataFormats/PatCandidates"/>
 <use name="DataFormats/TrackReco"/>
 <use name="DataFormats/RecoCandidate"/>
+<use name="DataFormats/BeamSpot"/>
+<use name="DataFormats/Math"/>
 <use name="Geometry/Records"/>
 <use name="MagneticField/ParametrizedEngine"/>
 <use name="PhysicsTools/FWLite"/>
 <use name="RecoVertex/KalmanVertexFit"/>
+<use name="RecoVertex/AdaptiveVertexFit"/>
 <use name="RecoVertex/KinematicFit"/>
 <use name="RecoVertex/KinematicFitPrimitives"/>
 <use name="RecoVertex/VertexTools"/>

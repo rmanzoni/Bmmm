@@ -143,8 +143,10 @@ process.out = cms.OutputModule('PoolOutputModule',
         'keep *_generator_*_*',
         'keep *_slimmedAddPileupInfo_*_*',
 #         'keep patMuons_slimmedMuons_*_*',
-#         'keep *_packedPFCandidates_*_*',
-#         'keep *_lostTracks_*_*',
+        # PF candidates + lost tracks: needed to recompute the muon / J/psi
+        # PF isolation against the custom PV (BPH vertexing+isolation slides).
+        'keep *_packedPFCandidates_*_*',
+        'keep *_lostTracks_*_*',
 #         'keep recoVertexs_offlineSlimmedPrimaryVerticesWithBS_*_*',
 #         'keep recoVertexs_offlineSlimmedPrimaryVertices_*_*',
 #         'keep TriggerResults_TriggerResults_*_HLT',

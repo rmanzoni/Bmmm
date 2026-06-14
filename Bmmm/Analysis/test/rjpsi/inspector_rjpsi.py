@@ -267,7 +267,10 @@ def looper(events, options, handles, handles_mc, row_list, start):
                 for imu, to in product(icand.muons, hlt_objs)
             ) >= 2
 
-            icand.compute_vtx_quantities(event.vtx, event.bs)
+            # event.pf = packedPFCandidates (kept by the skim): enables the
+            # custom PF isolation. The PV refit uses the chosen PV's own track
+            # refs (into unpackedTracksAndVertices) + the beamspot.
+            icand.compute_vtx_quantities(event.vtx, event.bs, event.pf)
 
             # start from NaN for all candidate-level branches
             cand_tofill = _CAND_TEMPLATE.copy()
