@@ -61,6 +61,15 @@ cand_branches = {
     'q2_gen'            : lambda cand : cand.q2_gen           ,
     'm_miss2_gen'       : lambda cand : cand.m_miss2_gen      ,
 
+    # ----- Hb background gen truth (set by RJPsiHbMatcher; NaN otherwise) -----
+    # 1.0 : bachelor mu and J/psi share the same b-hadron ancestor
+    # 0.0 : different b hadron, or bachelor not from a b (combinatorial)
+    # NaN : J/psi b mother not defined (e.g. reco dimuon not a single-b J/psi) / not Hb MC
+    'gen_hb_same_mother'        : lambda cand : cand.gen_hb_same_mother                                            ,
+    'gen_hb_jpsi_b_pdgid'       : lambda cand : cand.gen_jpsi_b.pdgId()          if cand.gen_jpsi_b          is not None else np.nan,
+    'gen_hb_bachelor_b_pdgid'   : lambda cand : cand.gen_bachelor_b.pdgId()      if cand.gen_bachelor_b      is not None else np.nan,
+    'gen_hb_bachelor_mom_pdgid' : lambda cand : cand.gen_bachelor_mother.pdgId() if cand.gen_bachelor_mother is not None else np.nan,
+
     # ----- 3-muon (Bc) kinematics, jpsi constraint -----
     'rf_mass'           : lambda cand : cand.rfp4.mass()       ,
     'rf_pt'             : lambda cand : cand.rfp4.pt()         ,

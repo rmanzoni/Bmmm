@@ -40,6 +40,7 @@ from Bmmm.Analysis.Handles import handles_mc
 from Bmmm.Analysis.Handles import handles_skim as handles # includes BS constrained vertices
 from Bmmm.Analysis.RJPsiGenHistory import BcGenDecay, gen_kinematics, gen_helicity_angles
 from Bmmm.Analysis.RJPsiMuonMatcher import match_candidate_muons, signal_gen_muons, ROLE
+from Bmmm.Analysis.RJPsiHbMatcher import match_hb_candidate, hb_status1_muons
 from Bmmm.Analysis.RJPsiNuReco import gen_nu_reco, reconstruct, solve_nu_pz, pick_closest, M_BC
 
 # pre-compute constants used in the hot loop
@@ -255,6 +256,7 @@ def looper(events, options, handles, handles_mc, row_list, start, fout, branches
         #####      BC MC TRUTH CLASSIFIER
         ######################################################################################
         gen_info = None   # signal_gen_muons() result, reused by every candidate's matcher
+        hb_gen_mus = None # status-1 gen muons for the Hb matcher (no-Bc events)
         bc       = None
         if options.mc:
             event.bc_gen = BcGenDecay.from_genparticles(event.genpr)
@@ -285,6 +287,11 @@ def looper(events, options, handles, handles_mc, row_list, start, fout, branches
             # gen muon collection for reco<->gen matching: identical for every
             # candidate, so build it once per event
             gen_info = signal_gen_muons(event.genpr)
+
+            # no decayed Bc (e.g. the whole HbToPsiX background): fall back to the
+            # Hb matcher, whose gen side (status-1 gen muons) is also event-level
+            if gen_info is None:
+                hb_gen_mus = hb_status1_muons(event.genpr)
         else:
             for branch in bc_branches:
                 event_tofill[branch] = np.nan
@@ -297,7 +304,12 @@ def looper(events, options, handles, handles_mc, row_list, start, fout, branches
             if options.mc:
                 # reco<->gen matching; tags each muon's gen_role/gen_match/gen_dr.
                 # gen_info is computed once per event and reused here.
-                match_candidate_muons(icand, event.genpr, dr_max=0.04, info=gen_info)
+                if gen_info is not None:
+                    match_candidate_muons(icand, event.genpr, dr_max=0.04, info=gen_info)
+                else:
+                    # Hb background: tag mu*_gen_* and the candidate-level
+                    # gen_hb_* truth (same-mother flag + b-ancestor pdgIds).
+                    match_hb_candidate(icand, event.genpr, dr_max=0.04, gen_muons=hb_gen_mus)
 
             # trigger matching (informational, NOT a selection cut): does the
             # candidate have >=2 muons within hlt_dr of the fired HLT objects?
