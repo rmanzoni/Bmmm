@@ -373,13 +373,14 @@ def main():
     parser.add_argument('--logger',      dest='logger',      default='',             type=str)
     parser.add_argument('--savenontrig', dest='savenontrig', action='store_true')
     parser.add_argument('--maxfiles',    dest='maxfiles',    default=-1,             type=int)
+    parser.add_argument('--redirector',  dest='redirector',  default='root://cms-xrd-global.cern.ch//', type=str)
 
     args    = parser.parse_args()
     options = namedtuple('options', args.__dict__.keys())(*args.__dict__.values())
 
     if 'txt' in options.inputFiles:
         with open(options.inputFiles) as f:
-            files = ['root://cms-xrd-global.cern.ch//' + line for line in f.read().splitlines()]
+            files = [options.redirector + line for line in f.read().splitlines()]
     elif (',' in options.inputFiles
           or 'cms-xrd-global' in options.inputFiles
           or 't3dcachedb'     in options.inputFiles):

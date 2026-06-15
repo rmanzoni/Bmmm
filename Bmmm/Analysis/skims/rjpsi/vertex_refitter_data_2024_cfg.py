@@ -56,7 +56,7 @@ process.selectedMuons = cms.EDFilter(
     src = cms.InputTag("slimmedMuons"),
     cut = cms.string(' && '.join([
             'isPFMuon'                ,
-            'isMediumMuon'            ,
+#             'isMediumMuon'            ,
             'abs(eta)<2.5'            ,
             'pt>2.'                   ,
 #             'abs(bestTrack().dxy)<1.8',
@@ -82,7 +82,11 @@ process.muonFilter = cms.EDFilter(
 process.hardMuons = cms.EDFilter(
     "PATMuonSelector",
     src = cms.InputTag('selectedMuons'),
-    cut = cms.string('pt > %f' %hardmu_pt_cut),
+    cut = cms.string(' && '.join([
+            'isMediumMuon',
+            'pt > %f' %hardmu_pt_cut
+        ])
+    ),
     filter = cms.bool(True),
 )
 
@@ -113,6 +117,21 @@ process.twoMuonCandidateFilter = cms.EDFilter(
     minNumber = cms.uint32(1), # see comment above
 )
 
+# attach a bachelor muon (looser selectedMuons, pt>2) to the J/psi candidate
+process.threeMuonCandidates = cms.EDProducer(
+    'CandViewCombiner',
+    decay        = cms.string('twoMuonCandidates selectedMuons'),
+    checkCharge  = cms.bool(False),  # total charge is ±1 by construction (0 + ±1)
+    checkOverlap = cms.bool(True),
+    cut          = cms.string('mass < 10.'),
+)
+
+process.threeMuonCandidateFilter = cms.EDFilter(
+    'CandViewCountFilter',
+    src       = cms.InputTag('threeMuonCandidates'),
+    minNumber = cms.uint32(1),
+)
+
 # create a collection of tracks 
 process.load('PhysicsTools.PatAlgos.slimming.unpackedTracksAndVertices_cfi')
 
@@ -124,13 +143,14 @@ process.primaryVertexRefit.TrackLabel = cms.InputTag("unpackedTracksAndVertices"
 
 process.skim = cms.Path(
     process.hltFilter                 *
-    process.selectedMuons             * 
+    process.selectedMuons             *
     process.muonFilter                *
     process.hardMuons                 *
     process.hardMuonFilter            *
     process.twoMuonCandidates         *
-#     process.fourMuonCandidates        *
     process.twoMuonCandidateFilter    *
+    process.threeMuonCandidates       *
+    process.threeMuonCandidateFilter  *
     process.unpackedTracksAndVertices *
     process.primaryVertexRefit
 )
@@ -138,6 +158,8 @@ process.skim = cms.Path(
 # talk to output module
 process.out = cms.OutputModule('PoolOutputModule',
     fileName = cms.untracked.string('skimmed_bc_tomm_inclusive.root'),
+#     compressionAlgorithm = cms.untracked.string('LZMA'),
+#     compressionLevel     = cms.untracked.int32(9),
     outputCommands = cms.untracked.vstring(
         'drop *',
 #         'keep *_prunedGenParticles_*_*',
@@ -145,12 +167,10 @@ process.out = cms.OutputModule('PoolOutputModule',
 #         'keep *_generator_*_*',
         'keep *_slimmedAddPileupInfo_*_*',
 #         'keep patMuons_slimmedMuons_*_*',
-        # PF candidates + lost tracks: needed to recompute the muon / J/psi
-        # PF isolation against the custom PV (BPH vertexing+isolation slides).
         'keep *_packedPFCandidates_*_*',
         'keep *_lostTracks_*_*',
-#         'keep recoVertexs_offlineSlimmedPrimaryVerticesWithBS_*_*',
-#         'keep recoVertexs_offlineSlimmedPrimaryVertices_*_*',
+        'keep recoVertexs_offlineSlimmedPrimaryVerticesWithBS_*_*',
+        'keep recoVertexs_offlineSlimmedPrimaryVertices_*_*',
 #         'keep TriggerResults_TriggerResults_*_HLT',
         'keep edmTriggerResults_TriggerResults_*_HLT',
         'keep patPackedTriggerPrescales_patTrigger__*',

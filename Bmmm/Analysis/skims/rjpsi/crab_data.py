@@ -31,7 +31,7 @@ def dataset_suffix(dataset):
     return '%s_%s%s_%s' % (short, era, ext, ver)
 
 
-def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_12jun26_data2024_v2', site='T3_CH_PSI'):
+def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_15jun26_data2024_v1', site='T3_CH_PSI'):
     
     config = Configuration()
     
@@ -58,7 +58,7 @@ def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='cr
     #config.Data.lumiMask                   = 'Cert_Collisions2024_..._Golden.json'  # see note below
 
     config.Data.splitting                  = 'FileBased'
-    config.Data.unitsPerJob                = 40
+    config.Data.unitsPerJob                = 15
     config.Data.totalUnits                 = -1
 
     config.Data.publication                = True
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     
     pset   = 'vertex_refitter_data_2024_cfg.py'   # <-- DATA pset, Run3 data GT (see note)
     outdir = '/store/user/manzoni/skims'    
-    tag    = 'rjpsi_run3_12jun26'
+    tag    = 'rjpsi_run3_15jun26'
 
     eras = [
         "Run2024C-MINIv6NANOv15-v1",

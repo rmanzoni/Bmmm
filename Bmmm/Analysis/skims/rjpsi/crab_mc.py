@@ -27,7 +27,7 @@ def dataset_suffix(dataset):
     return '%s_%s_%s' % (short, ext, ver)
 
 
-def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_12jun26_MC_v1', site='T3_CH_PSI'):
+def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_14jun26_MC_v1', site='T3_CH_PSI'):
     
     config = Configuration()
     
