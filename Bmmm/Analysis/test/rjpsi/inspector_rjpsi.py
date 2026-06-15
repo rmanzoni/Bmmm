@@ -10,12 +10,14 @@ ipython -i -- inspector_rjpsi.py --inputFiles=0443354B-2D3F-CF41-A1F0-0FC4F92E71
 
 
 
+    
 
 ipython -i -- inspector_rjpsi.py --inputFiles=root://cms-xrd-global.cern.ch///store/data/Run2022D/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/357/539/00000/8abcc7e1-c6f0-4fcd-9be9-e07fb6878777.root,root://cms-xrd-global.cern.ch///store/data/Run2022D/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/357/542/00000/c5941f20-7f8f-40ae-976c-cb354a3f1a06.root,root://cms-xrd-global.cern.ch///store/data/Run2022D/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/357/542/00000/fc709d38-043c-4529-85fb-567ca09214a2.root,root://cms-xrd-global.cern.ch///store/data/Run2022D/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/357/542/00000/6af139f3-2242-42ce-b2a5-09387387c1db.root,root://cms-xrd-global.cern.ch///store/data/Run2022D/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/357/550/00000/9f95cf6b-dfb7-466a-9ab4-6213ffd5b080.root,root://cms-xrd-global.cern.ch///store/data/Run2022D/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/357/542/00000/87bf23a8-e77d-44a6-8623-961db9319eda.root,root://cms-xrd-global.cern.ch///store/data/Run2022D/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/357/542/00000/38d1ee7b-83c0-4e86-8510-204b7f737e7f.root,root://cms-xrd-global.cern.ch///store/data/Run2022D/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/357/542/00000/ecdd5c5f-a1cd-418e-a4a1-e77c53db4d3a.root,root://cms-xrd-global.cern.ch///store/data/Run2022D/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/357/542/00000/66783f3e-8d0d-43ec-97fe-c10dfa92e095.root --filename=data_2022d_partial --maxevents=-1 
 
 
 '''
 
+import gc
 import sys
 import ROOT
 import argparse
@@ -51,14 +53,52 @@ _CAND_KEYS    = [b for b in branches if b not in _TRIGGER_KEYS and b not in _EVE
 _CAND_TEMPLATE = dict.fromkeys(_CAND_KEYS, np.nan)
 
 ######################################################################################
+#####      INCREMENTAL (BATCHED) OUTPUT
+######################################################################################
+# Memory footprint of the job is bounded by WRITE_EVERY rows instead of growing
+# with the whole file: rows are flushed to the TTree and the buffer is cleared.
+# Each row is ~400 scalar branches (~15-20 kB), so 50k rows ~ <1 GB transient.
+WRITE_EVERY  = 50000                 # rows buffered before a flush; tune to memory
+INT_BRANCHES = ('run', 'lumi', 'event')
+
+def build_branch_types(branches):
+    '''Fixed schema for the TTree: int64 for the event identifiers, float32 for
+    everything else. Used by mktree so every extend() call matches it exactly.'''
+    return {c: (np.int64 if c in INT_BRANCHES else np.float32) for c in branches}
+
+def rows_to_columns(rows, branches):
+    '''list-of-dicts -> {branch: numpy array} with a FIXED dtype per branch, so
+    every uproot extend() presents an identical schema. pd.to_numeric turns
+    bools into 0/1 and leaves NaN where a branch was never filled.'''
+    df = pd.DataFrame(rows, columns=branches)
+    out = {}
+    for col in branches:
+        s = pd.to_numeric(df[col], errors='coerce')
+        if col in INT_BRANCHES:
+            out[col] = s.fillna(0).astype(np.int64).to_numpy()
+        else:
+            out[col] = s.astype(np.float32).to_numpy()
+    return out
+
+def flush(fout, row_list, branches):
+    '''Append the buffered rows to the TTree and clear the buffer in place
+    (row_list is the same list object the looper holds).'''
+    if not row_list:
+        return
+    fout['tree'].extend(rows_to_columns(row_list, branches))
+    row_list.clear()
+    # gc.collect()   # uncomment if you still see a slow baseline creep
+
+######################################################################################
 #####      LOOPER
 ######################################################################################
-def looper(events, options, handles, handles_mc, row_list, start):
+def looper(events, options, handles, handles_mc, row_list, start, fout, branches):
 
     i = 0
     for i, event in enumerate(events, 1):
 
         if i > options.maxevents:
+            flush(fout, row_list, branches)
             return i - 1, cutflow
 
         if i % options.logfreq == 0:
@@ -355,6 +395,14 @@ def looper(events, options, handles, handles_mc, row_list, start):
             row = {**trigger_tofill, **event_tofill, **cand_tofill}
             row_list.append(row)
 
+        # ---- stream to disk in batches: keep resident memory bounded ------------
+        # flushed once per event (never splitting an event across two baskets) as
+        # soon as the buffer reaches WRITE_EVERY rows.
+        if len(row_list) >= WRITE_EVERY:
+            flush(fout, row_list, branches)
+
+    # final partial batch of the file
+    flush(fout, row_list, branches)
     return i, cutflow
 
 ######################################################################################
@@ -399,41 +447,29 @@ def main():
     )
 
     fout      = uproot.recreate(options.destination + '/' + options.filename + '.root', compression=uproot.ZSTD(5))
+
+    # create the (empty) TTree up front with a fixed schema, so the looper can
+    # append batches with extend() while it processes. An empty tree is written
+    # if nothing is selected, which is harmless for a downstream hadd.
+    fout.mktree('tree', build_branch_types(branches))
+
     row_list  = []
     start     = time()
     mytimestamp = datetime.now().strftime('%Y-%m-%d__%Hh%Mm%Ss')
     print('#### STARTING NOW', mytimestamp)
 
     ##########################################################################################
-    #####      PROCESS EVENTS
+    #####      PROCESS EVENTS  (rows are flushed to disk inside the looper)
     ##########################################################################################
-    n_proc_events, cutflow_result = looper(events, options, handles, handles_mc, row_list, start)
+    n_proc_events, cutflow_result = looper(events, options, handles, handles_mc, row_list, start, fout, branches)
 
     ##########################################################################################
-    #####      WRITE TO DISK
+    #####      ANY REMAINING ROWS  (defensive: the looper already flushes its tail)
     ##########################################################################################
-  
-    ntuple = pd.DataFrame(row_list, columns=branches)
-    print('\nnumber of selected events', len(ntuple))
-  
-    # columns that must NOT be downcast to float32
-    keep_full = {'run', 'lumi', 'event'}
+    flush(fout, row_list, branches)
 
-    # boolean branches (good_vtx, trig_match, id_*, ...) come back as NaN via
-    # safe_get when unset, giving object-dtype columns that uproot cannot write.
-    # Coerce every non-protected object column to numeric (True/False -> 1.0/0.0,
-    # anything else -> NaN) so the float32 cast below is well defined.
-    for col in ntuple.columns:
-        if col not in keep_full and ntuple[col].dtype == object:
-            ntuple[col] = pd.to_numeric(ntuple[col], errors='coerce')
-
-    cast = {col: np.float32 for col in ntuple.columns if col not in keep_full and ntuple[col].dtype == np.float64}
-    
-    ntuple = ntuple.astype(cast)
-
-  
-    if len(ntuple) > 0:
-        fout['tree'] = ntuple
+    n_written = fout['tree'].num_entries
+    print('\nnumber of selected events', n_written)
     print('\nntuple saved, processed all desired events?',
           (n_proc_events == options.maxevents),
           'processed', n_proc_events, 'maxevents', options.maxevents)
