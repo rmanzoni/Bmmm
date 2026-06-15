@@ -40,7 +40,7 @@ queue = 'standard'; time = 720
 # queue = 'short'   ; time = 60
 # queue = 'long'    ; time = 10080
 
-out_dir = 'RJpsi_15Jun2026_notrig_BcToJPsiMuMu_inclusive_v2'
+out_dir = 'RJpsi_15Jun2026_notrig_BcToJPsiMuMu_inclusive_v3'
 # out_dir = 'RJpsi_10Jun2026_notrig_Hb_inclusive_v1'
 
 out_file_name = 'rjpsi'
