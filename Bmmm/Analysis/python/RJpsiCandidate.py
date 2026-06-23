@@ -55,6 +55,18 @@ _PV_AVF_CHI2CUTOFF     = 2.5    # AdaptiveVertexFitter annealing cutoff (default
 _PV_MIN_NDOF           = 2.0    # minNdof (WithBS); ndof = 2*sum(weights) - 3
 _PV_MAX_DIST_TO_BEAM   = 1.0    # maxDistanceToBeam [cm]
 
+# ----- PV refit track-set selection -------------------------------------------
+# Primary: read the offline Deterministic-Annealing fit-track assignment straight
+# from the packed candidates (pat::PackedCandidate::PVUsedInFit == 3) -- the tracks
+# the offline PV fit used for the chosen PV. No re-clustering, no closest-z
+# approximation, O(1) per candidate. Fall back to closest-z only if that yields too
+# few tracks (association not populated, or the chosen-PV index is not aligned with
+# the candidates' reference collection).
+_PV_USED_IN_FIT          = 3    # pat::PackedCandidate::PVAssociationQuality::PVUsedInFit
+_PV_REFIT_MIN_TRK        = 2    # minimum tracks to attempt a refit (AVF needs >= 2)
+_PV_REFIT_MAX_DZ_TO_PV   = 0.1  # [cm] max |z(refit) - z(chosen PV)|; else fromPV picked
+                                #      the wrong vertex -> closest-z fallback
+
 # ----- PF isolation (replicates the muon-POG PFIsolation, custom PV) ---------
 # pdgId sets and selections from the BPH vertexing+isolation slides (slides 18, 24).
 _ISO_CONES        = (0.3, 0.4)                              # cone radii; suffixes 03, 04
@@ -601,15 +613,20 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         with a properly formed reco::Vertex carrying its own 3D covariance and the
         beamspot information.
 
-        The PV track set is rebuilt IN THE LOOP from the pseudo-tracks of the
-        packed (pf) and lost (lost) candidates whose nearest-in-z vertex is the
-        chosen PV -- the same closest-z PV/PU association the isolation uses
-        (compute_isolation), and the exact (lossless) content the
-        unpackedTracksAndVertices unpacker would have produced from
-        packedPFCandidates + lostTracks. This removes the dependency on a
-        persisted primaryVertexRefit:WithBS still carrying its track references,
-        so the recoTracks_unpackedTracksAndVertices and primaryVertexRefit:WithBS
-        collections can be dropped from the skim.
+        The PV track set is rebuilt IN THE LOOP from the packed (pf) + lost (lost)
+        candidates. Primary selection: the offline Deterministic-Annealing fit-track
+        assignment, read directly from the packed-candidate PV association
+        (fromPV(pv_idx) == PVUsedInFit) -- the tracks the offline PV fit actually
+        used for the chosen PV, with no re-clustering and no closest-z approximation,
+        O(1) per candidate, and already offline-quality (no re-filter applied).
+        Fallback (if that yields < _PV_REFIT_MIN_FROMPV_TRK tracks, e.g. the
+        association is not populated or the chosen-PV index is not aligned with the
+        candidates' reference collection): the closest-z PV/PU association used by
+        compute_isolation, with the offline track-quality filter
+        (passes_pv_track_filter) applied. Either way this removes the dependency on a
+        persisted primaryVertexRefit:WithBS carrying its track references, so that
+        collection and recoTracks_unpackedTracksAndVertices can be dropped from the
+        skim.
 
         Sets:
           self.pv_refit       : the refitted reco::Vertex (invalid on failure)
@@ -630,53 +647,68 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
             if not vtxs:
                 return
 
-            # PV track set: pseudo-tracks of the packed (+ lost) candidates that
-            # pass the PV-finder quality filter (passes_pv_track_filter) AND whose
-            # nearest-in-z vertex IS the chosen PV (index match against the same
-            # vertex collection used everywhere else). The closest-z step is the
-            # PV/PU association of compute_isolation; the quality filter restores the
-            # offlinePrimaryVertices track selection that the persisted
-            # primaryVertexRefit:WithBS applied at re-reco (without it the input set
-            # is broader/softer than the real PV).
-            # NOTE O(N_cand * N_vtx) per candidate, as in compute_isolation; the
-            # nearest-PV index per packed candidate is event-level and could be
-            # cached once per event and shared with the isolation if this shows up
-            # in the profile.
-            pv_tracks = ROOT.std.vector('reco::Track')()
-            for coll in (pf, lost):
-                if coll is None:
-                    continue
-                for cand in coll:
-                    if not cand.hasTrackDetails():
-                        continue
-                    # build the pseudo-track once; reuse for the quality filter and,
-                    # if it passes, as the refit input track
-                    trk = cand.pseudoTrack()
-                    if not self.passes_pv_track_filter(cand, trk, beamspot):
-                        continue
-                    vz     = cand.vz()
-                    best_i = min(range(len(vtxs)),
-                                 key=lambda i: abs(vtxs[i].position().z() - vz))
-                    if best_i == self.pv_idx:
-                        pv_tracks.push_back(trk)
-
-            # signal muons to remove from the refit (proximity match, since the
-            # muon best-track and the candidate pseudo-track are different
-            # collections -- matched in the C++ by charge / dR / rel-pt)
+            # signal muons to remove from the refit (proximity match in the C++: the
+            # muon best-track and the candidate pseudo-track live in different
+            # collections, matched by charge / dR / rel-pt). Same for either track
+            # selection below, so build them once.
             mu_tracks = ROOT.std.vector('reco::Track')()
             for imu in self.muons:
                 mu_tracks.push_back(imu.bestTrack())
 
-            refit = kinfit.refitPVRemovingTracks(
-                pv_tracks, mu_tracks, beamspot,
-                _MU_TRK_DR_MATCH,      # drMatch
-                _MU_TRK_RELPT_MATCH,   # relPtMatch
-                _PV_AVF_CHI2CUTOFF,    # AVF annealing cutoff (offline WithBS)
-                _PV_MIN_NDOF,          # minNdof (WithBS)
-                _PV_MAX_DIST_TO_BEAM,  # maxDistanceToBeam [cm]
-            )
+            def _refit(selector, apply_filter):
+                # collect the PV track set (selector, with optional quality filter),
+                # run the beamspot-constrained AVF refit with the signal muons
+                # removed, and return a VALID reco::Vertex or None.
+                pv_tracks = ROOT.std.vector('reco::Track')()
+                for coll in (pf, lost):
+                    if coll is None:
+                        continue
+                    for cand in coll:
+                        if not cand.hasTrackDetails():
+                            continue
+                        trk = cand.pseudoTrack()  # built once; filter + refit input
+                        if apply_filter and not self.passes_pv_track_filter(cand, trk, beamspot):
+                            continue
+                        if selector(cand):
+                            pv_tracks.push_back(trk)
+                if pv_tracks.size() < _PV_REFIT_MIN_TRK:
+                    return None
+                v = kinfit.refitPVRemovingTracks(
+                    pv_tracks, mu_tracks, beamspot,
+                    _MU_TRK_DR_MATCH,      # drMatch
+                    _MU_TRK_RELPT_MATCH,   # relPtMatch
+                    _PV_AVF_CHI2CUTOFF,    # AVF annealing cutoff (offline WithBS)
+                    _PV_MIN_NDOF,          # minNdof (WithBS)
+                    _PV_MAX_DIST_TO_BEAM,  # maxDistanceToBeam [cm]
+                )
+                return v if v.isValid() else None
 
-            if refit.isValid():
+            # ---- primary: offline DA fit-track set, straight from fromPV --------
+            # PVUsedInFit means the offline PV fit used this track for vertex pv_idx;
+            # trust it as-is -- it already passed the offline TkFilterParameters, so
+            # no closest-z and no re-filter (flip apply_filter=True for uniformity).
+            refit = _refit(lambda cand: cand.fromPV(self.pv_idx) == _PV_USED_IN_FIT,
+                           apply_filter=False)
+
+            # ---- z-consistency guard ---------------------------------------------
+            # the refit MUST sit on the chosen PV. A large |z(refit) - z(pv)| means
+            # fromPV gathered a different vertex's tracks (PV-index misalignment
+            # between the WithBS collection read here and the offlineSlimmedPrimary-
+            # Vertices the associations reference). The track-count check inside
+            # _refit cannot catch this -- it returns plenty of (wrong) tracks -- so
+            # guard on z here and, if it fails (or fromPV gave nothing), fall back to
+            # the closest-z association + offline track-quality filter.
+            if refit is None or abs(refit.z() - self.pv.z()) > _PV_REFIT_MAX_DZ_TO_PV:
+                vtx_z = [vv.position().z() for vv in vtxs]  # hoist PyROOT calls out
+                def _closest_is_pv(cand):
+                    vz = cand.vz()
+                    return min(range(len(vtx_z)),
+                               key=lambda i: abs(vtx_z[i] - vz)) == self.pv_idx
+                # closest-z picks tracks nearest pv_idx by construction, so it is not
+                # subject to the misalignment above; accept its valid result as-is.
+                refit = _refit(_closest_is_pv, apply_filter=True)
+
+            if refit is not None:
                 self.pv_refit       = refit
                 self.pv_refit_valid = True
         except Exception:
