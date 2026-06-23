@@ -25,8 +25,11 @@ handles['jets'   ] = ('slimmedJets'                        , Handle('std::vector
 ##########################################################################################
 handles_skim = OrderedDict()
 handles_skim['muons'  ] = (('selectedMuons'            , ''      , 'SKIM'), Handle('std::vector<pat::Muon>')                   )
-handles_skim['trk'    ] = (('unpackedTracksAndVertices', ''      , 'SKIM'), Handle('vector<reco::Track>')                      )
-handles_skim['vtx'    ] = (('primaryVertexRefit'       , 'WithBS', 'SKIM'), Handle('std::vector<reco::Vertex>')                )
+# unpackedTracksAndVertices / primaryVertexRefit are no longer produced or kept by
+# the skim: the PV refit is rebuilt in the loop from pf + ltrk (see
+# RJpsiCandidate.refit_primary_vertex). vtx is now the BS-constrained slimmed PVs,
+# used only for the closest-z PV association (no track refs needed).
+handles_skim['vtx'    ] = ('offlineSlimmedPrimaryVerticesWithBS'           , Handle('std::vector<reco::Vertex>')                )
 handles_skim['pf'     ] = ('packedPFCandidates'                           , Handle('std::vector<pat::PackedCandidate>')        )
 handles_skim['ltrk'   ] = ('lostTracks'                                   , Handle('std::vector<pat::PackedCandidate>')        )
 handles_skim['trg_res'] = (('TriggerResults'           , ''      , 'HLT' ), Handle('edm::TriggerResults'        )              )

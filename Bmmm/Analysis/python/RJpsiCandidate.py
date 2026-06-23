@@ -153,7 +153,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
     ##########################################################################
     #####      VERTEXING
     ##########################################################################
-    def compute_vtx_quantities(self, vertices, beamspot, pf=None):
+    def compute_vtx_quantities(self, vertices, beamspot, pf=None, lost=None):
         '''
         Fit the J/psi (2-muon) and the full (3-muon) vertices, choose the
         primary vertex and, for each of the two secondary vertices, compute:
@@ -215,12 +215,12 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
         # refit of the chosen PV with the three signal muons removed
         # (refit_primary_vertex) -- a properly formed reco::Vertex with its own
         # 3D covariance and the beamspot info, as prescribed by the BPH slides.
-        # Fallback (no unpacked PV track refs, e.g. a sample without the refit
-        # collection): the Run2 hybrid PV (beamspot x,y + PV z, PV covariance).
+        # Fallback (no packed candidates, e.g. pf not loaded): the Run2 hybrid PV
+        # (beamspot x,y + PV z, PV covariance).
         # Either way the result is self.pv_bs, built ONCE and shared by
         # compute_displacement, compute_ip, compute_jet_track_distance and
         # compute_isolation, so every wrt-PV quantity uses the same reference.
-        self.refit_primary_vertex(beamspot)
+        self.refit_primary_vertex(beamspot, pf, lost, vertices)
         self.pv_bs = self.pv_refit if self.pv_refit_valid \
                      else self.build_hybrid_pv(self.bs, self.pv)
 
@@ -517,36 +517,75 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
     ##########################################################################
     #####      PRIMARY-VERTEX REFIT  (AVF, beamspot-constrained, muons out)
     ##########################################################################
-    def refit_primary_vertex(self, beamspot):
+    def refit_primary_vertex(self, beamspot, pf, lost, vertices):
         '''
         Per-candidate primary vertex: AdaptiveVertexFitter refit of the chosen PV
         with the transverse beamspot constraint and the three signal muons
-        removed from its track list (RJpsiKinVtxFitter.refitPVRemovingTracks,
-        which reproduces the BPH-slides PVRefitter). Replaces the Run2 hybrid PV
-        (beamspot x,y + PV z) with a properly formed reco::Vertex carrying its
-        own 3D covariance and the beamspot information.
+        removed (RJpsiKinVtxFitter.refitPVRemovingTracks, which reproduces the
+        BPH-slides PVRefitter). Replaces the Run2 hybrid PV (beamspot x,y + PV z)
+        with a properly formed reco::Vertex carrying its own 3D covariance and the
+        beamspot information.
+
+        The PV track set is rebuilt IN THE LOOP from the pseudo-tracks of the
+        packed (pf) and lost (lost) candidates whose nearest-in-z vertex is the
+        chosen PV -- the same closest-z PV/PU association the isolation uses
+        (compute_isolation), and the exact (lossless) content the
+        unpackedTracksAndVertices unpacker would have produced from
+        packedPFCandidates + lostTracks. This removes the dependency on a
+        persisted primaryVertexRefit:WithBS still carrying its track references,
+        so the recoTracks_unpackedTracksAndVertices and primaryVertexRefit:WithBS
+        collections can be dropped from the skim.
 
         Sets:
           self.pv_refit       : the refitted reco::Vertex (invalid on failure)
           self.pv_refit_valid : bool, True iff a valid refit was obtained
 
-        Requires self.pv to still carry its track references (true for
-        primaryVertexRefit:WithBS, false for the slimmed offlinePrimaryVertices).
-        On any failure -- too few surviving tracks, fit failure, no track refs --
+        On any failure -- pf not loaded, too few surviving tracks, fit failure --
         pv_refit_valid is False and the caller falls back to the hybrid PV, so
-        Run2 behaviour is unchanged.
+        behaviour without packed candidates is unchanged.
         '''
         self.pv_refit       = None
         self.pv_refit_valid = False
 
+        if pf is None:
+            return  # no packed candidates -> cannot rebuild the PV track set
+
         try:
+            vtxs = list(vertices)
+            if not vtxs:
+                return
+
+            # PV track set: pseudo-tracks of the packed (+ lost) candidates whose
+            # nearest-in-z vertex IS the chosen PV (index match against the same
+            # vertex collection used everywhere else). This is the closest-z PV/PU
+            # association of compute_isolation, reused here to reconstruct the
+            # persisted primaryVertexRefit:WithBS track content on the fly.
+            # NOTE O(N_cand * N_vtx) per candidate, as in compute_isolation; the
+            # nearest-PV index per packed candidate is event-level and could be
+            # cached once per event and shared with the isolation if this shows up
+            # in the profile.
+            pv_tracks = ROOT.std.vector('reco::Track')()
+            for coll in (pf, lost):
+                if coll is None:
+                    continue
+                for cand in coll:
+                    if not cand.hasTrackDetails():
+                        continue
+                    vz     = cand.vz()
+                    best_i = min(range(len(vtxs)),
+                                 key=lambda i: abs(vtxs[i].position().z() - vz))
+                    if best_i == self.pv_idx:
+                        pv_tracks.push_back(cand.pseudoTrack())
+
+            # signal muons to remove from the refit (proximity match, since the
+            # muon best-track and the candidate pseudo-track are different
+            # collections -- matched in the C++ by charge / dR / rel-pt)
             mu_tracks = ROOT.std.vector('reco::Track')()
             for imu in self.muons:
                 mu_tracks.push_back(imu.bestTrack())
 
             refit = kinfit.refitPVRemovingTracks(
-                self.pv, mu_tracks, beamspot,
-                0.5,                  # minWeight: standard PV track-weight cut
+                pv_tracks, mu_tracks, beamspot,
                 _MU_TRK_DR_MATCH,     # drMatch
                 _MU_TRK_RELPT_MATCH,  # relPtMatch
             )
@@ -555,7 +594,7 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
                 self.pv_refit       = refit
                 self.pv_refit_valid = True
         except Exception:
-            # any PyROOT / missing-track-ref issue -> silent fall back to hybrid
+            # any PyROOT / collection issue -> silent fall back to hybrid PV
             self.pv_refit_valid = False
 
     def is_signal_muon_cand(self, cand,

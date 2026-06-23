@@ -130,14 +130,10 @@ process.threeMuonCandidateFilter = cms.EDFilter(
     minNumber = cms.uint32(1),
 )
 
-# create a collection of tracks 
-process.load('PhysicsTools.PatAlgos.slimming.unpackedTracksAndVertices_cfi')
-
-# Load vertex reconstruction
-process.load("RecoVertex.Configuration.RecoVertex_cff")
-
-process.primaryVertexRefit = process.unsortedOfflinePrimaryVertices.clone()
-process.primaryVertexRefit.TrackLabel = cms.InputTag("unpackedTracksAndVertices")
+# NOTE the on-the-fly PV refit (analysis loop, RJpsiCandidate.refit_primary_vertex)
+# rebuilds the PV track set from packedPFCandidates + lostTracks, so the skim no
+# longer runs unpackedTracksAndVertices / primaryVertexRefit (a full per-event PV
+# re-reco, the main CPU sink) nor persists their output.
 
 process.skim = cms.Path(
 #     process.hltFilter                 *
@@ -148,9 +144,7 @@ process.skim = cms.Path(
     process.twoMuonCandidates         *
     process.twoMuonCandidateFilter    *
     process.threeMuonCandidates       *
-    process.threeMuonCandidateFilter  *
-    process.unpackedTracksAndVertices *
-    process.primaryVertexRefit
+    process.threeMuonCandidateFilter
 )
 
 # talk to output module
@@ -187,9 +181,6 @@ process.out = cms.OutputModule('PoolOutputModule',
         'keep *_selectedMuons_*_*',
         #'keep *_cleanedSelectedMuons_*_*',
         #'keep *_hardMuons_*_*',
-
-        'keep recoTracks_unpackedTracksAndVertices_*_*',
-        'keep *_primaryVertexRefit_WithBS_*',
     ),
 	SelectEvents = cms.untracked.PSet(
 		SelectEvents = cms.vstring('skim')

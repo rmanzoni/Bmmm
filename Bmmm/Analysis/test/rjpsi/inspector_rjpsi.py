@@ -319,10 +319,13 @@ def looper(events, options, handles, handles_mc, row_list, start, fout, branches
                 for imu, to in product(icand.muons, hlt_objs)
             ) >= 2
 
-            # event.pf = packedPFCandidates (kept by the skim): enables the
-            # custom PF isolation. The PV refit uses the chosen PV's own track
-            # refs (into unpackedTracksAndVertices) + the beamspot.
-            icand.compute_vtx_quantities(event.vtx, event.bs, event.pf)
+            # event.pf / event.ltrk = packedPFCandidates / lostTracks (kept by
+            # the skim): enable the custom PF isolation and the on-the-fly PV
+            # refit. The refit rebuilds the chosen PV's track set from these
+            # candidates' pseudo-tracks (closest-z association) + the beamspot,
+            # so the persisted unpackedTracksAndVertices / primaryVertexRefit
+            # collections are no longer needed.
+            icand.compute_vtx_quantities(event.vtx, event.bs, event.pf, event.ltrk)
 
             # start from NaN for all candidate-level branches
             cand_tofill = _CAND_TEMPLATE.copy()

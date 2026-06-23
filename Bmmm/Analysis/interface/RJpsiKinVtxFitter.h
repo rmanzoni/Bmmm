@@ -329,6 +329,74 @@ class RJpsiKinVtxFitter {
         return reco::Vertex(tv);                             // TransientVertex -> reco::Vertex
     };
 
+    // ------------------------------------------------------------------------
+    // beamspot-constrained primary-vertex refit, from an EXPLICIT PV track set
+    //
+    // Identical fit to refitPVRemovingTracks(const reco::Vertex&, ...) above, but
+    // the PV track list is supplied directly instead of being read from
+    // pv.tracks_begin()/end(). This drops the dependency on a persisted PV that
+    // still carries its track references (primaryVertexRefit:WithBS): the caller
+    // rebuilds the PV track set in the FWLite loop from the packedPFCandidates
+    // (+ lostTracks) pseudo-tracks associated to the chosen PV by closest-z --
+    // the same association the isolation uses, and exactly the (lossless)
+    // information the unpackedTracksAndVertices unpacker would have produced.
+    // The recoTracks_unpackedTracksAndVertices and primaryVertexRefit:WithBS
+    // collections can then be dropped from the skim.
+    //
+    //   pvTracks        : the PV's constituent tracks, already PV-associated by
+    //                     the caller (no per-track weight cut is applied here,
+    //                     since packed candidates carry no PV track weight).
+    //   tracksToRemove  : tracks to drop from the refit (the signal muons),
+    //                     matched by charge, dR < drMatch and |dpt| < relPtMatch
+    //                     * pt -- a proximity match, as the muon best-track and
+    //                     the packed-candidate pseudo-track live in different
+    //                     collections.
+    //   beamspot        : the transverse beamspot constraint.
+    //
+    // Returns an INVALID reco::Vertex on failure (fewer than two surviving tracks
+    // or an invalid fit); check .isValid() Python-side and fall back to the
+    // hybrid/bare-beamspot PV there.
+    // ------------------------------------------------------------------------
+    reco::Vertex refitPVRemovingTracks(const std::vector<reco::Track>& pvTracks,
+                                       const std::vector<reco::Track>& tracksToRemove,
+                                       const reco::BeamSpot&           beamspot,
+                                       const double                    drMatch    = 0.01,
+                                       const double                    relPtMatch = 0.05)
+    {
+        std::vector<reco::TransientTrack> ttks;
+        ttks.reserve(pvTracks.size());
+
+        for (std::size_t j = 0; j < pvTracks.size(); ++j) {
+            const reco::Track& trk = pvTracks[j];
+
+            bool is_removed = false;
+            for (std::size_t i = 0; i < tracksToRemove.size(); ++i) {
+                const reco::Track& m = tracksToRemove[i];
+                if (trk.charge() != m.charge()) continue;
+                const double deta = trk.eta() - m.eta();
+                const double dphi = reco::deltaPhi(trk.phi(), m.phi());
+                const double dr   = std::sqrt(deta * deta + dphi * dphi);
+                if (dr < drMatch && std::fabs(trk.pt() - m.pt()) < relPtMatch * m.pt()) {
+                    is_removed = true;
+                    break;
+                }
+            }
+            if (is_removed) continue;
+
+            reco::TransientTrack tt = getTransientTrack(trk);
+            tt.setBeamSpot(beamspot);                        // per-track BS (slides)
+            ttks.push_back(tt);
+        }
+
+        if (ttks.size() < 2) return reco::Vertex();          // invalid
+
+        AdaptiveVertexFitter fitter;
+        TransientVertex tv = fitter.vertex(ttks, beamspot);  // beamspot constraint
+        if (!tv.isValid()) return reco::Vertex();            // invalid
+
+        return reco::Vertex(tv);                             // TransientVertex -> reco::Vertex
+    };
+
   private:
     OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
 
