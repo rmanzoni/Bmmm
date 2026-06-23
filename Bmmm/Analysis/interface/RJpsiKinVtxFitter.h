@@ -43,6 +43,7 @@
 // This mirrors the PVRefitter from the BPH vertexing+isolation slides (backup):
 // AdaptiveVertexFitter + per-track setBeamSpot(bs) + fitter.vertex(tracks, bs).
 #include "RecoVertex/AdaptiveVertexFit/interface/AdaptiveVertexFitter.h"
+#include "RecoVertex/VertexTools/interface/GeometricAnnealing.h"
 #include "RecoVertex/VertexPrimitives/interface/TransientVertex.h"
 #include "DataFormats/BeamSpot/interface/BeamSpot.h"
 #include "DataFormats/Math/interface/deltaPhi.h"
@@ -353,15 +354,20 @@ class RJpsiKinVtxFitter {
     //                     collections.
     //   beamspot        : the transverse beamspot constraint.
     //
-    // Returns an INVALID reco::Vertex on failure (fewer than two surviving tracks
-    // or an invalid fit); check .isValid() Python-side and fall back to the
-    // hybrid/bare-beamspot PV there.
+    // Returns an INVALID reco::Vertex on failure (fewer than two surviving tracks,
+    // an invalid fit, or failing the WithBS vertex acceptance below: ndof < minNdof
+    // or transverse distance to the beamline > maxDistanceToBeam); check .isValid()
+    // Python-side and fall back to the hybrid/bare-beamspot PV there. chi2cutoff,
+    // minNdof and maxDistanceToBeam default to the offline WithBS values.
     // ------------------------------------------------------------------------
     reco::Vertex refitPVRemovingTracks(const std::vector<reco::Track>& pvTracks,
                                        const std::vector<reco::Track>& tracksToRemove,
                                        const reco::BeamSpot&           beamspot,
-                                       const double                    drMatch    = 0.01,
-                                       const double                    relPtMatch = 0.05)
+                                       const double                    drMatch           = 0.01,
+                                       const double                    relPtMatch        = 0.05,
+                                       const double                    chi2cutoff        = 2.5,
+                                       const double                    minNdof           = 2.0,
+                                       const double                    maxDistanceToBeam = 1.0)
     {
         std::vector<reco::TransientTrack> ttks;
         ttks.reserve(pvTracks.size());
@@ -390,11 +396,28 @@ class RJpsiKinVtxFitter {
 
         if (ttks.size() < 2) return reco::Vertex();          // invalid
 
-        AdaptiveVertexFitter fitter;
+        // AdaptiveVertexFitter configured as the offline PrimaryVertexProducer
+        // WithBS collection: the annealing chi2 cutoff (default GeometricAnnealing
+        // is 3.0, offline WithBS uses 2.5) governs the per-track down-weighting.
+        AdaptiveVertexFitter fitter{GeometricAnnealing(chi2cutoff)};
         TransientVertex tv = fitter.vertex(ttks, beamspot);  // beamspot constraint
         if (!tv.isValid()) return reco::Vertex();            // invalid
 
-        return reco::Vertex(tv);                             // TransientVertex -> reco::Vertex
+        reco::Vertex v(tv);                                  // TransientVertex -> reco::Vertex
+
+        // vertex-level acceptance replicating the WithBS vertexCollections PSet:
+        //   minNdof          : ndof = 2*sum(weights) - 3; WithBS requires >= 2.0
+        //   maxDistanceToBeam: transverse distance to the beamline (evaluated at the
+        //                      vertex z) must be < maxDistanceToBeam [cm]
+        // Returning an invalid vertex makes the Python caller fall back to the hybrid
+        // PV, exactly as for a fit failure.
+        if (v.ndof() < minNdof) return reco::Vertex();
+
+        const double dxb = v.x() - beamspot.x(v.z());
+        const double dyb = v.y() - beamspot.y(v.z());
+        if (std::sqrt(dxb * dxb + dyb * dyb) > maxDistanceToBeam) return reco::Vertex();
+
+        return v;
     };
 
   private:

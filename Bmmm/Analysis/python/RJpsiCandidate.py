@@ -27,6 +27,34 @@ LorentzVector = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')
 _MU_TRK_DR_MATCH    = 0.01    # dR(cand, muon) match window
 _MU_TRK_RELPT_MATCH = 0.05    # |pt_cand - pt_mu| / pt_mu match window
 
+# ----- PV-finder track filter (offlinePrimaryVertices TkFilterParameters) -----
+# The closest-z PV association in refit_primary_vertex must be fed the same track
+# set the offline PV reconstruction used; otherwise the refit input is broader
+# (softer / lower-quality tracks, and all of lostTracks) than the real PV, which
+# inflates pv_ntrk and degrades the refit resolution. These mirror the
+# TrackFilterForPVFinding cuts of unsortedOfflinePrimaryVertices (the producer the
+# old primaryVertexRefit cloned). VERIFY against your release, e.g.
+#   print(process.primaryVertexRefit.TkFilterParameters.dumpPython())
+# The values below are the standard offline defaults; trackQuality is "any", so
+# no trackHighPurity() requirement is imposed. Packed-candidate quantities are
+# stored at reduced precision, so the replica is close but not bit-exact, and
+# soft tracks below the packing thresholds are simply absent from miniAOD.
+_PV_TRK_MAX_NORM_CHI2  = 10.0   # maxNormalizedChi2
+_PV_TRK_MIN_PIX_LAYERS = 2      # minPixelLayersWithHits
+_PV_TRK_MIN_TRK_LAYERS = 5      # minSiliconLayersWithHits (pixel + strip)
+_PV_TRK_MAX_D0_SIG     = 4.0    # maxD0Significance (transverse IP wrt the beamline)
+_PV_TRK_MAX_D0_ERR     = 1.0    # maxD0Error [cm]
+_PV_TRK_MAX_DZ_ERR     = 1.0    # maxDzError [cm]
+_PV_TRK_MIN_PT         = 0.0    # minPt [GeV]
+_PV_TRK_MAX_ETA        = 2.4
+
+# ----- PV refit fitter config + vertex acceptance (WithBS vertexCollections) ---
+# Match the offline PrimaryVertexProducer WithBS collection so the in-loop refit
+# reproduces offlinePrimaryVerticesWithBS. VERIFY against your release dump.
+_PV_AVF_CHI2CUTOFF     = 2.5    # AdaptiveVertexFitter annealing cutoff (default is 3.0!)
+_PV_MIN_NDOF           = 2.0    # minNdof (WithBS); ndof = 2*sum(weights) - 3
+_PV_MAX_DIST_TO_BEAM   = 1.0    # maxDistanceToBeam [cm]
+
 # ----- PF isolation (replicates the muon-POG PFIsolation, custom PV) ---------
 # pdgId sets and selections from the BPH vertexing+isolation slides (slides 18, 24).
 _ISO_CONES        = (0.3, 0.4)                              # cone radii; suffixes 03, 04
@@ -517,6 +545,53 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
     ##########################################################################
     #####      PRIMARY-VERTEX REFIT  (AVF, beamspot-constrained, muons out)
     ##########################################################################
+    @staticmethod
+    def passes_pv_track_filter(cand, trk, beamspot):
+        '''
+        Approximate the offlinePrimaryVertices TkFilterParameters
+        (TrackFilterForPVFinding) on a packed/lost candidate, so the PV refit is fed
+        the track set the offline PV reconstruction would have used rather than every
+        nearby candidate. Cuts (constants at file top): normalized chi2, pixel /
+        tracker layers, transverse-IP significance wrt the beamline at the track z,
+        IP errors, and pt.
+
+        cand : the pat::PackedCandidate (kinematics, IP, IP errors)
+        trk  : cand.pseudoTrack(), passed in to avoid rebuilding it (chi2, layers)
+        The caller must have checked cand.hasTrackDetails().
+
+        Packed quantities are reduced-precision, so this is a close but not bit-exact
+        replica; the layer accessors go through the pseudo-track hit pattern -- verify
+        they are populated in your PackedCandidate version (pv_refit_valid collapsing
+        to ~0 is the canary for a bad accessor).
+        '''
+        if abs(trk.eta()) > _PV_TRK_MAX_ETA:
+            return False
+
+        if trk.normalizedChi2() > _PV_TRK_MAX_NORM_CHI2:
+            return False
+
+        hp = trk.hitPattern()
+        if hp.pixelLayersWithMeasurement()   < _PV_TRK_MIN_PIX_LAYERS:
+            return False
+        if hp.trackerLayersWithMeasurement() < _PV_TRK_MIN_TRK_LAYERS:
+            return False
+
+        if cand.pt() <= _PV_TRK_MIN_PT:
+            return False
+
+        d0_err = cand.dxyError()
+        dz_err = cand.dzError()
+        if d0_err > _PV_TRK_MAX_D0_ERR or dz_err > _PV_TRK_MAX_DZ_ERR:
+            return False
+
+        # transverse IP significance wrt the beamline evaluated at the candidate z
+        # (value recomputed against the beamspot; error is the stored packed dxyError)
+        d0 = cand.dxy(beamspot.position(cand.vz()))
+        if d0_err > 0. and abs(d0) / d0_err > _PV_TRK_MAX_D0_SIG:
+            return False
+
+        return True
+
     def refit_primary_vertex(self, beamspot, pf, lost, vertices):
         '''
         Per-candidate primary vertex: AdaptiveVertexFitter refit of the chosen PV
@@ -555,11 +630,14 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
             if not vtxs:
                 return
 
-            # PV track set: pseudo-tracks of the packed (+ lost) candidates whose
+            # PV track set: pseudo-tracks of the packed (+ lost) candidates that
+            # pass the PV-finder quality filter (passes_pv_track_filter) AND whose
             # nearest-in-z vertex IS the chosen PV (index match against the same
-            # vertex collection used everywhere else). This is the closest-z PV/PU
-            # association of compute_isolation, reused here to reconstruct the
-            # persisted primaryVertexRefit:WithBS track content on the fly.
+            # vertex collection used everywhere else). The closest-z step is the
+            # PV/PU association of compute_isolation; the quality filter restores the
+            # offlinePrimaryVertices track selection that the persisted
+            # primaryVertexRefit:WithBS applied at re-reco (without it the input set
+            # is broader/softer than the real PV).
             # NOTE O(N_cand * N_vtx) per candidate, as in compute_isolation; the
             # nearest-PV index per packed candidate is event-level and could be
             # cached once per event and shared with the isolation if this shows up
@@ -571,11 +649,16 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
                 for cand in coll:
                     if not cand.hasTrackDetails():
                         continue
+                    # build the pseudo-track once; reuse for the quality filter and,
+                    # if it passes, as the refit input track
+                    trk = cand.pseudoTrack()
+                    if not self.passes_pv_track_filter(cand, trk, beamspot):
+                        continue
                     vz     = cand.vz()
                     best_i = min(range(len(vtxs)),
                                  key=lambda i: abs(vtxs[i].position().z() - vz))
                     if best_i == self.pv_idx:
-                        pv_tracks.push_back(cand.pseudoTrack())
+                        pv_tracks.push_back(trk)
 
             # signal muons to remove from the refit (proximity match, since the
             # muon best-track and the candidate pseudo-track are different
@@ -586,8 +669,11 @@ class RJpsiCandidate(ROOT.reco.CompositeCandidate):
 
             refit = kinfit.refitPVRemovingTracks(
                 pv_tracks, mu_tracks, beamspot,
-                _MU_TRK_DR_MATCH,     # drMatch
-                _MU_TRK_RELPT_MATCH,  # relPtMatch
+                _MU_TRK_DR_MATCH,      # drMatch
+                _MU_TRK_RELPT_MATCH,   # relPtMatch
+                _PV_AVF_CHI2CUTOFF,    # AVF annealing cutoff (offline WithBS)
+                _PV_MIN_NDOF,          # minNdof (WithBS)
+                _PV_MAX_DIST_TO_BEAM,  # maxDistanceToBeam [cm]
             )
 
             if refit.isValid():

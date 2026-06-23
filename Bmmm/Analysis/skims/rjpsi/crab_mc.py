@@ -27,7 +27,7 @@ def dataset_suffix(dataset):
     return '%s_%s_%s' % (short, ext, ver)
 
 
-def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_14jun26_MC_v1', site='T3_CH_PSI'):
+def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_23jun26_MC_v2', site='T3_CH_PSI'):
     
     config = Configuration()
     
@@ -57,8 +57,9 @@ def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='cr
     #config.Data.unitsPerJob                = 360
     #config.Data.totalUnits                 = -1 #config.Data.unitsPerJob * NJOBS
 
-    config.Data.splitting                  = 'FileBased'
-    config.Data.unitsPerJob                = 10
+#     config.Data.splitting                  = 'FileBased'
+#     config.Data.unitsPerJob                = 10
+    config.Data.splitting                  = 'Automatic'
     config.Data.totalUnits                 = -1 #config.Data.unitsPerJob * NJOBS
 
     config.Data.publication                = True
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     
     pset   = 'vertex_refitter_cfg.py'
     outdir = '/store/user/manzoni/skims'    
-    tag    = 'rjpsi_run3_12jun26'
+    tag    = 'rjpsi_run3_23jun26_v2'
 
     datasets = [
         '/BcToJPsiMuMu_inclusive_TuneCP5_13TeV-bcvegpy2-pythia8-evtgen/RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1/MINIAODSIM'     ,

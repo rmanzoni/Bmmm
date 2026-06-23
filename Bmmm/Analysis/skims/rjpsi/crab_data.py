@@ -31,7 +31,7 @@ def dataset_suffix(dataset):
     return '%s_%s%s_%s' % (short, era, ext, ver)
 
 
-def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_18jun26_data2024_v1', site='T3_CH_PSI'):
+def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_23jun26_data2024_v2', site='T3_CH_PSI'):
     
     config = Configuration()
     
@@ -48,7 +48,7 @@ def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='cr
     config.JobType.pluginName              = 'Analysis'
     config.JobType.psetName                = pset
     config.JobType.allowUndistributedCMSSW = True
-    config.JobType.maxMemoryMB             = 4000
+#     config.JobType.maxMemoryMB             = 3000
     #config.JobType.maxJobRuntimeMin       = 1440
     
     ##########################################################################################
@@ -57,8 +57,9 @@ def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='cr
     config.Data.outLFNDirBase              = outdir    
     #config.Data.lumiMask                   = 'Cert_Collisions2024_..._Golden.json'  # see note below
 
-    config.Data.splitting                  = 'FileBased'
-    config.Data.unitsPerJob                = 5
+#     config.Data.splitting                  = 'FileBased'
+#     config.Data.unitsPerJob                = 5
+    config.Data.splitting                  = 'Automatic'
     config.Data.totalUnits                 = -1
 
     config.Data.publication                = True
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     
     pset   = 'vertex_refitter_data_2024_cfg.py'   # <-- DATA pset, Run3 data GT (see note)
     outdir = '/store/user/manzoni/skims'    
-    tag    = 'rjpsi_run3_18jun26'
+    tag    = 'rjpsi_run3_23jun26_v2'
 
     eras = [
         "Run2024C-MINIv6NANOv15-v1",
@@ -127,7 +128,7 @@ if __name__ == '__main__':
             dataset_tag  = full_tag      , 
             request_name = full_tag[:100],  # CRAB caps requestName at 100 chars
             pset         = pset          ,
-            site         = 'T2_CH_CSCS'  ,
+            site         = 'T3_CH_PSI'  ,
         )
     
         print('\n\nsubmitting config:')

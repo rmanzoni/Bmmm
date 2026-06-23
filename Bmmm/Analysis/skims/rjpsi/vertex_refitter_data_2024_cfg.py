@@ -59,7 +59,7 @@ process.selectedMuons = cms.EDFilter(
 #             'isMediumMuon'            ,
             'abs(eta)<2.5'            ,
             'pt>2.'                   ,
-#             'abs(bestTrack().dxy)<1.8',
+            'abs(bestTrack().dxy)<1.5',
         ])
     ),
     filter = cms.bool(True),

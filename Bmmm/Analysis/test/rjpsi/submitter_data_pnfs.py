@@ -20,7 +20,8 @@ resubmit = False
 old_files = []
 files = []
 
-with open('files_data2024_partial_skim_15jun26.txt') as f:
+# with open('files_data2024_partial_skim_15jun26.txt') as f:
+with open('files_data2024_partial_skim_23jun26.txt') as f:
 # with open('files_BcToJPsiMuMu_inclusive_TuneCP5_13TeV-bcvegpy2-pythia8-evtgen_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1-v1.txt') as f:
 # with open('files_HbToJPsiMuMu_3MuFilter_TuneCP5_13TeV-pythia8-evtgen_RunIISummer20UL18MiniAODv2-106X_upgrade2018_realistic_v16_L1v1_ext1-v3.txt') as f:
     ifiles = f.read().splitlines()
@@ -40,7 +41,7 @@ queue = 'standard'; time = 720
 # queue = 'short'   ; time = 60
 # queue = 'long'    ; time = 10080
 
-out_dir = 'RJpsi_15Jun2026_notrig_data2024_partial_v11'
+out_dir = 'RJpsi_23Jun2026_notrig_data2024_partial_v1'
 # out_dir = 'RJpsi_10Jun2026_notrig_Hb_inclusive_v1'
 
 out_file_name = 'rjpsi'

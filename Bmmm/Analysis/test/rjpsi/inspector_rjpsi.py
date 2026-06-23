@@ -163,7 +163,7 @@ def looper(events, options, handles, handles_mc, row_list, start, fout, branches
             continue
 
         cutflow['pass HLT'] += 1
-
+        
         ######################################################################################
         #####      TRIGGER OBJECTS — built ONCE per event
         ######################################################################################
@@ -239,6 +239,8 @@ def looper(events, options, handles, handles_mc, row_list, start, fout, branches
                     
         if len(cands) == 0:
             continue
+
+#         import ipdb ; ipdb.set_trace()
 
         event.ncands = len(cands)
         cutflow['at least one cand pass presel'] += 1
