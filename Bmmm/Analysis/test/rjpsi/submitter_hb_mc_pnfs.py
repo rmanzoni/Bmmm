@@ -27,7 +27,7 @@ with open('files_hb_skim_15jun26.txt') as f:
 
 # random.shuffle(files)
 
-files_per_job = 1
+files_per_job = 5
 chunks = list(map(list, list(zip(*[iter(files)]*files_per_job))))
 
 if len(files)%files_per_job!=0:
@@ -38,7 +38,7 @@ queue = 'standard'; time = 720
 # queue = 'short'   ; time = 60
 # queue = 'long'    ; time = 10080
 
-out_dir = 'RJpsi_15Jun2026_notrig_HbToJPsiMuMu_inclusive_v2'
+out_dir = 'RJpsi_15Jun2026_notrig_HbToJPsiMuMu_inclusive_v3'
 # out_dir = 'RJpsi_10Jun2026_notrig_Hb_inclusive_v1'
 
 out_file_name = 'rjpsi'
