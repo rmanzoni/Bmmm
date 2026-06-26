@@ -3,6 +3,11 @@ from scipy import stats
 from itertools import combinations
 from PhysicsTools.HeppyCore.utils.deltar import deltaR
 from Bmmm.Analysis.utils import masses, is_pos_def, convert_cov, compute_IP3D
+# the longitudinal-neutrino solver is fully general in the parent mass (m_parent
+# is a free argument), so the R(J/psi) implementation is reused verbatim here
+# with m_parent = m_W. `reconstruct` (same module) additionally returns the full
+# nu / W four-vectors per root if W-level branches are ever wanted.
+from Bmmm.Analysis.RJPsiNuReco import solve_nu_pz
 
 import ROOT
 ROOT.gSystem.Load('libBmmmAnalysis')
@@ -22,6 +27,8 @@ LorentzVector = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')
 
 A_PDGID   = 9900015          # the long-lived scalar a (a -> mu mu)
 TAU_PDGID = 15
+
+W_MASS    = 80.3692          # PDG 2024 W mass [GeV], imposed in the longitudinal nu reco
 
 # ----- signal-muon <-> packed-candidate matching (proximity, cross-collection) --
 _MU_TRK_DR_MATCH    = 0.01
@@ -299,6 +306,112 @@ class Tau3MuCandidate(ROOT.reco.CompositeCandidate):
             self.mu3_ip3d_a     = ip.value()
             self.mu3_ip3d_a_err = ip.error()
             self.mu3_ip3d_a_sig = ip.significance()
+
+    ##########################################################################
+    #####      W KINEMATICS:  PUPPI-MET transverse mass + longitudinal nu reco
+    ##########################################################################
+    @staticmethod
+    def transverse_mass(pt_vis, phi_vis, met_pt, met_phi):
+        '''Standard W transverse mass between a visible system (treated as
+        transverse-massless, as usual) and the missing transverse momentum:
+            mt = sqrt( 2 pT_vis MET ( 1 - cos(phi_vis - phi_MET) ) ).
+        The max(0, .) only guards FP round-off at dphi -> 0.'''
+        dphi = phi_vis - met_phi
+        return np.sqrt(max(0., 2. * pt_vis * met_pt * (1. - np.cos(dphi))))
+
+    def compute_w_kinematics(self, met, m_parent=W_MASS):
+        '''
+        W-like kinematics of the (fully visible) 3mu = tau system for the
+        topology  W -> tau nu , tau -> 3mu, against the PUPPI missing transverse
+        momentum. Sets, all defaulting to NaN when not computable:
+
+          self.mt                : transverse mass between the 3mu candidate and
+                                   PUPPI MET (see transverse_mass). The RAW 3mu
+                                   p4 is used so mt is defined even when the tau
+                                   vertex fit failed.
+
+          self.nu_pz_1, nu_pz_2  : the two solutions for the neutrino LONGITUDINAL
+                                   momentum. These do NOT use MET: the parent (W)
+                                   is assumed to fly along the PV -> SV (tau)
+                                   flight direction, so it has no momentum
+                                   transverse to that axis and the neutrino
+                                   transverse momentum is fixed by balance;
+                                   imposing m(3mu + nu) = m_parent then leaves a
+                                   quadratic in p||_nu with two roots (the same
+                                   two-fold reconstruction as R(J/psi),
+                                   RJPsiNuReco.solve_nu_pz, here with m_parent =
+                                   m_W). Roots are |pz|-sorted: nu_pz_1 is the
+                                   smaller-|pz| solution. Needs the tau vertex
+                                   (self.Bdirection); NaN if it failed.
+          self.nu_has_real       : 1 if the discriminant is >= 0 (two distinct
+                                   real roots); 0 if it went negative, in which
+                                   case nu_pz_1 == nu_pz_2 = -B/2A (the real part
+                                   of the complex pair, via clamp_negative_disc).
+          self.nu_disc           : the quadratic discriminant (diagnostic).
+
+          self.nu_pz_met_1/2      : the SAME m_parent constraint but with the
+                                   neutrino transverse momentum taken from PUPPI
+                                   MET instead of the flight direction (standard
+                                   W -> l nu pz reconstruction). Vertex-free, so
+                                   filled whenever MET exists. |pz|-sorted.
+          self.nu_met_has_real    : 1 if the MET-based discriminant is >= 0.
+          self.nu_met_disc        : the MET-based discriminant (diagnostic).
+
+        `met` is a pat::MET object (event.met[0] for slimmedMETsPuppi).
+        '''
+        self.mt          = np.nan
+        self.nu_pz_1     = np.nan
+        self.nu_pz_2     = np.nan
+        self.nu_has_real = False
+        self.nu_disc     = np.nan
+        # MET-based W-mass reconstruction (independent of the flight direction)
+        self.nu_pz_met_1     = np.nan
+        self.nu_pz_met_2     = np.nan
+        self.nu_met_has_real = False
+        self.nu_met_disc     = np.nan
+
+        # visible 3mu system: the refitted tau (consistent with the SV that
+        # defines the flight direction) when available, else the raw 3mu sum
+        vis = self.rfp4 if getattr(self, 'rfp4', None) is not None else self.p4()
+
+        # ----- transverse mass wrt PUPPI MET (no vertex needed) -------------
+        if met is not None:
+            self.mt = self.transverse_mass(self.p4().pt(), self.p4().phi(),
+                                           met.pt(), met.phi())
+
+        # ----- longitudinal nu: PV->SV flight direction + W-mass constraint -
+        # (deliberately MET-independent: the nu transverse momentum is fixed by
+        #  the flight-direction balance, not by MET.)
+        bdir = getattr(self, 'Bdirection', None)
+        if bdir is not None:
+            res = solve_nu_pz(vis, bdir, m_parent=m_parent, clamp_negative_disc=True)
+            self.nu_has_real = bool(res['has_real'])
+            self.nu_disc     = res['discriminant']
+            pzs = sorted(res['pz_solutions'], key=abs)   # |pz|-sorted, smaller first
+            if len(pzs) == 2:
+                self.nu_pz_1, self.nu_pz_2 = pzs[0], pzs[1]
+
+        # ----- longitudinal nu, MET-based: PUPPI MET fixes the nu transverse ----
+        # momentum (px_nu, py_nu = MET_x, MET_y) and m(3mu + nu) = m_parent is
+        # imposed -> quadratic in pz_nu, the standard W -> l nu reconstruction:
+        #   ET2 = m_vis^2 + pT_vis^2  (= E^2 - pz^2)
+        #   mu  = (m_parent^2 - m_vis^2)/2 + (px_vis MET_x + py_vis MET_y)
+        #   pz_nu = ( mu pz_vis  +/-  E_vis sqrt(mu^2 - ET2 MET^2) ) / ET2
+        # The RAW 3mu p4 (reco::Candidate accessors) is used, so unlike the
+        # flight-direction roots this is filled even when the vertex fit failed.
+        # |pz|-sorted; a negative discriminant keeps the real part (root -> 0,
+        # so both roots collapse to mu pz / ET2) and sets nu_met_has_real = 0.
+        if met is not None:
+            m2v  = self.mass() ** 2
+            et2  = m2v + self.pt() ** 2
+            mu   = 0.5 * (m_parent ** 2 - m2v) + self.px() * met.px() + self.py() * met.py()
+            disc = mu * mu - et2 * met.pt() ** 2
+            self.nu_met_disc     = disc
+            self.nu_met_has_real = bool(disc >= 0.)
+            root = np.sqrt(disc) if disc >= 0. else 0.
+            s1   = (mu * self.pz() + self.energy() * root) / et2
+            s2   = (mu * self.pz() - self.energy() * root) / et2
+            self.nu_pz_met_1, self.nu_pz_met_2 = sorted((s1, s2), key=abs)
 
     ##########################################################################
     #####      PF-CANDIDATE CONE  (R = 0.4 around the 3mu / tau direction)

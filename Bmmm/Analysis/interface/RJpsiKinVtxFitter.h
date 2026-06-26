@@ -1,3 +1,5 @@
+#pragma once
+
 #include "DataFormats/PatCandidates/interface/PackedCandidate.h"
 #include "DataFormats/PatCandidates/interface/Muon.h"
 

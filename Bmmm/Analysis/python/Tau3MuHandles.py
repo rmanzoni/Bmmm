@@ -25,3 +25,7 @@ handles['trg_ps' ] = (('patTrigger'    , '')         , Handle('pat::PackedTrigge
 handles['bs'     ] = ('offlineBeamSpot'              , Handle('reco::BeamSpot')                           )
 handles['tobjs'  ] = ('slimmedPatTrigger'            , Handle('std::vector<pat::TriggerObjectStandAlone>'))
 handles['jets'   ] = ('slimmedJets'                  , Handle('std::vector<pat::Jet>')                    )
+# PUPPI MET: a one-entry std::vector<pat::MET>; the event-level branches read
+# event.met[0]. Used for the 3mu transverse mass (the longitudinal-nu reco does
+# NOT use MET: it fixes the nu transverse momentum from the PV->SV direction).
+handles['met'    ] = ('slimmedMETsPuppi'             , Handle('std::vector<pat::MET>')                    )

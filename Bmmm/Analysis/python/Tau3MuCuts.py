@@ -29,7 +29,7 @@ cuts['baseline']['hlt'          ] = 'HLT_DoubleMu4_3_LowMass'
 cuts['baseline']['hlt_dr'       ] = 0.1
 cuts['baseline']['jet_dr'       ] = 0.2
 cuts['baseline']['gen_dr'       ] = 0.03
-cuts['baseline']['pf_cone_dr'   ] = 0.4    # R of the PF-candidate cone (3mu axis)
+cuts['baseline']['pf_cone_dr'   ] = 0.6    # R of the PF-candidate cone (3mu axis)
 cuts['baseline']['pf_min_pt'    ] = 0.     # min pt of a PF candidate to be stored
 
 ######################################

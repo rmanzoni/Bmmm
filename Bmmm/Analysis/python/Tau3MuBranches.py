@@ -20,6 +20,13 @@ event_branches = {
     'bs_y0e' : lambda ev : ev.bs.y0Error(),
     'bs_z0'  : lambda ev : ev.bs.z0()     ,
     'bs_z0e' : lambda ev : ev.bs.z0Error(),
+
+    # PUPPI MET (slimmedMETsPuppi is a one-entry vector -> [0])
+    'met_pt'    : lambda ev : ev.met[0].pt()   ,
+    'met_phi'   : lambda ev : ev.met[0].phi()  ,
+    'met_px'    : lambda ev : ev.met[0].px()   ,
+    'met_py'    : lambda ev : ev.met[0].py()   ,
+    'met_sumet' : lambda ev : ev.met[0].sumEt(),
 }
 
 ##########################################################################################
@@ -115,6 +122,20 @@ cand_branches = {
     'mu3_ip3d_a'     : lambda c : c.mu3_ip3d_a    ,
     'mu3_ip3d_a_err' : lambda c : c.mu3_ip3d_a_err,
     'mu3_ip3d_a_sig' : lambda c : c.mu3_ip3d_a_sig,
+
+    # ----- W kinematics: 3mu-vs-PUPPI-MET transverse mass, and the two -----
+    # ----- longitudinal-nu solutions (PV->SV flight dir + m_W constraint) --
+    'mt'          : lambda c : c.mt              ,   # mt(3mu, PUPPI MET)
+    'nu_pz_1'     : lambda c : c.nu_pz_1         ,   # smaller-|pz| root
+    'nu_pz_2'     : lambda c : c.nu_pz_2         ,   # larger-|pz|  root
+    'nu_has_real' : lambda c : int(c.nu_has_real),   # 1 if disc >= 0
+    'nu_disc'     : lambda c : c.nu_disc         ,   # quadratic discriminant
+
+    # MET-based W-mass nu pz (transverse momentum from PUPPI MET, vertex-free)
+    'nu_pz_met_1'     : lambda c : c.nu_pz_met_1         ,   # smaller-|pz| root
+    'nu_pz_met_2'     : lambda c : c.nu_pz_met_2         ,   # larger-|pz|  root
+    'nu_met_has_real' : lambda c : int(c.nu_met_has_real),   # 1 if disc >= 0
+    'nu_met_disc'     : lambda c : c.nu_met_disc         ,   # quadratic discriminant
 
     'trig_match'  : lambda c : int(c.trig_match),
 }

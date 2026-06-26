@@ -3,5 +3,6 @@
 	<class name="RDsKinVtxFitter"/>
 	<class name="B4MuKinVtxFitter"/>
 	<class name="RJpsiKinVtxFitter"/>
+	<class name="Tau3MuKinVtxFitter"/>
 </lcgdict>
 
