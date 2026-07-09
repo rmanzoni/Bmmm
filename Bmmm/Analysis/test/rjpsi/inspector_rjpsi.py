@@ -447,8 +447,9 @@ def main():
         with open(options.inputFiles) as f:
             files = [options.redirector + line for line in f.read().splitlines()]
     elif (',' in options.inputFiles
-          or 'cms-xrd-global' in options.inputFiles
-          or 't3dcachedb'     in options.inputFiles):
+          or 'cms-xrd-global'    in options.inputFiles
+          or 'cms03.lcg.cscs.ch' in options.inputFiles
+          or 't3dcachedb'        in options.inputFiles):
         files = options.inputFiles.split(',')
     else:
         files = glob(options.inputFiles)
@@ -457,7 +458,7 @@ def main():
         files = files[:options.maxfiles]
 
     print('files:', files)
-
+        
     events  = Events(files)
     options = options._replace(
         maxevents=options.maxevents if options.maxevents >= 0 else events.size()

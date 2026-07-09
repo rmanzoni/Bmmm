@@ -69,6 +69,14 @@ Usage
     # real output with one final fast serial pass. Also caps concurrently
     # open input files at 8 (never hundreds):
     python3 hadd_uproot.py -o data.root --workers 8 "<pattern>"
+
+    # everything (worker temp parts AND the full merged file while it's
+    # being built) is staged under /scratch/manzoni by default, and only
+    # the finished file is moved into place next to -o at the very end --
+    # so a space-constrained work area never sees anything in-progress.
+    # Override the scratch location, or skip staging entirely, with:
+    python3 hadd_uproot.py -o data.root --scratch-dir /scratch/manzoni "<pattern>"
+    python3 hadd_uproot.py -o data.root --no-stage "<pattern>"
 """
 
 import argparse
@@ -77,7 +85,9 @@ import fnmatch
 import glob
 import multiprocessing
 import os
+import shutil
 import sys
+import tempfile
 import time
 
 import numpy as np
@@ -526,18 +536,26 @@ def main():
         "never hundreds.",
     )
     parser.add_argument(
-        "--tmp-dir", default=None, metavar="DIR",
-        help="directory for temp per-worker part files when --workers > 1 "
-        "(default: same directory as --output). Needs enough free space for "
-        "roughly one worker's share of the downcast-but-not-yet-final-compressed "
-        "data at a time.",
-    )
-    parser.add_argument(
         "--tmp-compression", default="none", choices=["zstd", "lz4", "lzma", "zlib", "none"],
         help="compression for the intermediate per-worker temp files (default: "
         "none, for fast writes -- they're immediately re-read and deleted by the "
         "final consolidation pass, which applies --compression once. Only worth "
-        "changing if --tmp-dir is short on space).",
+        "changing if the scratch area itself is short on space).",
+    )
+    parser.add_argument(
+        "--scratch-dir", default="/scratch/manzoni", metavar="DIR",
+        help="stage everything here while working: per-worker temp part files, "
+        "AND the full merged file while it's being built. Only the finished, "
+        "complete file is moved into --output's directory at the very end -- "
+        "the space-constrained work area never sees anything in-progress. "
+        "Default: /scratch/manzoni. A unique subdirectory is created per run "
+        "and removed when done (or on failure).",
+    )
+    parser.add_argument(
+        "--no-stage", action="store_true",
+        help="write directly to --output as it's built instead of staging in "
+        "--scratch-dir and moving the finished file at the end (old behaviour; "
+        "use this if scratch isn't available in some environment).",
     )
     args = parser.parse_args()
 
@@ -549,15 +567,19 @@ def main():
     for item in args.tree:
         tree_whitelist.extend(t.strip() for t in item.split(",") if t.strip())
 
+    launch_dir = os.getcwd()
+    final_output_path = os.path.abspath(args.output)
+    print(f"Launch directory: {launch_dir}")
+    print(f"Final output will be: {final_output_path}")
+
     files = sorted(glob.glob(args.pattern))
-#     files = files[:50]
     if not files:
         print(f"[error] no files matched pattern: {args.pattern}", file=sys.stderr)
         sys.exit(1)
     print(f"Matched {len(files)} input files.")
 
-    if os.path.exists(args.output) and args.no_force:
-        print(f"[error] {args.output} already exists and --no-force was given", file=sys.stderr)
+    if os.path.exists(final_output_path) and args.no_force:
+        print(f"[error] {final_output_path} already exists and --no-force was given", file=sys.stderr)
         sys.exit(1)
 
     trees, tree_entries, bad_files = find_common_trees(files)
@@ -606,69 +628,94 @@ def main():
     total_entries_selected = sum(tree_entries.get(t, 0) for t in trees.keys())
     print(f"Total entries to merge: {total_entries_selected}")
 
-    tmp_dir = args.tmp_dir or os.path.dirname(os.path.abspath(args.output)) or "."
-    output_basename = os.path.basename(args.output)
+    if args.no_stage:
+        scratch_run_dir = None
+        build_output_path = final_output_path
+        tmp_dir = os.path.dirname(final_output_path) or "."
+    else:
+        try:
+            os.makedirs(args.scratch_dir, exist_ok=True)
+            scratch_run_dir = tempfile.mkdtemp(
+                prefix=f"hadd_uproot_{os.path.basename(final_output_path)}_",
+                dir=args.scratch_dir,
+            )
+        except OSError as exc:
+            print(f"[error] could not create scratch staging dir under {args.scratch_dir!r}: {exc}", file=sys.stderr)
+            sys.exit(1)
+        build_output_path = os.path.join(scratch_run_dir, os.path.basename(final_output_path))
+        tmp_dir = scratch_run_dir
+        print(f"Staging in {scratch_run_dir} (moving to {final_output_path} when done)")
+    output_basename = os.path.basename(build_output_path)
 
     t_start = time.time()
     total_rows = 0
-    progress = None if args.no_progress else Progress(total_entries_selected, args.output)
-    with uproot.recreate(args.output, compression=compression) as out_file:
-        for tree_name, file_list in trees.items():
-            print(f"Merging tree '{tree_name}' from {len(file_list)} file(s)...")
-            try:
-                if args.workers > 1 and len(file_list) > 1:
-                    n_workers_used = min(args.workers, len(file_list))
-                    print(f"  using {n_workers_used} worker process(es)...")
-                    tmp_paths = merge_tree_multicore(
-                        tree_name, file_list, args.workers, step_size,
-                        downcast=not args.no_downcast,
-                        drop_patterns=drop_patterns,
-                        tmp_compression_name=args.tmp_compression,
-                        tmp_compression_level=args.compression_level,
-                        tmp_dir=tmp_dir, output_basename=output_basename,
-                        progress=progress,
-                    )
-                    try:
-                        # Fast final serial pass: consolidate the (already
-                        # downcast + filtered) temp parts into the real
-                        # output. on_chunk=None here -- this data was already
-                        # counted once by the workers above; counting it
-                        # again here would double the progress bar's total.
-                        n = merge_tree(
-                            out_file, tree_name, tmp_paths, step_size,
-                            downcast=False, drop_filter=None, on_chunk=None,
+    progress = None if args.no_progress else Progress(total_entries_selected, build_output_path)
+    try:
+        with uproot.recreate(build_output_path, compression=compression) as out_file:
+            for tree_name, file_list in trees.items():
+                print(f"Merging tree '{tree_name}' from {len(file_list)} file(s)...")
+                try:
+                    if args.workers > 1 and len(file_list) > 1:
+                        n_workers_used = min(args.workers, len(file_list))
+                        print(f"  using {n_workers_used} worker process(es)...")
+                        tmp_paths = merge_tree_multicore(
+                            tree_name, file_list, args.workers, step_size,
+                            downcast=not args.no_downcast,
+                            drop_patterns=drop_patterns,
+                            tmp_compression_name=args.tmp_compression,
+                            tmp_compression_level=args.compression_level,
+                            tmp_dir=tmp_dir, output_basename=output_basename,
+                            progress=progress,
                         )
-                    finally:
-                        for p in tmp_paths:
-                            try:
-                                os.remove(p)
-                            except OSError:
-                                pass
-                else:
-                    n = merge_tree(
-                        out_file, tree_name, file_list, step_size,
-                        downcast=not args.no_downcast,
-                        drop_filter=make_drop_filter(drop_patterns),
-                        on_chunk=None if progress is None else progress.update,
-                    )
-                total_rows += n
-                if progress is not None and progress.is_tty:
-                    print(file=sys.stderr)  # move off the live bar line before the next print
-                print(f"  -> {n} entries written")
-            except Exception as exc:
-                # -k semantics: don't let one broken tree kill the others
-                print(f"[warn] -k: failed to merge tree '{tree_name}': {exc}", file=sys.stderr)
-    if progress is not None:
-        progress.close()
+                        try:
+                            # Fast final serial pass: consolidate the (already
+                            # downcast + filtered) temp parts into the real
+                            # output. on_chunk=None here -- this data was already
+                            # counted once by the workers above; counting it
+                            # again here would double the progress bar's total.
+                            n = merge_tree(
+                                out_file, tree_name, tmp_paths, step_size,
+                                downcast=False, drop_filter=None, on_chunk=None,
+                            )
+                        finally:
+                            for p in tmp_paths:
+                                try:
+                                    os.remove(p)
+                                except OSError:
+                                    pass
+                    else:
+                        n = merge_tree(
+                            out_file, tree_name, file_list, step_size,
+                            downcast=not args.no_downcast,
+                            drop_filter=make_drop_filter(drop_patterns),
+                            on_chunk=None if progress is None else progress.update,
+                        )
+                    total_rows += n
+                    if progress is not None and progress.is_tty:
+                        print(file=sys.stderr)  # move off the live bar line before the next print
+                    print(f"  -> {n} entries written")
+                except Exception as exc:
+                    # -k semantics: don't let one broken tree kill the others
+                    print(f"[warn] -k: failed to merge tree '{tree_name}': {exc}", file=sys.stderr)
+        if progress is not None:
+            progress.close()
+
+        if scratch_run_dir is not None:
+            os.makedirs(os.path.dirname(final_output_path) or ".", exist_ok=True)
+            shutil.move(build_output_path, final_output_path)
+            print(f"Moved staged output to {final_output_path}")
+    finally:
+        if scratch_run_dir is not None:
+            shutil.rmtree(scratch_run_dir, ignore_errors=True)
 
     in_size = sum(os.path.getsize(f) for f in files if os.path.exists(f))
-    out_size = os.path.getsize(args.output)
+    out_size = os.path.getsize(final_output_path)
     dt = time.time() - t_start
 
     print()
     print(f"Done in {dt:.1f}s. Wrote {total_rows} total entries across {len(trees)} tree(s).")
     print(f"Input total:  {human_size(in_size)}  ({len(files)} files)")
-    print(f"Output total: {human_size(out_size)}  ({args.output})")
+    print(f"Output total: {human_size(out_size)}  ({final_output_path})")
     if in_size > 0:
         print(f"Reduction:    {100 * (1 - out_size / in_size):.1f}%")
 
