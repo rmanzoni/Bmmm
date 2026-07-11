@@ -3,7 +3,7 @@ import glob
 
 # https://twiki.cern.ch/twiki/bin/viewauth/CMS/PdmVRun3Analysis
 
-# allfiles = glob.glob('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/data_2024_10sept24_4m_loose_id_MINIAOD/*root')
+# allfiles = glob.glob('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/data_2022_10sept24_4m_loose_id_MINIAOD/*root')
 
 allfiles = [
     'file:/work/manzoni/rjpsi_run3/CMSSW_15_1_1/src/Bmmm/Analysis/test/rjpsi/0443354B-2D3F-CF41-A1F0-0FC4F92E718E.root',
@@ -21,7 +21,8 @@ process = cms.Process('SKIM')
 
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
 #process.GlobalTag.globaltag = "auto:run2_mc"
-process.GlobalTag.globaltag = '150X_dataRun3_v2'
+process.GlobalTag.globaltag = '124X_dataRun3_PromptAnalysis_v1' # CD
+# process.GlobalTag.globaltag = '124X_dataRun3_Prompt_v10' # E
 
 process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("Configuration.Geometry.GeometryRecoDB_cff")

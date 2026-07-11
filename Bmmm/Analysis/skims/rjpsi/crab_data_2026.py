@@ -27,8 +27,8 @@ before using crab
 # trip the EXPECTED_DATASETS guard below -- which is the point: fail loud, decide by hand
 # whether the new version should replace or add to the campaign.
 
-DAS_QUERY = 'dataset dataset=/ParkingDoubleMuonLowMass*/Run2024*MINIv6NANOv15*/MINIAOD'
-EXPECTED_DATASETS = 64   # 8 parts x 8 (C,D,E,F,G,H,I,I_v2) -- update if the campaign changes
+DAS_QUERY = 'dataset dataset=/ParkingDoubleMuonLowMass*/Run2026*-PromptReco*/MINIAOD'
+EXPECTED_DATASETS = 16   # 8 parts x 8 (C,D,E,F,G,H,I,I_v2) -- update if the campaign changes
 
 
 def get_datasets(query=DAS_QUERY):
@@ -123,8 +123,27 @@ if __name__ == '__main__':
     outdir = '/store/user/manzoni/skims'
     tag    = 'rjpsi_run3_23jun26_v2'
 
-    datasets = get_datasets()
-
+#     datasets = get_datasets()
+    
+    datasets = [
+        '/ParkingDoubleMuonLowMass0/Run2026B-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass0/Run2026D-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass1/Run2026B-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass1/Run2026D-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass2/Run2026B-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass2/Run2026D-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass3/Run2026B-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass3/Run2026D-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass4/Run2026B-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass4/Run2026D-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass5/Run2026B-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass5/Run2026D-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass6/Run2026B-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass6/Run2026D-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass7/Run2026B-PromptReco-v1/MINIAOD',
+        '/ParkingDoubleMuonLowMass7/Run2026D-PromptReco-v1/MINIAOD',
+    ]
+    
     print('\nfound %d datasets from DAS:' % len(datasets))
     for d in datasets:
         print('   ', d)

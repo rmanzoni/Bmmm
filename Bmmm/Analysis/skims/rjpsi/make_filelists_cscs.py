@@ -46,8 +46,11 @@ DBS_INSTANCE = 'prod/phys03'   # USER datasets live in phys03, NOT prod/global
 
 # dataset patterns, verbatim from DAS; one flat list written per key
 CAMPAIGNS = {
+    '2022': '/ParkingDoubleMuonLowMass*/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass*_Run2022*/USER',
+    '2023': '/ParkingDoubleMuonLowMass*/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass*_Run2023*_22Sep2023_*-0d9d2e4edce7c6587aaaedda82b153dc/USER',
     '2024': '/ParkingDoubleMuonLowMass*/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass*_Run2024*_MINIv6NANOv15_*-2344730b5c341a1d09de0777eeb1fe94/USER',
     '2025': '/ParkingDoubleMuonLowMass*/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass*_Run2025*_PromptReco_*-cb31c552909115217b0520f2761c9df4/USER',
+    '2026': '/ParkingDoubleMuonLowMass*/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass*_Run2026*_PromptReco_*-f3700ed4128e50daca3577fc7a3f2b2f/USER',
 }
 
 # optional exact-count guards for re-runs, e.g. {'2024': 8, '2025': 6}.

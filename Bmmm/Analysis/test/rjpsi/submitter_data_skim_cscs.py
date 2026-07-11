@@ -77,21 +77,30 @@ input_redirector = 'cms03.lcg.cscs.ch:1094'      # CSCS site door (direct)  <-- 
 # ---------------------------------------------------------------------------
 # per-year selection: run this submitter once per year (separate out_dirs)
 # ---------------------------------------------------------------------------
-year = '2024'                                     # '2024' or '2025'
+year = '2026' # '2024' or '2025'
 
 input_files_by_year = {
-    '2024': '../files/files_data2024_cscs_04jul26.txt',
-    '2025': '../files/files_data2025_cscs_04jul26.txt',
+    '2022': '../files/files_data2022_cscs_11jul26.txt',
+    '2023': '../files/files_data2023_cscs_11jul26.txt',
+    '2024': '../files/files_data2024_cscs_08jul26.txt',
+    '2025': '../files/files_data2025_cscs_08jul26.txt',
+    '2026': '../files/files_data2026_cscs_11jul26.txt',
 }
 
 addendum_files_by_year = {
+    '2022': '../files/files_data2022_cscs_11jul26.txt',
+    '2023': '../files/files_data2023_cscs_11jul26.txt',
     '2024': '../files/files_data2024_cscs_08jul26.txt',
     '2025': '../files/files_data2025_cscs_08jul26.txt',
+    '2026': '../files/files_data2026_cscs_11jul26.txt',
 }
 
 out_dir_by_year = {
+    '2022': 'RJpsi_23Jun2026_notrig_data2022_cscs_04jul26_v1',
+    '2023': 'RJpsi_23Jun2026_notrig_data2023_cscs_04jul26_v1',
     '2024': 'RJpsi_23Jun2026_notrig_data2024_cscs_04jul26_v1',
     '2025': 'RJpsi_23Jun2026_notrig_data2025_cscs_04jul26_v1',
+    '2026': 'RJpsi_23Jun2026_notrig_data2026_cscs_04jul26_v1',
 }
 
 # ---------------------------------------------------------------------------
@@ -198,8 +207,7 @@ files += ['root://%s//%s' % (input_redirector, ifile.lstrip('/'))
 
 # random.shuffle(files)
 
-# files_per_job = 5 # for base submission
-files_per_job = 1 # for diff submission
+files_per_job = 5 # for base submission
 chunks = list(map(list, list(zip(*[iter(files)]*files_per_job))))
 
 if len(files)%files_per_job!=0:

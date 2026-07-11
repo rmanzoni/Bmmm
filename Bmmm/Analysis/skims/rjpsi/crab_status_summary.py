@@ -28,6 +28,9 @@ Uses the CRAB python API (crabCommand), not stdout parsing. Schema relied upon
     res['jobsPerStatus'] -> {state: count}     (clean for FileBased; probes pollute
                                                  this under Automatic splitting)
     res['publication']   -> {published, publication_failed, not_published, publishing}
+                            The 'PUBLICATION vs DONE' section compares each task's
+                            #finished jobs against its 'published' count and lists
+                            every task where they differ (see pub_mismatch()).
     per-job exit codes   -> live in a {jobid: {'State':.., 'Error':[ec,msg]}} structure
                             that is ONLY populated with long=True. The KEY holding it
                             varies by client version, so extract_exitcodes() scans for
@@ -215,6 +218,31 @@ def buckets(jobs):
     return done, run, idle, fail, other
 
 
+def pub_mismatch(rec):
+    """
+    Compare 'done' jobs against 'published' jobs for one task.
+
+    Returns (finished, published, present, is_mismatch):
+      finished    -> jobs in the finished/'done' state
+      published   -> jobs whose output publication is 'done'
+      present     -> the task actually reports publication counters. False means
+                     publication is disabled or hasn't been reported yet; such a
+                     task is NEVER counted as a mismatch (avoids flagging every
+                     non-publishing task).
+      is_mismatch -> present and finished != published
+
+    Caveat: 'published' is really a count of published output *files*. It equals the
+    number of finished jobs only when each job produces exactly one publishable
+    output -- true for the single-TTree ntuple tasks here. A task with N output
+    datasets would publish ~N files per job, so divide before comparing there.
+    """
+    finished  = rec['jobs'].get('finished', 0)
+    pub       = rec['publication']
+    published = pub.get('published', 0)
+    present   = bool(pub)
+    return finished, published, present, (present and finished != published)
+
+
 def flags_for(rec, fail_thr, idle_thr):
     """Classify a task into action flags. Empty list == nothing to do."""
     if rec['error']:
@@ -235,6 +263,12 @@ def flags_for(rec, fail_thr, idle_thr):
         fl.append('PUB-FAIL')
     elif 'COMPLET' in st and pub.get('not_published', 0) > 0:
         fl.append('PUB-LAG')
+    # general 'done != published' check, independent of the reason above. Only
+    # added when the more specific flags didn't already fire, to keep the column
+    # readable; the dedicated report section below lists every mismatch regardless.
+    _, _, _, mm = pub_mismatch(rec)
+    if mm and 'PUB-FAIL' not in fl and 'PUB-LAG' not in fl:
+        fl.append('PUB!=DONE')
     return fl
 
 
@@ -277,9 +311,17 @@ def common_prefix(names):
     return pre[:pre.rfind('_') + 1] if '_' in pre else ''
 
 
+def _short_name(rec, prefix):
+    """Task name with the 'crab_' and the common campaign prefix stripped for display."""
+    short = rec['name'][len('crab_'):] if rec['name'].startswith('crab_') else rec['name']
+    if prefix and short.startswith(prefix):
+        short = short[len(prefix):]
+    return short
+
+
 def print_table(records, prefix):
-    hdr = ('task', 'sched', 'tot', 'done', 'run', 'idle', 'fail', 'oth', '%done', 'flags')
-    widths = (46, 11, 5, 5, 4, 5, 5, 4, 6, 24)
+    hdr = ('task', 'sched', 'tot', 'done', 'publ', 'run', 'idle', 'fail', 'oth', '%done', 'flags')
+    widths = (46, 11, 5, 5, 5, 4, 5, 5, 4, 6, 24)
     line = '  '.join('%-*s' % (w, h) for w, h in zip(widths, hdr))
     print(line)
     print('-' * len(line))
@@ -292,10 +334,11 @@ def print_table(records, prefix):
             print('%-*s  %-11s  %s' % (widths[0], short, 'ERROR', r['error'][:60]))
             continue
         done, run, idle, fail, other = buckets(r['jobs'])
+        publ = r['publication'].get('published', 0) if r['publication'] else '-'
         pct = ('%.0f' % (100.0 * done / r['total'])) if r['total'] else '-'
         flags = ','.join(r['flags'])
         vals = (short, (r['sched_status'] or '-')[:11], r['total'],
-                done, run, idle, fail, other, pct, flags)
+                done, publ, run, idle, fail, other, pct, flags)
         print('  '.join('%-*s' % (w, v) for w, v in zip(widths, vals)))
 
 
@@ -366,6 +409,43 @@ def main():
     if pub:
         print('  publication: ' + ', '.join('%s=%d' % (k, pub[k]) for k in sorted(pub)))
 
+    # ---- publication vs done mismatch ----------------------------------------------
+    # tasks where #jobs in 'done'/finished != #jobs whose publication is 'done'.
+    mism, no_pub = [], []
+    for r in records:
+        if r['error']:
+            continue
+        finished, published, present, is_mm = pub_mismatch(r)
+        if not present:
+            if finished:
+                no_pub.append(r)
+            continue
+        if is_mm:
+            mism.append((_short_name(r, prefix)[:46], finished, published, r))
+
+    print('\nPUBLICATION vs DONE  (tasks where #done jobs != #published jobs)')
+    if not mism:
+        print('  none: every task reporting publication has published == done.')
+    else:
+        mism.sort(key=lambda t: (t[1] - t[2]), reverse=True)   # biggest deficit first
+        namew = max(len(nm) for nm, _, _, _ in mism)
+        print('  %-*s  %6s  %6s  %6s   %-11s %s'
+              % (namew, 'task', 'done', 'publ', 'diff', 'sched', 'where the rest sit'))
+        for nm, finished, published, r in mism:
+            rest = ['%s=%d' % (k, r['publication'][k])
+                    for k in ('publishing', 'not_published', 'publication_failed')
+                    if r['publication'].get(k, 0)]
+            print('  %-*s  %6d  %6d  %+6d   %-11s %s'
+                  % (namew, nm, finished, published, published - finished,
+                     (r['sched_status'] or '-')[:11], ', '.join(rest) or '-'))
+        print('  %d task(s) with a done/published mismatch.' % len(mism))
+        print('  note: tasks still running are expected to show a deficit until the')
+        print('        async publisher catches up -- read the sched column to tell')
+        print('        those apart from COMPLETED tasks that genuinely need attention.')
+    if no_pub:
+        print('  (%d task(s) have finished jobs but report no publication counters '
+              '-- publication off or not yet started)' % len(no_pub))
+
     # ---- exit-code summary ---------------------------------------------------------
     if long_:
         codes = defaultdict(int)
@@ -410,7 +490,7 @@ def main():
                 extra += '  [ec %s x%d]' % (top, r['exitcodes'][top])
             print('  [%-18s] %s%s' % (','.join(r['flags']), short, extra))
         print('\n  legend: RECOVER=dead DAG, needs recovery task (resubmit is a no-op)')
-        print('          FAILS/IDLE=fraction over threshold; PUB-FAIL/LAG=stage-out/publish')
+        print('          FAILS/IDLE=fraction over threshold; PUB-FAIL/LAG/!=DONE=publish')
 
     if args.json_path:
         for r in records:                          # raw is not JSON-friendly / not kept
@@ -418,7 +498,16 @@ def main():
         with open(args.json_path, 'w') as fout:
             json.dump({'tasks': records,
                        'totals': dict(tot),
-                       'publication': dict(pub)}, fout, indent=2)
+                       'publication': dict(pub),
+                       'pub_mismatch': [
+                           {'name': r['name'],
+                            'done': r['jobs'].get('finished', 0),
+                            'published': r['publication'].get('published', 0),
+                            'diff': (r['publication'].get('published', 0)
+                                     - r['jobs'].get('finished', 0)),
+                            'sched_status': r['sched_status']}
+                           for r in records if pub_mismatch(r)[3]]},
+                      fout, indent=2)
         print('\nwrote %s' % args.json_path)
 
 
