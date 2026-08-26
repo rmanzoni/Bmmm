@@ -6,7 +6,7 @@ import glob
 # allfiles = glob.glob('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/data_2024_10sept24_4m_loose_id_MINIAOD/*root')
 
 allfiles = [
-    'file:/work/manzoni/rjpsi_run3/CMSSW_15_1_1/src/Bmmm/Analysis/test/rjpsi/0443354B-2D3F-CF41-A1F0-0FC4F92E718E.root',
+    '/store/data/Run2026B/ParkingDoubleMuonLowMass0/MINIAOD/PromptReco-v1/000/402/435/00000/b25038ef-e135-4f15-a6c4-bc6b24f77af3.root',
 ]
 
 
