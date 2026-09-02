@@ -134,6 +134,16 @@ bc_branches = {
     'gen_lxyz'     :  lambda ib : np.sqrt( (ib.daughter(0).vx() - ib.vx())**2 + (ib.daughter(0).vy() - ib.vy())**2 + (ib.daughter(0).vz() - ib.vz())**2 ) ,
 }
 
+# ----- Hammer FF-reweighting inputs (pre-FSR gen leaves; NaN off signal) -----
+# Attributes ham_<particle>_<component> are attached to the bc gen particle by
+# RJPsiGenHistory.gen_hammer_p4 (called in the inspector's setup_event_gen); the
+# getters read them with an NaN default so non-signal / non-MC rows stay clean.
+# The Bc four-momentum is NOT duplicated -- use the gen_b_* branches above.
+for _ham_p in ('mup', 'mum', 'lep', 'nu', 'taumu', 'taunut', 'taunum'):
+    for _ham_c in ('pt', 'eta', 'phi', 'mass', 'pdgid'):
+        _ham_attr = 'ham_%s_%s' % (_ham_p, _ham_c)
+        bc_branches['gen_%s' % _ham_attr] = (lambda ib, n=_ham_attr: getattr(ib, n, np.nan))
+
 jpsi_branches = {
     'gen_jpsi_pt'     :  lambda ib : ib.pt()    ,
     'gen_jpsi_eta'    :  lambda ib : ib.eta()   , 

@@ -18,7 +18,7 @@ from Bmmm.Analysis.JpsiMuBranches import (
 from Bmmm.Analysis.JpsiMuCandidate import JpsiMuCandidate as Candidate
 from Bmmm.Analysis.JpsiMuCuts import cuts
 from Bmmm.Analysis.utils import cutflow, masses
-from Bmmm.Analysis.RJPsiGenHistory import BcGenDecay, gen_kinematics, gen_helicity_angles
+from Bmmm.Analysis.RJPsiGenHistory import BcGenDecay, gen_kinematics, gen_helicity_angles, gen_hammer_p4
 from Bmmm.Analysis.RJPsiMuonMatcher import match_candidate_muons, signal_gen_muons, ROLE
 from Bmmm.Analysis.RJPsiHbMatcher import match_hb_candidate, hb_status1_muons
 from Bmmm.Analysis.RJPsiNuReco import reconstruct, M_BC
@@ -96,6 +96,10 @@ class JpsiMuInspector(BaseInspector):
                     ha = gen_helicity_angles(event.bc_gen)
                     for key in ('cos_theta_v', 'cos_theta_l', 'chi'):
                         setattr(bc, key, ha[key])
+
+                    # pre-FSR gen four-momenta for Hammer FF reweighting
+                    for key, val in gen_hammer_p4(event.bc_gen).items():
+                        setattr(bc, key, val)
 
                 for branch, getter in bc_branches.items():
                     event_tofill[branch] = safe_get(getter, bc, verbose=options.verbose, name=branch)

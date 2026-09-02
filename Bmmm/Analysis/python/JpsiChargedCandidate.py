@@ -1140,13 +1140,13 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
         nan = float('nan')
         cos_v = cos_l = chi = nan
     
-        p_bc   = RJpsiCandidate._np4(p4_bc)
-        p_jpsi = RJpsiCandidate._np4(p4_jpsi)
-        p_muv  = RJpsiCandidate._np4(p4_mu_v)
-        p_lep  = RJpsiCandidate._np4(p4_lep)
+        p_bc   = JpsiChargedCandidate._np4(p4_bc)
+        p_jpsi = JpsiChargedCandidate._np4(p4_jpsi)
+        p_muv  = JpsiChargedCandidate._np4(p4_mu_v)
+        p_lep  = JpsiChargedCandidate._np4(p4_lep)
         p_w    = p_bc - p_jpsi
     
-        boost, unit = RJpsiCandidate._boost, RJpsiCandidate._unit3
+        boost, unit = JpsiChargedCandidate._boost, JpsiChargedCandidate._unit3
     
         # cos_theta_v : J/psi -> mu+ mu-
         if p_jpsi[0] > 0.:

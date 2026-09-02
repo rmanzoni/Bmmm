@@ -33,7 +33,8 @@ from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow
 from Bmmm.Analysis.Handles import handles_mc
-from Bmmm.Analysis.Handles import handles_skim as handles  # includes BS constrained vertices
+from Bmmm.Analysis.Handles import handles
+from Bmmm.Analysis.Handles import handles_skim # includes BS constrained vertices
 
 ######################################################################################
 #####      INCREMENTAL (BATCHED) OUTPUT   (channel-agnostic)
@@ -290,6 +291,7 @@ class BaseInspector(object):
         parser.add_argument('--logfreq',     dest='logfreq',     default=100,            type=int)
         parser.add_argument('--logger',      dest='logger',      default='',             type=str)
         parser.add_argument('--savenontrig', dest='savenontrig', action='store_true')
+        parser.add_argument('--useskim',     dest='useskim',     action='store_true')
         parser.add_argument('--maxfiles',    dest='maxfiles',    default=-1,             type=int)
         parser.add_argument('--redirector',  dest='redirector',  default='root://cms-xrd-global.cern.ch//', type=str)
         args = parser.parse_args()
@@ -329,8 +331,10 @@ class BaseInspector(object):
         mytimestamp = datetime.now().strftime('%Y-%m-%d__%Hh%Mm%Ss')
         print('#### STARTING NOW', mytimestamp)
 
+        myhandles = handles_skim if options.useskim else handles
+
         n_proc_events, cutflow_result = self.looper(
-            events, options, handles, handles_mc, row_list, start, fout, branches)
+            events, options, myhandles, handles_mc, row_list, start, fout, branches)
 
         flush(fout, row_list, branches)
 
