@@ -77,10 +77,10 @@ input_redirector = 'cms03.lcg.cscs.ch:1094'      # CSCS site door (direct)  <-- 
 # ---------------------------------------------------------------------------
 # per-year selection: run this submitter once per year (separate out_dirs)
 # ---------------------------------------------------------------------------
-year = '2026' # '2024' or '2025'
+year = '2022' # '2024' or '2025'
 
 input_files_by_year = {
-    '2022': '../files/files_data2022_cscs_11jul26.txt',
+    '2022': '../files/files_data2022_cscs_12jul26.txt',
     '2023': '../files/files_data2023_cscs_11jul26.txt',
     '2024': '../files/files_data2024_cscs_08jul26.txt',
     '2025': '../files/files_data2025_cscs_08jul26.txt',
@@ -88,7 +88,7 @@ input_files_by_year = {
 }
 
 addendum_files_by_year = {
-    '2022': '../files/files_data2022_cscs_11jul26.txt',
+    '2022': '../files/files_data2022_cscs_13jul26.txt',
     '2023': '../files/files_data2023_cscs_11jul26.txt',
     '2024': '../files/files_data2024_cscs_08jul26.txt',
     '2025': '../files/files_data2025_cscs_08jul26.txt',
