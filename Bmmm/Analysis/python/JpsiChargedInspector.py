@@ -33,7 +33,8 @@ from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow
 from Bmmm.Analysis.Handles import handles_mc
-from Bmmm.Analysis.Handles import handles_skim as handles  # includes BS constrained vertices
+from Bmmm.Analysis.Handles import handles      as handles_std   # full MINIAOD collections
+from Bmmm.Analysis.Handles import handles_skim                  # SKIM collections (BS-constrained vertices)
 
 ######################################################################################
 #####      INCREMENTAL (BATCHED) OUTPUT   (channel-agnostic)
@@ -290,6 +291,8 @@ class BaseInspector(object):
         parser.add_argument('--logfreq',     dest='logfreq',     default=100,            type=int)
         parser.add_argument('--logger',      dest='logger',      default='',             type=str)
         parser.add_argument('--savenontrig', dest='savenontrig', action='store_true')
+        parser.add_argument('--skim',        dest='skim',        action='store_true',
+                            help='read the SKIM collections (handles_skim) instead of the full MINIAOD handles')
         parser.add_argument('--maxfiles',    dest='maxfiles',    default=-1,             type=int)
         parser.add_argument('--redirector',  dest='redirector',  default='root://cms-xrd-global.cern.ch//', type=str)
         args = parser.parse_args()
@@ -328,6 +331,9 @@ class BaseInspector(object):
         start       = time()
         mytimestamp = datetime.now().strftime('%Y-%m-%d__%Hh%Mm%Ss')
         print('#### STARTING NOW', mytimestamp)
+
+        handles = handles_skim if options.skim else handles_std
+        print('#### reading %s collections' % ('SKIM' if options.skim else 'full-MINIAOD'))
 
         n_proc_events, cutflow_result = self.looper(
             events, options, handles, handles_mc, row_list, start, fout, branches)

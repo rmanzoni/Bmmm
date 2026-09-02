@@ -9,7 +9,7 @@ handles_mc['pu'     ] = ('slimmedAddPileupInfo', Handle('std::vector<PileupSumma
 
 handles = OrderedDict()
 handles['muons'  ] = ('slimmedMuons'                       , Handle('std::vector<pat::Muon>')                   )
-handles['trk'    ] = ('packedPFCandidates'                 , Handle('std::vector<pat::PackedCandidate>')        )
+handles['pf'     ] = ('packedPFCandidates'                 , Handle('std::vector<pat::PackedCandidate>')        )
 handles['ltrk'   ] = ('lostTracks'                         , Handle('std::vector<pat::PackedCandidate>')        )
 # handles['vtx'    ] = ('offlineSlimmedPrimaryVerticesWithBS', Handle('std::vector<reco::Vertex>')                )
 handles['vtx'    ] = ('offlineSlimmedPrimaryVertices'      , Handle('std::vector<reco::Vertex>')                )
