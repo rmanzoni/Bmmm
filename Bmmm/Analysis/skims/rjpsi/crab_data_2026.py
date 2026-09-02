@@ -61,7 +61,7 @@ def dataset_suffix(dataset):
 # ------------------------------------------------------------------------------------
 # Config factory
 # ------------------------------------------------------------------------------------
-def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_02jul26_data2024_v2', site='T2_CH_CSCS'):
+def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='crab_skims_02jul26_data2026_v2', site='T2_CH_CSCS'):
 
     config = Configuration()
 
@@ -119,7 +119,7 @@ def create_config(dataset, outdir, dataset_tag, request_name, pset, workarea='cr
 
 if __name__ == '__main__':
 
-    pset   = 'vertex_refitter_data_2024_cfg.py'   # <-- DATA pset, Run3 data GT (see note)
+    pset   = 'vertex_refitter_data_2026_cfg.py'   # <-- DATA pset, Run3 data GT (see note)
     outdir = '/store/user/manzoni/skims'
     tag    = 'rjpsi_run3_23jun26_v2'
 
