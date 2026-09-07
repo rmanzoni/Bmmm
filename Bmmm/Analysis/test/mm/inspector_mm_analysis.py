@@ -56,12 +56,16 @@ from collections import OrderedDict
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
-from Bmmm.Analysis.MuMuBranches import branches, paths
+from Bmmm.Analysis.MuMuBranches import (
+    branches, paths, event_branches, cand_branches, muon_branches,
+)
+from Bmmm.Analysis.CommonBranches import safe_get
 from Bmmm.Analysis.MuMuCandidate import Candidate
-
-_HLT_VER_RE = re.compile(r'(_part\d+|_v\d+)+$')
-def drop_hlt_version(s): 
-    return _HLT_VER_RE.sub('', s)
+from Bmmm.Analysis.utils import (
+    COV_ELEMENT_NAMES, COV_INDEX_PAIRS,
+    VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element,
+    drop_hlt_version,
+)
         
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--inputFiles'   , dest='inputFiles' , required=True, type=str)
@@ -255,14 +259,14 @@ for i, event in enumerate(events):
         event.getByLabel(v[0], v[1])
         setattr(event, k, v[1].product())
     
+    event.mc = mc
+
     if mc:
         for k, v in handles_mc.items():
             event.getByLabel(v[0], v[1])
             setattr(event, k, v[1].product())
         
-        pu_at_bx0 = [ipu for ipu in event.pu if ipu.getBunchCrossing()==0][0]
-        tofill['n_pu'      ] = pu_at_bx0.getPU_NumInteractions()
-        tofill['n_true_int'] = pu_at_bx0.getTrueNumInteractions()
+        event.pu_at_bx0 = [ipu for ipu in event.pu if ipu.getBunchCrossing()==0][0]
             
     lumi = event.eventAuxiliary().luminosityBlock()
     iev  = event.eventAuxiliary().event()
@@ -446,108 +450,43 @@ for i, event in enumerate(events):
     for final_cand in cands[:1]:     
         # fill the tree    
         # can make it smarter with lambda functions associated to the def of branches             
-        tofill['run'   ] = event.eventAuxiliary().run()
-        tofill['lumi'  ] = event.eventAuxiliary().luminosityBlock()
-        tofill['event' ] = np.int64(event.eventAuxiliary().event())
-        tofill['npv'   ] = len(event.vtx)
-        tofill['ncands'] = len(cands)
-    
-        tofill['mass'  ] = final_cand.mass()
-        tofill['mcorr' ] = final_cand.mass_corrected()
-        tofill['pt'    ] = final_cand.pt()
-        tofill['eta'   ] = final_cand.eta()
-        tofill['phi'   ] = final_cand.phi()
-        tofill['charge'] = final_cand.charge()
-    
-        tofill['dr'    ] = final_cand.r()
-        tofill['dr_max'] = final_cand.max_dr()
-        tofill['dr_12' ] = final_cand.dr12()
-    
-        tofill['pv_x' ] = final_cand.pv.position().x()
-        tofill['pv_y' ] = final_cand.pv.position().y()
-        tofill['pv_z' ] = final_cand.pv.position().z()
-    
-        tofill['bs_x0'] = event.bs.x0()
-        tofill['bs_y0'] = event.bs.y0()
-        tofill['bs_z0'] = event.bs.z0()
-    
-        tofill['bs_x'] = final_cand.bs.position().x()
-        tofill['bs_y'] = final_cand.bs.position().y()
-    
-        tofill['vx'] = final_cand.vtx.position().x()
-        tofill['vy'] = final_cand.vtx.position().y()
-        tofill['vz'] = final_cand.vtx.position().z()
-        tofill['vtx_chi2'] = final_cand.vtx.chi2
-        tofill['vtx_prob'] = final_cand.vtx.prob
-    
-        tofill['cos2d'  ] = final_cand.vtx.cos
-        tofill['lxy'    ] = final_cand.lxy.value()
-        tofill['lxy_err'] = final_cand.lxy.error()
-        tofill['lxy_sig'] = final_cand.lxy.significance()
+        # Fill from the branch getters in MuMuBranches -- event-level off the
+        # event, candidate-level off the candidate, per-muon off each muon once
+        # it carries the per-candidate context the shared getters expect.
+        # safe_get turns a getter that raises (a vertex fit that did not
+        # converge, a gen match that is not there) into a NaN instead of killing
+        # the job thousands of events in; run once with --verbose after changing
+        # the schema, since that safety is otherwise silent.
+        event.ncands = len(cands)
 
-        for idx in[1,2]:
-            imu = getattr(final_cand, 'mu%d'%idx)
-            tofill['mu%d_pt'             %idx] = imu.pt()
-            tofill['mu%d_eta'            %idx] = imu.eta()
-            tofill['mu%d_phi'            %idx] = imu.phi()
-            tofill['mu%d_e'              %idx] = imu.energy()
-            tofill['mu%d_mass'           %idx] = imu.mass()
-            tofill['mu%d_charge'         %idx] = imu.charge()
-            tofill['mu%d_id_loose'       %idx] = imu.isLooseMuon()
-            tofill['mu%d_id_soft'        %idx] = imu.isMediumMuon()
-            tofill['mu%d_id_medium'      %idx] = imu.isSoftMuon(final_cand.pv)
-            tofill['mu%d_id_tight'       %idx] = imu.isTightMuon(final_cand.pv)
-            tofill['mu%d_id_soft_mva_raw'%idx] = imu.softMvaValue()
-            tofill['mu%d_id_soft_mva'    %idx] = imu.passed(ROOT.reco.Muon.SoftMvaId)
-            tofill['mu%d_id_pf'          %idx] = imu.isPFMuon()
-            tofill['mu%d_id_global'      %idx] = imu.isGlobalMuon()
-            tofill['mu%d_id_tracker'     %idx] = imu.isTrackerMuon()
-            tofill['mu%d_id_standalone'  %idx] = imu.isStandAloneMuon()
-            iso03 = imu.pfIsolationR03()
-            iso04 = imu.pfIsolationR04()
-            tofill['mu%d_pfiso03'        %idx] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0))
-            tofill['mu%d_pfiso04'        %idx] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0))
-            tofill['mu%d_pfreliso03'     %idx] = (iso03.sumChargedHadronPt + max(iso03.sumNeutralHadronEt + iso03.sumPhotonEt - 0.5 * iso03.sumPUPt, 0.0)) / imu.pt()
-            tofill['mu%d_pfreliso04'     %idx] = (iso04.sumChargedHadronPt + max(iso04.sumNeutralHadronEt + iso04.sumPhotonEt - 0.5 * iso04.sumPUPt, 0.0)) / imu.pt()
-            tofill['mu%d_pfiso03_ch'     %idx] = iso03.sumChargedHadronPt
-            tofill['mu%d_pfiso03_cp'     %idx] = iso03.sumChargedParticlePt
-            tofill['mu%d_pfiso03_nh'     %idx] = iso03.sumNeutralHadronEt
-            tofill['mu%d_pfiso03_ph'     %idx] = iso03.sumPhotonEt       
-            tofill['mu%d_pfiso03_pu'     %idx] = iso03.sumPUPt           
-            tofill['mu%d_pfiso04_ch'     %idx] = iso04.sumChargedHadronPt
-            tofill['mu%d_pfiso04_cp'     %idx] = iso04.sumChargedParticlePt
-            tofill['mu%d_pfiso04_nh'     %idx] = iso04.sumNeutralHadronEt
-            tofill['mu%d_pfiso04_ph'     %idx] = iso04.sumPhotonEt       
-            tofill['mu%d_pfiso04_pu'     %idx] = iso04.sumPUPt           
-            tofill['mu%d_dxy'            %idx] = imu.bestTrack().dxy(final_cand.pv.position())
-            tofill['mu%d_dxy_e'          %idx] = imu.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
-            tofill['mu%d_dxy_sig'        %idx] = imu.bestTrack().dxy(final_cand.pv.position()) / imu.bestTrack().dxyError(final_cand.pv.position(), final_cand.pv.error())
-            tofill['mu%d_dz'             %idx] = imu.bestTrack().dz(final_cand.pv.position())
-            tofill['mu%d_dz_e'           %idx] = imu.bestTrack().dzError()
-            tofill['mu%d_dz_sig'         %idx] = imu.bestTrack().dz(final_cand.pv.position()) / imu.bestTrack().dzError()
-            tofill['mu%d_bs_dxy'         %idx] = imu.bestTrack().dxy(final_cand.bs.position())
-            tofill['mu%d_bs_dxy_e'       %idx] = imu.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
-            tofill['mu%d_bs_dxy_sig'     %idx] = imu.bestTrack().dxy(final_cand.bs.position()) / imu.bestTrack().dxyError(final_cand.bs.position(), final_cand.bs.error())
-            tofill['mu%d_cov_pos_def'    %idx] = imu.is_cov_pos_def
-            # jet matching
+        for ibranch, igetter in event_branches.items():
+            tofill[ibranch] = safe_get(igetter, event, verbose=verbose, name=ibranch)
+
+        for ibranch, igetter in cand_branches.items():
+            tofill[ibranch] = safe_get(igetter, final_cand, verbose=verbose, name=ibranch)
+
+        for idx in [1, 2]:
+            imu = getattr(final_cand, 'mu%d' %idx)
+
+            # per-candidate context: the shared per-muon getters read the PV and
+            # the beamspot off the muon, as they do in the RJpsi channel
+            imu.pv    = final_cand.pv
+            imu.bs    = final_cand.bs
+            imu.iso03 = imu.pfIsolationR03()
+            imu.iso04 = imu.pfIsolationR04()
+
             jet, dr2 = bestMatch(imu, event.jets)
-            if dr2<0.3**2:
-                tofill['mu%d_jet_pt' %idx] = jet.pt()
-                tofill['mu%d_jet_eta'%idx] = jet.eta()
-                tofill['mu%d_jet_phi'%idx] = jet.phi()
-                tofill['mu%d_jet_e'  %idx] = jet.energy()
-            
-            if not mc: continue
-                        
-            # gen matching
-            #genp, dr2 = bestMatch(imu, event.all_genp)
-            genp, dr2 = bestMatch(imu, event.genpr)
-            if dr2<0.1**2:
-                tofill['mu%d_gen_pt'   %idx] = genp.pt()
-                tofill['mu%d_gen_eta'  %idx] = genp.eta()
-                tofill['mu%d_gen_phi'  %idx] = genp.phi()
-                tofill['mu%d_gen_e'    %idx] = genp.energy()
-                tofill['mu%d_gen_pdgid'%idx] = genp.pdgId()
+            if dr2 < 0.3**2:
+                imu.jet = jet
+
+            if mc:
+                genp, dr2 = bestMatch(imu, event.genpr)
+                if dr2 < 0.1**2:
+                    imu.gen_match = genp
+
+            for ibranch, igetter in muon_branches.items():
+                tofill['mu%d_%s' %(idx, ibranch)] = safe_get(
+                    igetter, imu, verbose=verbose, name=ibranch)
                           
         #if final_cand.dr12()<0.2:
         #    import pdb ; pdb.set_trace()

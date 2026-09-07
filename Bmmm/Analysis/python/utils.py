@@ -387,22 +387,29 @@ def scale_track_cov(trk, scales, cov=None):
 VTX_COV_INDEX_PAIRS = [(i, j) for i in range(3) for j in range(i, 3)]
 VTX_COV_ELEMENT_NAMES = ['xx', 'xy', 'xz', 'yy', 'yz', 'zz']
 
+def vertex_error_matrix(vtx):
+    '''The 3x3 position error matrix of a vertex, for every flavour in use in
+    this package -- they disagree on both the method name and the return type:
+
+      reco::Vertex     .error()         -> math::Error<3> (an SMatrix), used as is
+      KinematicVertex  .error()         -> GlobalError, whose .matrix() is the SMatrix
+      VertexState      .error()         -> GlobalError, ditto
+      TransientVertex  .positionError() -> GlobalError, ditto   (KVFitter output,
+                                           i.e. the dimuon channel)
+
+    Both the accessor and the unwrapping are chosen from the objects themselves
+    rather than from the vertex type, which is what makes one helper serve all
+    of them.'''
+    err = vtx.error() if hasattr(vtx, 'error') else vtx.positionError()
+    return err.matrix() if hasattr(err, 'matrix') else err
+
 def vertex_cov_element(vtx, i, j):
-    '''cov(i,j) of a vertex position, for both flavours used in this package:
-
-      reco::Vertex     .error() -> math::Error<3> (an SMatrix), used directly
-      KinematicVertex  .error() -> GlobalError, whose .matrix() is the SMatrix
-
-    so the accessor is picked from the returned object rather than from the
-    vertex type, which is what makes it work for both.'''
-    err = vtx.error()
-    mat = err.matrix() if hasattr(err, 'matrix') else err
-    return mat(i, j)
+    '''cov(i,j) of a vertex position.'''
+    return vertex_error_matrix(vtx)(i, j)
 
 def vertex_covariance(vtx):
     '''Full 3x3 position covariance as a numpy array.'''
-    err = vtx.error()
-    mat = err.matrix() if hasattr(err, 'matrix') else err
+    mat = vertex_error_matrix(vtx)
     return np.array([[mat(i, j) for j in range(3)] for i in range(3)])
 
 def vertex_cov_upper_triangle(vtx):

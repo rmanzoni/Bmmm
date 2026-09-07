@@ -227,6 +227,37 @@ def main():
         check('both paths give the same answer',
               np.allclose(vertex_covariance(kin_like), vertex_covariance(reco_vtx)))
 
+    print('== 8. TransientVertex accessor (the dimuon channel) ==')
+    # The mm channel fits its dimuon vertex with KVFitter, which returns a
+    # TransientVertex -- a third flavour, with neither reco::Vertex's error()
+    # nor its return type. vertex_error_matrix falls back to positionError()
+    # when error() is absent; assert that assumption against the real class
+    # rather than trusting it, because if it is wrong the mm ntuplizer raises
+    # on its first candidate.
+    try:
+        has_error = hasattr(ROOT.TransientVertex, 'error')
+        has_poserr = hasattr(ROOT.TransientVertex, 'positionError')
+    except AttributeError:
+        print('  SKIP  TransientVertex dictionary not loaded')
+    else:
+        check('TransientVertex exposes positionError()', has_poserr)
+        check('and no error(), so the fallback branch is the one taken',
+              has_poserr and not has_error,
+              'error=%s positionError=%s' % (has_error, has_poserr))
+
+    # and the fallback itself, on a duck type carrying only positionError
+    try:
+        gerr2 = ROOT.GlobalError(vcov[0][0], vcov[1][0], vcov[1][1],
+                                 vcov[2][0], vcov[2][1], vcov[2][2])
+    except (AttributeError, TypeError):
+        print('  SKIP  GlobalError not available, fallback path not exercised')
+    else:
+        class _TV(object):
+            def positionError(self):
+                return gerr2
+        check('positionError() fallback gives the same matrix',
+              np.allclose(vertex_covariance(_TV()), vcov, rtol=1e-12, atol=0))
+
     print('\n' + ('ALL CHECKS PASSED' if not FAILURES
                   else 'FAILURES: %s' % FAILURES))
     return 1 if FAILURES else 0

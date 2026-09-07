@@ -2,6 +2,7 @@ import numpy as np
 from scipy import stats
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
+from Bmmm.Analysis.utils import convert_cov, is_pos_def
 
 import ROOT
 ROOT.gSystem.Load('libBmmmAnalysis')
@@ -24,10 +25,10 @@ class Candidate():
         self.mu1 = self.muons[0]
         self.mu2 = self.muons[1]
         # check that the muon track covariance matrix is pos-def
-        self.mu1.cov = self.convert_cov(self.mu1.bestTrack().covariance())
-        self.mu2.cov = self.convert_cov(self.mu2.bestTrack().covariance())
-        self.mu1.is_cov_pos_def = self.is_pos_def(self.mu1.cov)
-        self.mu2.is_cov_pos_def = self.is_pos_def(self.mu2.cov)
+        self.mu1.cov = convert_cov(self.mu1.bestTrack().covariance())
+        self.mu2.cov = convert_cov(self.mu2.bestTrack().covariance())
+        self.mu1.is_cov_pos_def = is_pos_def(self.mu1.cov)
+        self.mu2.is_cov_pos_def = is_pos_def(self.mu2.cov)
         # choose as PV the one that's closest to the leading muon in the dz parameter
         self.pv = sorted( [vtx for vtx in vertices], key = lambda vtx : abs( self.mu1.bestTrack().dz(vtx.position() ) ) )[0]
         # create a Vertex type of object from the bs coordinates at the z of the chosen PV
@@ -41,6 +42,9 @@ class Candidate():
         chi2 = 0.
         ndof = 0.
         self.bs = ROOT.reco.Vertex(bs_point, bs_error, chi2, ndof, 3) # size? say 3? does it matter?
+        # keep the raw beamspot too: self.bs is it evaluated at the PV z and
+        # wrapped as a vertex, which is not the same thing as its own x0/y0/z0
+        self.beamspot = beamspot
 
         # we'll fit a vertex out of the three muons, shall we? 
         # ideally this can be triggered on demand, and just build a skinny candidate to 
@@ -80,15 +84,6 @@ class Candidate():
         self.mmm_p4_perp = np.sqrt(self.p4().Vect().Mag2() - self.mmm_p4_par*self.mmm_p4_par) if self.vtx.isValid() else np.nan
         self.mcorr       = np.sqrt(self.p4().mass()*self.p4().mass() + self.mmm_p4_perp*self.mmm_p4_perp) + self.mmm_p4_perp if self.vtx.isValid() else np.nan
             
-    def convert_cov(self, m):
-        return np.array([[m(i,j) for j in range(m.kCols)] for i in range(m.kRows)])
-
-    def is_pos_def(self, x):
-        '''
-        https://stackoverflow.com/questions/16266720/find-out-if-matrix-is-positive-definite-with-numpy
-        '''
-        return np.all(np.linalg.eigvals(x) > 0)
-
     def p4(self):
         return self.mu1.p4() + self.mu2.p4()
     def pt(self):

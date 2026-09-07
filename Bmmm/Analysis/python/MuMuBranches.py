@@ -1,97 +1,108 @@
-branches = [
-    'run'               ,
-    'lumi'              ,
-    'event'             ,
-    'ncands'            ,
-    'npv'               ,
-    'n_pu'              ,
-    'n_true_int'        ,
+import numpy as np
 
-    'mass'              ,
-    'mcorr'             ,
-    'pt'                ,
-    'eta'               ,
-    'phi'               ,
-    'charge'            ,
+from Bmmm.Analysis.utils import VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element
+from Bmmm.Analysis.CommonBranches import event_branches as _common_event
+from Bmmm.Analysis.CommonBranches import muon_branches as _common_muon
+from Bmmm.Analysis.CommonBranches import track_cov_branches as _track_cov
 
-    'dr'                ,
-    'dr_max'            ,
-    'dr_12'             ,
+##########################################################################################
+#####      EVENT-LEVEL
+##########################################################################################
+# run / lumi / event / ncands / npv come from the block every channel shares.
+# n_pu / n_true_int are this ntuple's spelling of what the RJpsi one calls
+# npu / nti -- same quantity, different name, so they stay here until the names
+# are harmonised deliberately.
+event_branches = {
+    'run'        : _common_event['run']    ,
+    'lumi'       : _common_event['lumi']   ,
+    'event'      : _common_event['event']  ,
+    'ncands'     : _common_event['ncands'] ,
+    'npv'        : _common_event['npv']    ,
+    'n_pu'       : lambda ev : ev.pu_at_bx0.getPU_NumInteractions()  if ev.mc else np.nan,
+    'n_true_int' : lambda ev : ev.pu_at_bx0.getTrueNumInteractions() if ev.mc else np.nan,
+}
 
-    'pv_x'              ,
-    'pv_y'              ,
-    'pv_z'              ,
+##########################################################################################
+#####      CANDIDATE-LEVEL
+##########################################################################################
+# Order is this ntuple's historical layout, kept as it was. bs_x0/y0/z0 are
+# event quantities that happen to sit in the middle of it; the candidate carries
+# the beamspot it was built from (cand.beamspot), so they are read from there
+# rather than breaking the block in two.
+cand_branches = {
+    'mass'     : lambda cand : cand.mass()             ,
+    'mcorr'    : lambda cand : cand.mass_corrected()   ,
+    'pt'       : lambda cand : cand.pt()               ,
+    'eta'      : lambda cand : cand.eta()              ,
+    'phi'      : lambda cand : cand.phi()              ,
+    'charge'   : lambda cand : cand.charge()           ,
 
-    'bs_x0'             ,
-    'bs_y0'             ,
-    'bs_z0'             ,
+    'dr'       : lambda cand : cand.r()                ,
+    'dr_max'   : lambda cand : cand.max_dr()           ,
+    'dr_12'    : lambda cand : cand.dr12()             ,
 
-    'bs_x'              ,
-    'bs_y'              ,
+    'pv_x'     : lambda cand : cand.pv.position().x()  ,
+    'pv_y'     : lambda cand : cand.pv.position().y()  ,
+    'pv_z'     : lambda cand : cand.pv.position().z()  ,
 
-    'vx'                ,
-    'vy'                ,
-    'vz'                ,
-    'vtx_chi2'          ,
-    'vtx_prob'          ,
+    'bs_x0'    : lambda cand : cand.beamspot.x0()      ,
+    'bs_y0'    : lambda cand : cand.beamspot.y0()      ,
+    'bs_z0'    : lambda cand : cand.beamspot.z0()      ,
 
-    'cos2d'             ,
-    'lxy'               ,
-    'lxy_err'           ,
-    'lxy_sig'           ,
-]
+    'bs_x'     : lambda cand : cand.bs.position().x()  ,
+    'bs_y'     : lambda cand : cand.bs.position().y()  ,
 
-muon_branches = [
-    'pt'             ,
-    'eta'            ,
-    'phi'            ,
-    'e'              ,
-    'mass'           ,
-    'charge'         ,
-    'id_loose'       ,
-    'id_soft'        ,
-    'id_medium'      ,
-    'id_tight'       ,
-    'id_soft_mva_raw',
-    'id_soft_mva'    ,
-    'id_pf'          ,
-    'id_global'      ,
-    'id_tracker'     ,
-    'id_standalone'  ,
-    'pfiso03'        ,
-    'pfiso04'        ,
-    'pfreliso03'     ,
-    'pfreliso04'     ,
-    'pfiso03_ch'     ,
-    'pfiso03_cp'     ,
-    'pfiso03_nh'     ,
-    'pfiso03_ph'     ,
-    'pfiso03_pu'     ,
-    'pfiso04_ch'     ,
-    'pfiso04_cp'     ,
-    'pfiso04_nh'     ,
-    'pfiso04_ph'     ,
-    'pfiso04_pu'     ,
-    'dxy'            ,
-    'dxy_e'          ,
-    'dxy_sig'        ,
-    'dz'             ,
-    'dz_e'           ,
-    'dz_sig'         ,
-    'bs_dxy'         ,
-    'bs_dxy_e'       ,
-    'bs_dxy_sig'     ,
-    'cov_pos_def'    ,
-    'jet_pt'         ,
-    'jet_eta'        ,
-    'jet_phi'        ,
-    'jet_e'          ,
-    'gen_pt'         ,
-    'gen_eta'        ,
-    'gen_phi'        ,
-    'gen_e'          ,
-    'gen_pdgid'      ,
-]
+    'vx'       : lambda cand : cand.vtx.position().x() ,
+    'vy'       : lambda cand : cand.vtx.position().y() ,
+    'vz'       : lambda cand : cand.vtx.position().z() ,
+    'vtx_chi2' : lambda cand : cand.vtx.chi2           ,
+    'vtx_prob' : lambda cand : cand.vtx.prob           ,
+
+    'cos2d'    : lambda cand : cand.vtx.cos            ,
+    'lxy'      : lambda cand : cand.lxy.value()        ,
+    'lxy_err'  : lambda cand : cand.lxy.error()        ,
+    'lxy_sig'  : lambda cand : cand.lxy.significance() ,
+}
+
+branches = list(event_branches) + list(cand_branches)
+
+# The per-muon block of this ntuple is exactly the channel-agnostic one in
+# CommonBranches -- same quantities, same order (the RJpsi block is this list
+# with the refitted-J/psi rf_* and the gen bookkeeping added). So take it whole
+# rather than restating it, and the two channels can no longer drift: the
+# swapped soft/medium IDs fixed a few commits back were precisely that kind of
+# drift.
+muon_branches = dict(_common_muon)
+
+##########################################################################################
+#####      COVARIANCE MATRICES
+##########################################################################################
+# Same blocks the J/psi + charged-object ntuples carry, so the covariance
+# mismodelling can be measured HERE -- on the 2018 dimuon tag-and-probe sample,
+# where the statistics are -- and the correction applied there.
+#
+# Per muon: the 15 independent elements of the 5x5 curvilinear track covariance,
+# mu<i>_cov_<par_j>_<par_k>. Note these are the BARE track uncertainties: unlike
+# mu<i>_dxy_e, which is dxyError(pv.position(), pv.error()) and therefore folds
+# in the primary-vertex error, sqrt(mu<i>_cov_dxy_dxy) is the track's own
+# sigma_dxy. For measuring a track-resolution mismodelling that is the cleaner
+# quantity -- and in this channel it matters more than in the RJpsi one, because
+# the PV here is the plain chosen vertex, NOT refitted with the signal muons
+# removed, so the muon under study is itself in the PV fit and dxy_e is
+# correlated with it.
+muon_branches.update(_track_cov)
+
+# Per vertex: the 6 independent elements of the 3x3 position covariance.
+#   pv_cov_*  the chosen primary vertex (cand.pv) -- again, not refitted here
+#   vtx_cov_* the dimuon vertex from the Kalman fit (cand.vtx)
+# vtx_ rather than sv_ to match the vx/vy/vz/vtx_chi2/vtx_prob already in this
+# ntuple; the RJpsi channel calls the same thing sv_cov_* because that is what
+# its own vertex block is called.
+for _iname, (_ii, _jj) in zip(VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS):
+    cand_branches['pv_cov_%s'  % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.pv,  i, j))
+    cand_branches['vtx_cov_%s' % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.vtx, i, j))
+branches += ['pv_cov_%s'  % iname for iname in VTX_COV_ELEMENT_NAMES]
+branches += ['vtx_cov_%s' % iname for iname in VTX_COV_ELEMENT_NAMES]
 
 for idx in [1,2]:
     for ibr in muon_branches:
