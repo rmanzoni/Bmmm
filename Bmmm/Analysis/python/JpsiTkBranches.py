@@ -21,6 +21,7 @@ from Bmmm.Analysis.JpsiChargedBranches import (
     event_branches, muon_branches, paths, safe_get, cov_branches,
 )
 from Bmmm.Analysis.JpsiMuBranches import cand_branches as _mu_cand_branches
+from Bmmm.Analysis.JpsiMuBranches import vertex_cov_branches
 
 ##########################################################################################
 #####      KAON (bachelor track) quantities  ->  k_<name>
@@ -172,6 +173,12 @@ pi_branches = {
     'pi_lxyz_err' : lambda c : c.pi_lxyz.error()       ,
     'pi_lxyz_sig' : lambda c : c.pi_lxyz.significance(),
 }
+
+# ----- pion-hypothesis SV covariance (mirrors sv_cov_* of the kaon hypothesis) -----
+# The kaon-hypothesis pv_cov_*, sv_cov_* and jpsi_cov_* come over with the rest
+# of the J/psi mu candidate block; the PV and the J/psi vertex are shared between
+# the two hypotheses, so only the 2mu+bachelor vertex needs a pi_ mirror.
+pi_branches.update(vertex_cov_branches('pi_sv_', lambda c : c.pi_vtx))
 
 # ----- mathematical neutrino solutions (pion hypothesis) -----
 for _lbl in ('jpsi', 'sv'):

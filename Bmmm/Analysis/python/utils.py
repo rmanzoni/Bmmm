@@ -369,6 +369,48 @@ def scale_track_cov(trk, scales, cov=None):
     return track_with_cov(trk, scale_cov(cov, scales))
 
 ##########################################################################################
+#####      VERTEX COVARIANCE MATRIX
+##########################################################################################
+# The 3x3 position covariance of a fitted vertex, 6 independent elements taken
+# row-major over the upper triangle (same convention as the track block above).
+#
+# Why persist it, given the tracks are already persisted: the vertex covariance
+# is DERIVED from the covariances of the tracks that were fitted --
+# C_V = (sum_i A_i^T G_i A_i)^-1 -- so once the input tracks carry the right
+# covariance and the vertex is refitted, the vertex covariance follows by
+# construction and must NOT be corrected a second time. It is persisted to
+# VALIDATE that, not to correct it: if the data/MC agreement of the vertex
+# covariance does not close after the track-level correction, the mismodelling
+# is not (only) in the per-track covariance.
+#
+# The primary vertex is the exception -- see the pv_cov_* branches.
+VTX_COV_INDEX_PAIRS = [(i, j) for i in range(3) for j in range(i, 3)]
+VTX_COV_ELEMENT_NAMES = ['xx', 'xy', 'xz', 'yy', 'yz', 'zz']
+
+def vertex_cov_element(vtx, i, j):
+    '''cov(i,j) of a vertex position, for both flavours used in this package:
+
+      reco::Vertex     .error() -> math::Error<3> (an SMatrix), used directly
+      KinematicVertex  .error() -> GlobalError, whose .matrix() is the SMatrix
+
+    so the accessor is picked from the returned object rather than from the
+    vertex type, which is what makes it work for both.'''
+    err = vtx.error()
+    mat = err.matrix() if hasattr(err, 'matrix') else err
+    return mat(i, j)
+
+def vertex_covariance(vtx):
+    '''Full 3x3 position covariance as a numpy array.'''
+    err = vtx.error()
+    mat = err.matrix() if hasattr(err, 'matrix') else err
+    return np.array([[mat(i, j) for j in range(3)] for i in range(3)])
+
+def vertex_cov_upper_triangle(vtx):
+    '''The 6 independent elements, in VTX_COV_INDEX_PAIRS order.'''
+    cov = vertex_covariance(vtx)
+    return [cov[i][j] for i, j in VTX_COV_INDEX_PAIRS]
+
+##########################################################################################
 
 class CovScaler(object):
     '''Per-track covariance scale factors, one per curvilinear parameter.

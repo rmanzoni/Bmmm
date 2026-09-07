@@ -9,6 +9,21 @@ import numpy as np
 from Bmmm.Analysis.JpsiChargedBranches import (
     event_branches, muon_branches, bc_branches, jpsi_branches, paths, safe_get,
 )
+from Bmmm.Analysis.utils import (
+    VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element,
+)
+
+
+def vertex_cov_branches(prefix, accessor):
+    '''The 6 independent elements of a vertex position covariance, as
+    <prefix>cov_<xx|xy|xz|yy|yz|zz>. `accessor` pulls the vertex off the
+    candidate; it is allowed to fail (missing / failed fit) -- safe_get turns
+    that into a NaN, exactly as it already does for the vertex positions.'''
+    out = {}
+    for name, (i, j) in zip(VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS):
+        out['%scov_%s' % (prefix, name)] = (
+            lambda cand, a=accessor, i=i, j=j : vertex_cov_element(a(cand), i, j))
+    return out
 
 cand_branches = {
     # ----- 3-muon (Bc) kinematics -----
@@ -261,6 +276,35 @@ cand_branches = {
 
     'trig_match'         : lambda cand : cand.trig_match       ,
 }
+
+##########################################################################################
+#####      VERTEX COVARIANCE MATRICES
+##########################################################################################
+# 3x3 position covariance of every vertex whose position is already persisted.
+# Needed to correct composite quantities -- dxy wrt a vertex, the PV-SV distance
+# -- whose uncertainty mixes a track covariance with a vertex covariance.
+#
+# sv_cov_* / jpsi_cov_* are DERIVED quantities: the kinematic fit builds them out
+# of the covariances of the tracks it was given, so once those tracks are
+# corrected (utils.scale_cov, --cov-scale) and the vertex is refitted, these
+# follow automatically and must not be corrected again. They are here to CHECK
+# that closure, not to be scaled.
+#
+# pv_cov_* is the one that does NOT follow, for two independent reasons, so
+# treat it as its own measurement rather than as a consequence of the track one:
+#   * the PV is fitted from the event's track set, and --cov-scale only touches
+#     the candidate's own tracks (JpsiChargedCandidate.fit_track) -- every other
+#     track entering the PV refit keeps its uncontrolled covariance;
+#   * the refit is beamspot-constrained, so the transverse PV covariance is
+#     largely the beamspot's, an external input, not something the tracks decide.
+# It follows cand.pv_bs, i.e. the AVF refit with the signal muons removed when
+# pv_refit_valid, and the Run2 hybrid PV otherwise. Mind the fallback: the hybrid
+# PV takes its x,y from the beamspot but its covariance from the unrefitted PV,
+# so there position and covariance come from different objects -- cut on
+# pv_refit_valid before using pv_cov_* quantitatively.
+cand_branches.update(vertex_cov_branches('pv_',   lambda cand : cand.pv_bs))
+cand_branches.update(vertex_cov_branches('sv_',   lambda cand : cand.vtx))
+cand_branches.update(vertex_cov_branches('jpsi_', lambda cand : cand.jpsi_vtx))
 
 helicity_branches = {
     'cos_theta_v_%s' % k : (lambda c, k=k: getattr(c, 'cos_theta_v_%s' % k, np.nan)) for k in ('jpsi','sv','coll','nu1','nu2')
