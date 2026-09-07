@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats
 from itertools import product, combinations
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
-from Bmmm.Analysis.utils import masses, is_pos_def, convert_cov, fix_track, compute_IP3D, p4_with_mass
+from Bmmm.Analysis.utils import masses, is_pos_def, convert_cov, fix_track, compute_IP3D, p4_with_mass, scale_track_cov
 from Bmmm.Analysis.RJPsiNuReco import reconstruct, M_BC   # M_BC: single source (RJPsiGenHistory)
 
 import ROOT
@@ -134,6 +134,12 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
     # fit. Muon mass by default (JpsiMuCandidate); JpsiTkCandidate sets the kaon
     # mass and re-fits under the pion mass in compute_alt_bachelor.
     _bachelor_mass = masses['mu']
+
+    # utils.CovScaler applied to every track before it is handed to a fitter, or
+    # None for no scaling at all (the default: the ntuple then carries the raw
+    # covariance and nothing else changes). Installed once per job via
+    # set_cov_scaler / --cov-scale. See fit_track.
+    cov_scaler = None
 
     def __init__(self, jpsi_muons, bachelor, mother_pdgid=541):
 
@@ -396,7 +402,7 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
         mass-independent, so its {prefix} copy equals the primary hypothesis by
         construction; it is stored anyway to keep a complete, uniform block.
         '''
-        track = self.mu.bestTrack()
+        track = self.fit_track(self.mu)
 
         # ---- alternative-mass full (2mu + bachelor) vertex, SAME tracks --------
         alt_tree = self.fit_vertex(self.muons, bachelor_mass=alt_mass)
@@ -477,6 +483,54 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
         if visible_p4 is not None:
             setattr(self, prefix + 'p4_collinear', visible_p4 * (M_BC / visible_p4.mass()))
 
+    ##########################################################################
+    #####      TRACK COVARIANCE RESCALING
+    ##########################################################################
+    @classmethod
+    def set_cov_scaler(cls, scaler):
+        '''Install a utils.CovScaler (or None to disable) for every candidate of
+        this class. Set once per job from --cov-scale; see fit_track.'''
+        cls.cov_scaler = scaler
+
+    def fit_track(self, obj):
+        '''The reco::Track handed to the vertex fitters and to the IP / jet-track
+        -distance computations.
+
+        With no scaler installed (the default, and what you want while measuring
+        the mismodelling) this is just obj.bestTrack() and the reconstruction is
+        bit-for-bit the one before this feature existed.
+
+        With a scaler installed, the track is rebuilt around D cov D, so every
+        sigma_i is scaled and every correlation is left alone (utils.scale_cov).
+        Momentum, charge and reference point are untouched: only the uncertainty
+        changes, which is the whole point -- it moves the vertex chi2/prob, the
+        IP significances and Lxy_sig without moving the trajectory.
+
+        Routing all of them through this ONE method is deliberate: the vertex
+        fit, the IP3D grid and the jet-track distances all consume the same
+        covariance, so correcting the fit but not the IP significance would leave
+        the ntuple internally inconsistent -- and IP3D_sig is a fit category.
+
+        Memoized per object, following the same convention as obj.cov: the muons
+        are shared across the candidates of an event, so the rebuild happens once
+        per object per event rather than once per candidate.
+        '''
+        if self.cov_scaler is None:
+            return obj.bestTrack()
+
+        cached = getattr(obj, '_cov_fit_track', None)
+        if cached is not None:
+            return cached
+
+        raw = obj.bestTrack()
+        scales = self.cov_scaler(raw)
+        cov = getattr(obj, 'cov', None)
+        scaled = scale_track_cov(raw, scales, cov=cov)
+
+        obj.cov_scale      = tuple(scales)   # persisted as <obj>_cov_scale_<par>
+        obj._cov_fit_track = scaled
+        return scaled
+
     def fit_vertex(self, particles, bachelor_mass=None):
         '''
         Fit the J/psi muons + the bachelor to a common vertex with the generalized
@@ -494,20 +548,23 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
         tracks   = ROOT.std.vector('reco::Track')()
         mass_hyp = ROOT.std.vector('double')()
         for ip in particles:
-            tracks.push_back(ip.bestTrack())
+            tracks.push_back(self.fit_track(ip))
             mass_hyp.push_back(m_bach if ip is self.mu else masses['mu'])
         return kinfit.Fit(tracks, mass_hyp)
 
-    @staticmethod
-    def fit_jpsi_vertex(jpsi_muons):
+    def fit_jpsi_vertex(self, jpsi_muons):
         '''
         Fit the two J/psi muons to a common vertex WITH the J/psi mass constraint
         (TwoTrackMassKinematicConstraint). Drop-in replacement for fit_vertex on the
         dimuon: same return type, so all downstream handling is unchanged.
+
+        No longer a @staticmethod: it goes through self.fit_track so the dimuon
+        vertex sees the same (possibly rescaled) covariance as the full fit. The
+        only call site already invoked it as self.fit_jpsi_vertex(...).
         '''
         mu1, mu2 = jpsi_muons[0], jpsi_muons[1]
         return kinfit.Fit2BodyMassConstraint(
-            mu1.bestTrack(), mu2.bestTrack(),
+            self.fit_track(mu1), self.fit_track(mu2),
             masses['mu'], masses['mu'], masses['jpsi'],   # PDG J/psi = 3.0969 GeV
         )
 
@@ -526,7 +583,7 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
 
         Same 2x2 grid, per-label gating and hybrid PV (self.pv_bs) as compute_ip.
         '''
-        track = self.mu.bestTrack()
+        track = self.fit_track(self.mu)
 
         # 2 x 2:  {direction from jpsi-vtx | from 3mu-vtx}  x  {wrt PV | wrt that same SV}
         for label, vtx in self.bc_vertices.items():
@@ -709,7 +766,7 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
                 continue
             setattr(self, 'Bdirection_%s' % label, self.flight_direction(vtx, self.pv_bs))
 
-        track = self.mu.bestTrack()
+        track = self.fit_track(self.mu)
 
         # 2 x 2:  {direction from jpsi-vtx | from 3mu-vtx}  x  {wrt PV | wrt that same SV}
         for label, vtx in self.bc_vertices.items():

@@ -18,7 +18,7 @@ import numpy as np
 #     hypothesis-dependent block only; the J/psi-vertex block, the PV and the
 #     isolation are shared and NOT duplicated).
 from Bmmm.Analysis.JpsiChargedBranches import (
-    event_branches, muon_branches, paths, safe_get,
+    event_branches, muon_branches, paths, safe_get, cov_branches,
 )
 from Bmmm.Analysis.JpsiMuBranches import cand_branches as _mu_cand_branches
 
@@ -64,6 +64,17 @@ k_branches = {
     'gen_charge'  : lambda itk : itk.gen_match.charge() if hasattr(itk, 'gen_match') else np.nan,
     'gen_dr'      : lambda itk : itk.gen_dr             if hasattr(itk, 'gen_dr')   else np.nan,
 }
+
+# raw 5x5 covariance elements + applied scale factors, identical block to the one
+# the muons get (see JpsiChargedBranches.cov_branches)
+#
+# CAVEAT for the bachelor: this is a pat::PackedCandidate pseudo-track, so its
+# covariance is the miniAOD PACKED one -- quantised, and with several off-diagonal
+# terms approximated or dropped depending on the packing schema. The diagonal
+# (sigma_dxy, sigma_dsz, ...) is meaningful; a "mismodelling" seen in the
+# off-diagonal terms may be a packing artefact rather than physics. The muon
+# blocks, which come from a full reco::Track, do not have this problem.
+k_branches.update(cov_branches)
 
 ##########################################################################################
 #####      CANDIDATE block: KAON hypothesis (unprefixed), reused from J/psi mu

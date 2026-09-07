@@ -31,7 +31,7 @@ from itertools import product, combinations
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 
-from Bmmm.Analysis.utils import drop_hlt_version, cutflow
+from Bmmm.Analysis.utils import drop_hlt_version, cutflow, make_cov_scaler
 from Bmmm.Analysis.Handles import handles_mc
 from Bmmm.Analysis.Handles import handles      as handles_std   # full MINIAOD collections
 from Bmmm.Analysis.Handles import handles_skim                  # SKIM collections (BS-constrained vertices)
@@ -295,11 +295,30 @@ class BaseInspector(object):
                             help='read the SKIM collections (handles_skim) instead of the full MINIAOD handles')
         parser.add_argument('--maxfiles',    dest='maxfiles',    default=-1,             type=int)
         parser.add_argument('--redirector',  dest='redirector',  default='root://cms-xrd-global.cern.ch//', type=str)
+        parser.add_argument('--cov-scale',   dest='cov_scale',   default='',             type=str,
+                            help='rescale the track covariance before every vertex fit / IP '
+                                 'computation, preserving all correlations. Empty (default) = no '
+                                 'scaling: the ntuple then carries the RAW cov_* branches, which '
+                                 'is what you want while measuring the correction. '
+                                 "Accepts 'dxy=1.05,dsz=1.02' (flat), a binned-table JSON "
+                                 "(pt_edges/abs_eta_edges/scales), or a correctionlib file, "
+                                 "optionally as 'file.json:dxy=<correction name>'. "
+                                 'See utils.make_cov_scaler.')
         args = parser.parse_args()
         return namedtuple('options', args.__dict__.keys())(*args.__dict__.values())
 
     def main(self):
         options = self.parse_args()
+
+        # track-covariance rescaling, applied to every track before the vertex
+        # fits and the IP computations (JpsiChargedCandidate.fit_track). Off by
+        # default, in which case nothing at all changes and the cov_* branches
+        # hold the raw covariance -- the input to the measurement.
+        cov_scaler = make_cov_scaler(getattr(options, 'cov_scale', ''))
+        self.CANDIDATE.set_cov_scaler(cov_scaler)
+        if cov_scaler is not None:
+            print('#### rescaling the track covariance with %s (%r)'
+                  % (type(cov_scaler).__name__, options.cov_scale))
 
         if 'txt' in options.inputFiles:
             with open(options.inputFiles) as f:

@@ -1,6 +1,8 @@
 from __future__ import print_function
 import re
 import sys
+import json
+import gzip
 import particle
 import numpy as np
 from array import array
@@ -292,6 +294,227 @@ def isMyDs(ds, minpt=0.5, maxeta=2.5):
 def convert_cov(m):
     return np.array([[m(i,j) for j in range(m.kCols)] for i in range(m.kRows)])
 
+##########################################################################################
+#####      TRACK COVARIANCE MATRIX: persistency + rescaling
+##########################################################################################
+# reco::Track stores a 5x5 SYMMETRIC covariance over the curvilinear parameters,
+# in the reco::TrackBase order below. 15 independent elements (i <= j), taken
+# row-major over the upper triangle -- the SAME order SMatrix wants when it is
+# built from a flat SVector, which is what fix_track/track_with_cov rely on.
+COV_PARAM_NAMES = ('qoverp', 'lambda', 'phi', 'dxy', 'dsz')
+COV_INDEX_PAIRS = [(i, j) for i in range(5) for j in range(i, 5)]
+COV_ELEMENT_NAMES = ['%s_%s' % (COV_PARAM_NAMES[i], COV_PARAM_NAMES[j])
+                     for i, j in COV_INDEX_PAIRS]
+COV_NO_SCALE = (1., 1., 1., 1., 1.)
+
+def cov_upper_triangle(cov):
+    '''The 15 independent elements of a 5x5 covariance, in COV_INDEX_PAIRS order.
+    This is what goes into the ntuple, one branch per element.'''
+    return [cov[i][j] for i, j in COV_INDEX_PAIRS]
+
+def smatrix55_from_cov(cov):
+    '''numpy 5x5 -> ROOT::Math::SMatrix<double,5,5,MatRepSym>, via the flat
+    upper triangle. https://root.cern/doc/v606/SMatrixDoc.html'''
+    upper = np.asarray(cov_upper_triangle(cov), dtype=np.float64)
+    return ROOT.Math.SMatrix('double', 5, 5, ROOT.Math.MatRepSym('double', 5))(
+        ROOT.Math.SVector('double', len(upper))(upper, len(upper)), False)
+
+def track_with_cov(trk, cov):
+    '''A new reco::Track identical to trk except for its covariance matrix.
+
+    reco::Track has no covariance setter -- it is built once and then read -- so
+    the only way to hand a modified covariance to a vertex fitter is to rebuild
+    the track around it. Everything else (reference point, momentum, charge,
+    chi2/ndof, algo, quality) is copied over, so the trajectory is untouched and
+    only the uncertainty changes.'''
+    return ROOT.reco.Track(
+        trk.chi2(),
+        trk.ndof(),
+        trk.referencePoint(),
+        trk.momentum(),
+        trk.charge(),
+        smatrix55_from_cov(cov),
+        trk.algo(),
+        ROOT.reco.TrackBase.TrackQuality(trk.qualityMask()),
+    )
+
+def scale_cov(cov, scales):
+    '''Rescale the uncertainty of each track parameter WITHOUT touching any
+    correlation: cov' = D cov D with D = diag(scales).
+
+        sigma_i' = scales[i] * sigma_i          (diagonal picks up scales[i]^2)
+        rho_ij'  = cov'_ij / (sigma_i' sigma_j')
+                 = scales[i] scales[j] cov_ij / (scales[i] sigma_i scales[j] sigma_j)
+                 = rho_ij                        exactly, by construction
+
+    so the correction can be measured and applied one parameter at a time (say
+    sigma_dxy) without silently deforming the rest of the matrix. Positive
+    definiteness is preserved for any positive scales (congruence transform).
+
+    Note the 5th parameter is dsz, not dz: dzError() = sigma_dsz / |sin(theta)|,
+    so scaling dsz scales sigma_dz by the same factor.
+    '''
+    d = np.diag(np.asarray(scales, dtype=np.float64))
+    return d.dot(np.asarray(cov, dtype=np.float64)).dot(d)
+
+def scale_track_cov(trk, scales, cov=None):
+    '''reco::Track -> reco::Track with sigma_i -> scales[i] * sigma_i.
+    Returns the input track untouched when the scales are all unity, so the
+    no-correction path costs nothing. `cov` lets the caller pass the already
+    converted numpy matrix (candidates memoize it as obj.cov).'''
+    if scales is None or np.allclose(scales, 1.):
+        return trk
+    if cov is None:
+        cov = convert_cov(trk.covariance())
+    return track_with_cov(trk, scale_cov(cov, scales))
+
+##########################################################################################
+
+class CovScaler(object):
+    '''Per-track covariance scale factors, one per curvilinear parameter.
+
+    Subclasses implement scales(trk) -> 5-tuple in COV_PARAM_NAMES order. The
+    magnitudes come from a data/MC measurement (which is what the new cov_*
+    branches are for); this class is only the plumbing that applies them.
+    '''
+    def scales(self, trk):
+        raise NotImplementedError
+
+    def __call__(self, trk):
+        return self.scales(trk)
+
+class ConstantCovScaler(CovScaler):
+    '''Flat scale factor per parameter, e.g. ConstantCovScaler(dxy=1.05).
+    Mostly for closure tests and systematics: shift one parameter by a known
+    amount and check what moves downstream.'''
+    def __init__(self, **kwargs):
+        vals = list(COV_NO_SCALE)
+        for key, val in kwargs.items():
+            if key not in COV_PARAM_NAMES:
+                raise ValueError('unknown track parameter %r, expected one of %s'
+                                 % (key, list(COV_PARAM_NAMES)))
+            vals[COV_PARAM_NAMES.index(key)] = float(val)
+        self._scales = tuple(vals)
+
+    def scales(self, trk):
+        return self._scales
+
+class BinnedCovScaler(CovScaler):
+    '''Scale factors from a 2D (pt, |eta|) lookup table, the shape the
+    measurement naturally produces. JSON schema:
+
+        {"pt_edges"      : [1.0, 2.0, ...],
+         "abs_eta_edges" : [0.0, 0.8, ...],
+         "scales"        : {"dxy": [[...], ...]}}   # [ipt][ieta]
+
+    Values outside the covered range are clamped to the edge bin: an
+    extrapolated correction is worse than a frozen one, but you should know how
+    often it happens -- n_out_of_range counts it.
+    '''
+    def __init__(self, pt_edges, abs_eta_edges, scales):
+        self.pt_edges      = np.asarray(pt_edges, dtype=np.float64)
+        self.abs_eta_edges = np.asarray(abs_eta_edges, dtype=np.float64)
+        self.tables = {}
+        for key, table in scales.items():
+            if key not in COV_PARAM_NAMES:
+                raise ValueError('unknown track parameter %r, expected one of %s'
+                                 % (key, list(COV_PARAM_NAMES)))
+            arr = np.asarray(table, dtype=np.float64)
+            expected = (len(self.pt_edges) - 1, len(self.abs_eta_edges) - 1)
+            if arr.shape != expected:
+                raise ValueError('scale table for %r has shape %s, expected %s'
+                                 % (key, arr.shape, expected))
+            self.tables[key] = arr
+        self.n_out_of_range = 0
+
+    @classmethod
+    def from_json(cls, path):
+        with open(path) as fin:
+            payload = json.load(fin)
+        return cls(payload['pt_edges'], payload['abs_eta_edges'], payload['scales'])
+
+    def scales(self, trk):
+        pt, abs_eta = trk.pt(), abs(trk.eta())
+        if not (self.pt_edges[0] <= pt < self.pt_edges[-1]) or \
+           not (self.abs_eta_edges[0] <= abs_eta < self.abs_eta_edges[-1]):
+            self.n_out_of_range += 1
+        ipt  = int(np.clip(np.searchsorted(self.pt_edges,      pt,      'right') - 1,
+                           0, len(self.pt_edges) - 2))
+        ieta = int(np.clip(np.searchsorted(self.abs_eta_edges, abs_eta, 'right') - 1,
+                           0, len(self.abs_eta_edges) - 2))
+        vals = list(COV_NO_SCALE)
+        for key, table in self.tables.items():
+            vals[COV_PARAM_NAMES.index(key)] = float(table[ipt][ieta])
+        return tuple(vals)
+
+class CorrectionlibCovScaler(CovScaler):
+    '''Scale factors from a correctionlib CorrectionSet, so the same JSON can be
+    shared with other analyses. `corrections` maps a track parameter to the
+    correction name; each correction is evaluated as (pt, |eta|).'''
+    def __init__(self, path, corrections):
+        import correctionlib  # lazy: not a dependency of the rest of the package
+        self.cset = correctionlib.CorrectionSet.from_file(path)
+        for name in corrections.values():
+            if name not in self.cset:
+                raise KeyError('correction %r not in %s' % (name, path))
+        for key in corrections:
+            if key not in COV_PARAM_NAMES:
+                raise ValueError('unknown track parameter %r, expected one of %s'
+                                 % (key, list(COV_PARAM_NAMES)))
+        self.corrections = dict(corrections)
+
+    def scales(self, trk):
+        pt, abs_eta = trk.pt(), abs(trk.eta())
+        vals = list(COV_NO_SCALE)
+        for key, name in self.corrections.items():
+            vals[COV_PARAM_NAMES.index(key)] = float(self.cset[name].evaluate(pt, abs_eta))
+        return tuple(vals)
+
+def make_cov_scaler(spec):
+    '''Build a CovScaler from a command-line string (see --cov-scale):
+
+        ''                      -> None, no scaling at all (the default)
+        'dxy=1.05,dsz=1.02'     -> ConstantCovScaler
+        'table.json'            -> BinnedCovScaler.from_json, or
+                                   CorrectionlibCovScaler if the file is a
+                                   correctionlib CorrectionSet (schema_version)
+        'table.json:dxy=sigma_dxy_scale'
+                                -> CorrectionlibCovScaler with an explicit
+                                   parameter -> correction-name mapping
+    '''
+    if spec is None or not spec.strip():
+        return None
+    spec = spec.strip()
+
+    # correctionlib file with an explicit mapping
+    if ':' in spec and spec.split(':', 1)[0].endswith(('.json', '.json.gz')):
+        path, mapping = spec.split(':', 1)
+        corrections = dict(tok.split('=', 1) for tok in mapping.split(',') if tok)
+        return CorrectionlibCovScaler(path, corrections)
+
+    if spec.endswith(('.json', '.json.gz')):
+        with (gzip.open(spec, 'rt') if spec.endswith('.gz') else open(spec)) as fin:
+            payload = json.load(fin)
+        if 'schema_version' in payload:
+            corrections = {key: 'sigma_%s_scale' % key for key in COV_PARAM_NAMES
+                           if 'sigma_%s_scale' % key in
+                           [icorr['name'] for icorr in payload.get('corrections', [])]}
+            if not corrections:
+                raise ValueError('%s is a correctionlib file but has no '
+                                 'sigma_<param>_scale correction; pass the mapping '
+                                 'explicitly as file.json:dxy=<name>' % spec)
+            return CorrectionlibCovScaler(spec, corrections)
+        return BinnedCovScaler(payload['pt_edges'], payload['abs_eta_edges'],
+                               payload['scales'])
+
+    kwargs = {}
+    for token in spec.split(','):
+        if not token:
+            continue
+        key, _, val = token.partition('=')
+        kwargs[key.strip()] = float(val)
+    return ConstantCovScaler(**kwargs)
+
 def is_pos_def(x):
     '''
     https://stackoverflow.com/questions/16266720/find-out-if-matrix-is-positive-definite-with-numpy
@@ -320,29 +543,12 @@ def fix_track(trk, delta=1e-9):
     min_eigenvalue = np.nan_to_num(min(np.linalg.eigvals(new_cov)))
     for i in range(new_cov.shape[0]):
         new_cov[i,i] = new_cov[i,i] - min_eigenvalue + delta
-                       
-    upper_triangle = []
-    for i in range(new_cov.shape[0]):
-        for j in range(new_cov.shape[1]):
-            if i<=j:
-                upper_triangle.append(new_cov[i,j])
-                
-    # https://root.cern/doc/v606/SMatrixDoc.html
-    # che sudata sta merdata
-    mycov = ROOT.Math.SMatrix('double', 5, 5, ROOT.Math.MatRepSym('double', 5) )(ROOT.Math.SVector('double', len(upper_triangle))(np.array(upper_triangle), len(upper_triangle)), False)
 
-    new_trk = ROOT.reco.Track(
-        trk.chi2(), 
-        trk.ndof(), 
-        trk.referencePoint(), 
-        trk.momentum(), 
-        trk.charge(), 
-        mycov, 
-        trk.algo(), 
-        ROOT.reco.TrackBase.TrackQuality(trk.qualityMask()),
-    )
+    # same rebuild-the-track-around-a-new-covariance trick as scale_track_cov;
+    # the SMatrix incantation lives in smatrix55_from_cov now
+    new_trk = track_with_cov(trk, new_cov)
 
-    if not is_pos_def(new_cov): 
+    if not is_pos_def(new_cov):
         fix_track(new_trk, delta)
     
     return new_trk

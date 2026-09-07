@@ -1,6 +1,10 @@
 import ROOT
 import numpy as np
 
+from Bmmm.Analysis.utils import (
+    COV_ELEMENT_NAMES, COV_INDEX_PAIRS, COV_PARAM_NAMES, COV_NO_SCALE,
+)
+
 # Shared branch definitions for the J/psi + charged-object ntuples. These are
 # channel-agnostic and imported verbatim by BOTH JpsiMuBranches (J/psi mu) and
 # JpsiTkBranches (J/psi + track), so the event block, the per-muon block, the Bc
@@ -98,6 +102,35 @@ muon_branches = {
     'gen_dr'         :  lambda imu : imu.gen_dr  ,
 
 }
+
+##########################################################################################
+#####      TRACK COVARIANCE MATRIX BLOCK  (shared by muons and bachelor tracks)
+##########################################################################################
+# The 15 independent elements of the 5x5 curvilinear covariance of the object's
+# best track, RAW -- exactly as reconstruction stored them, before any scaling.
+# These are the inputs to the data/MC covariance-mismodelling measurement, hence
+# raw: the correction is derived FROM them, so persisting a corrected version
+# here would be circular.
+#
+#   <obj>_cov_<par_i>_<par_j>   with par in (qoverp, lambda, phi, dxy, dsz)
+#
+# sigma_i = sqrt(cov_<par_i>_<par_i>), rho_ij = cov_ij / (sigma_i sigma_j): both
+# trivially derived offline, so they are not duplicated in the ntuple. Note these
+# are the BARE track uncertainties -- unlike the dxy_e / dz_e branches above,
+# which fold in the primary-vertex error.
+#
+# <obj>_cov_scale_<par> records the scale factor actually applied to that
+# parameter before the vertex fit (1 when running without --cov-scale, i.e.
+# always while the measurement is still being made). It is written so an ntuple
+# says for itself whether, and by how much, it was corrected.
+cov_branches = {}
+for _name, (_i, _j) in zip(COV_ELEMENT_NAMES, COV_INDEX_PAIRS):
+    cov_branches['cov_%s' % _name] = (lambda iobj, i=_i, j=_j : iobj.cov[i][j])
+for _i, _par in enumerate(COV_PARAM_NAMES):
+    cov_branches['cov_scale_%s' % _par] = (
+        lambda iobj, i=_i : getattr(iobj, 'cov_scale', COV_NO_SCALE)[i])
+
+muon_branches.update(cov_branches)
 
 bc_branches = {
     'gen_bc_decay'      :  lambda ib : ib.bc_code    ,
