@@ -162,8 +162,8 @@ paths['HLT_DoubleMu4_Jpsi_Displaced'              ] = ['hltDisplacedmumuFilterDo
 ##########################################################################################                                                               
 ##########################################################################################                                                                  
 paths['HLT_Mu8' ] = ['hltL3fL1sMu5L1f0L2f5L3Filtered8'       ] # run 319579 rate Hz 1.51 # L1_SingleMu3 OR L1_SingleMu5 OR L1_SingleMu7
-# paths['HLT_Mu17'] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered17'] # run 319579 rate Hz 1.11 # L1_SingleMu15_DQ
-# paths['HLT_Mu19'] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered19'] # run 319579 rate Hz 0.75 # L1_SingleMu15_DQ
+paths['HLT_Mu17'] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered17'] # run 319579 rate Hz 1.11 # L1_SingleMu15_DQ
+paths['HLT_Mu19'] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered19'] # run 319579 rate Hz 0.75 # L1_SingleMu15_DQ
 
 ########################################################################################################                                                                  
 ########################################################################################################                                                    
@@ -192,10 +192,10 @@ paths['HLT_Mu8' ] = ['hltL3fL1sMu5L1f0L2f5L3Filtered8'       ] # run 319579 rate
 ##########################################################################################                                                               
 ##########################################################################################                                                                  
 paths['HLT_IsoMu24'] = ['hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p07']
-# paths['HLT_Mu12'   ] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered12']
-
-
-
+paths['HLT_Mu12'   ] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered12'  ]   # L1_SingleMu15_DQ
+paths['HLT_Mu15'   ] = ['hltL3fL1sMu15DQlqL1f0L2f10L3Filtered15'  ]   # L1_SingleMu15_DQ
+paths['HLT_Mu20'   ] = ['hltL3fL1sMu18L1f0L2f10QL3Filtered20Q'    ]   # L1_SingleMu18
+paths['HLT_Mu27'   ] = ['hltL3fL1sMu22Or25L1f0L2f10QL3Filtered27Q']   # L1_SingleMu22 OR L1_SingleMu25
 
 # analysis triggers, not straightforward to define T&P filters...
 # paths['HLT_Dimuon0_Jpsi3p5_Muon2'                 ] = ['hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p07']
@@ -216,16 +216,17 @@ paths['HLT_IsoMu24'] = ['hltL3crIsoL1sSingleMu22L1f0L2f10QL3f24QL3trkIsoFiltered
 ##########################################################################################                                                               
 ##########################################################################################                                                                  
 
-#    'HLT_Mu7_IP4'     ,
-#    'HLT_Mu8_IP3'     ,
-#    'HLT_Mu8_IP5'     ,
-#    'HLT_Mu8_IP6'     ,
-#    'HLT_Mu8p5_IP3p5' ,
-#    'HLT_Mu9_IP4'     ,
-#    'HLT_Mu9_IP5'     ,
-#    'HLT_Mu9_IP6'     ,
-#    'HLT_Mu10p5_IP3p5',
-#    'HLT_Mu12_IP6'    ,
+paths['HLT_Mu7_IP4'     ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered7IP4Q"]
+paths['HLT_Mu8_IP3'     ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8Q"   ]
+paths['HLT_Mu8_IP5'     ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8IP5Q"]
+paths['HLT_Mu8_IP6'     ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8IP6Q"]
+paths['HLT_Mu8p5_IP3p5' ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered8p5Q" ]
+paths['HLT_Mu9_IP4'     ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9IP4Q"]
+paths['HLT_Mu9_IP5'     ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9IP5Q"]
+paths['HLT_Mu9_IP6'     ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9Q"   ]
+paths['HLT_Mu10p5_IP3p5'] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered10p5Q"]
+paths['HLT_Mu12_IP6'    ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered12Q"  ]
+
 
 # add branches for T&P
 for k, v in paths.items():

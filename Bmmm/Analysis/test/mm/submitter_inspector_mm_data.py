@@ -36,7 +36,8 @@ for period in ['D', 'C', 'B', 'A']:
     #out_dir = 'SingleMuon_Run2018%s-UL2018_MiniAODv2_GT36-v1_03Apr2023_v1'%period
     #out_dir = 'Charmonium_Run2018%s-UL2018_MiniAODv2_GT36-v1_26Apr2023_v1'%period
 
-    out_dir = 'DoubleMuon_Run2018%s-UL2018_MiniAODv2_GT36-v1_09May2023_v1'%period
+#     out_dir = 'DoubleMuon_Run2018%s-UL2018_MiniAODv2_GT36-v1_09May2023_v1'%period
+    out_dir = 'DoubleMuon_Run2018%s-UL2018_MiniAODv2_GT36-v1_07May2026_v0'%period
 
     out_file_name = 'data_mm'
 
@@ -85,7 +86,7 @@ for period in ['D', 'C', 'B', 'A']:
            #if ijob not in failed: continue
         
     #    if ijob<=4: continue
-    #    if ijob>4: break
+        if ijob>4: break
             
         to_write = '\n'.join([
             '#!/bin/bash',

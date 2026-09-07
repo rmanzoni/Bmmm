@@ -1,4 +1,6 @@
 '''
+https://twiki.cern.ch/twiki/bin/viewauth/CMS/HLTStandAlonePrescaleInformation
+
 https://cms-service-lumi.web.cern.ch/cms-service-lumi/brilwsdoc.html
 
 
@@ -16,6 +18,57 @@ brilcalc trg --hltpath HLT_Mu8_v12 --prescale -o HLT_Mu8_v12.csv
 
 
 brilcalc trg --hltpath HLT_Mu8_v\* --prescale --output-style=csv -o HLT_Mu8.csv
+
+
+
+brilcalc trg --hltpath HLT_Mu7_IP4_v\*      --prescale --output-style=csv -o HLT_Mu7_IP4.csv -c offsite
+
+
+brilcalc trg --hltpath HLT_Mu7_IP4_v\*      --prescale --output-style=csv -o HLT_Mu7_IP4.csv
+brilcalc trg --hltpath HLT_Mu8_IP3_v\*      --prescale --output-style=csv -o HLT_Mu8_IP3.csv
+brilcalc trg --hltpath HLT_Mu8_IP5_v\*      --prescale --output-style=csv -o HLT_Mu8_IP5.csv
+brilcalc trg --hltpath HLT_Mu8_IP6_v\*      --prescale --output-style=csv -o HLT_Mu8_IP6.csv
+brilcalc trg --hltpath HLT_Mu8p5_IP3p5_v\*  --prescale --output-style=csv -o HLT_Mu8p5_IP3p5.csv
+brilcalc trg --hltpath HLT_Mu9_IP4_v\*      --prescale --output-style=csv -o HLT_Mu9_IP4.csv
+brilcalc trg --hltpath HLT_Mu9_IP5_v\*      --prescale --output-style=csv -o HLT_Mu9_IP5.csv
+brilcalc trg --hltpath HLT_Mu9_IP6_v\*      --prescale --output-style=csv -o HLT_Mu9_IP6.csv
+brilcalc trg --hltpath HLT_Mu10p5_IP3p5_v\* --prescale --output-style=csv -o HLT_Mu10p5_IP3p5.csv
+brilcalc trg --hltpath HLT_Mu12_IP6_v\*     --prescale --output-style=csv -o HLT_Mu12_IP6.csv
+
+
+
+
+
+
+
+
+
+on LXPLUS bash
+
+source /cvmfs/cms-bril.cern.ch/cms-lumi-pog/brilws-docker/brilws-env
+
+brilcalc trg --hltpath 'HLT_Mu7_IP4_part0_v*'      --prescale --output-style=csv -o HLT_Mu7_IP4.csv      -r 316995
+brilcalc trg --hltpath 'HLT_Mu8_IP3_part0_v*'      --prescale --output-style=csv -o HLT_Mu8_IP3.csv      -r 316995
+brilcalc trg --hltpath 'HLT_Mu8_IP5_part0_v*'      --prescale --output-style=csv -o HLT_Mu8_IP5.csv      -r 316995
+brilcalc trg --hltpath 'HLT_Mu8_IP6_part0_v*'      --prescale --output-style=csv -o HLT_Mu8_IP6.csv      -r 316995
+brilcalc trg --hltpath 'HLT_Mu8p5_IP3p5_part0_v*'  --prescale --output-style=csv -o HLT_Mu8p5_IP3p5.csv  -r 316995
+brilcalc trg --hltpath 'HLT_Mu9_IP4_part0_v*'      --prescale --output-style=csv -o HLT_Mu9_IP4.csv      -r 316995
+brilcalc trg --hltpath 'HLT_Mu9_IP5_part0_v*'      --prescale --output-style=csv -o HLT_Mu9_IP5.csv      -r 316995
+brilcalc trg --hltpath 'HLT_Mu9_IP6_part0_v*'      --prescale --output-style=csv -o HLT_Mu9_IP6.csv      -r 316995
+brilcalc trg --hltpath 'HLT_Mu10p5_IP3p5_part0_v*' --prescale --output-style=csv -o HLT_Mu10p5_IP3p5.csv -r 316995
+brilcalc trg --hltpath 'HLT_Mu12_IP6_part0_v*'     --prescale --output-style=csv -o HLT_Mu12_IP6.csv     -r 316995
+
+
+
+
+
+
+
+
+
+
+
+
 '''
 
 import csv
@@ -38,23 +91,43 @@ if __name__ == '__main__':
 
     # add your own triggers
     triggers = [
-        'HLT_Dimuon0_Jpsi',
-        'HLT_Dimuon0_Jpsi_L1_4R_0er1p5R',
-        'HLT_Dimuon0_Jpsi_L1_NoOS',
-        'HLT_Dimuon0_Jpsi_NoVertexing',
-        'HLT_Dimuon0_Jpsi_NoVertexing_L1_4R_0er1p5R',
-        'HLT_Dimuon0_Jpsi_NoVertexing_L1_NoOS',
-        'HLT_DoubleMu4_3_Jpsi',
-        'HLT_DoubleMu4_Jpsi_Displaced',
-        'HLT_DoubleMu4_Jpsi_NoVertexing',
-        'HLT_IsoMu24',
-        'HLT_Mu17',
-        'HLT_Mu19',
-        'HLT_Mu7p5_L2Mu2_Jpsi',
-        'HLT_Mu7p5_Track2_Jpsi',
-        'HLT_Mu7p5_Track3p5_Jpsi',
-        'HLT_Mu7p5_Track7_Jpsi',
-        'HLT_Mu8',
+#         'HLT_Dimuon0_Jpsi',
+#         'HLT_Dimuon0_Jpsi_L1_4R_0er1p5R',
+#         'HLT_Dimuon0_Jpsi_L1_NoOS',
+#         'HLT_Dimuon0_Jpsi_NoVertexing',
+#         'HLT_Dimuon0_Jpsi_NoVertexing_L1_4R_0er1p5R',
+#         'HLT_Dimuon0_Jpsi_NoVertexing_L1_NoOS',
+#         'HLT_DoubleMu4_3_Jpsi',
+#         'HLT_DoubleMu4_Jpsi_Displaced',
+#         'HLT_DoubleMu4_Jpsi_NoVertexing',
+#         'HLT_IsoMu24',
+#         'HLT_Mu17',
+#         'HLT_Mu19',
+#         'HLT_Mu7p5_L2Mu2_Jpsi',
+#         'HLT_Mu7p5_Track2_Jpsi',
+#         'HLT_Mu7p5_Track3p5_Jpsi',
+#         'HLT_Mu7p5_Track7_Jpsi',
+#         'HLT_Mu8',
+
+#         'HLT_Mu7_IP4'     ,
+#         'HLT_Mu8_IP3'     ,
+#         'HLT_Mu8_IP5'     ,
+#         'HLT_Mu8_IP6'     ,
+#         'HLT_Mu8p5_IP3p5' ,
+#         'HLT_Mu9_IP4'     ,
+#         'HLT_Mu9_IP5'     ,
+#         'HLT_Mu9_IP6'     ,
+#         'HLT_Mu10p5_IP3p5',
+#         'HLT_Mu12_IP6'    ,
+
+
+        'HLT_Mu12'     ,
+        'HLT_Mu15'     ,
+        'HLT_Mu17'     ,
+        'HLT_Mu19'     ,
+        'HLT_Mu20'     ,
+        'HLT_Mu27'     ,
+
     ]
 
     for itrig in triggers: 

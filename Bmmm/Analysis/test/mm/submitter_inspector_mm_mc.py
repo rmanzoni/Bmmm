@@ -35,7 +35,9 @@ queue = 'standard'; time = 720
 #out_dir = 'DYToLL_2018UL_29Mar2023_v1'
 #out_dir = 'JpsiMM_Pt8_2018UL_29Mar2023_v1'
 #out_dir = 'HbToMuMuX_2018UL_03Apr2023_v1'
-out_dir = 'HbToMuMuX_2018UL_09May2023_v1'
+#out_dir = 'HbToMuMuX_2018UL_09May2023_v1'
+#out_dir = 'HbToMuMuX_2018UL_28Jun2023_v1'
+out_dir = 'HbToMuMuX_2018UL_10Jul2023_notrig_v1'
 
 out_file_name = 'hbmmx'
 #out_file_name = 'jpsimm'
@@ -105,7 +107,7 @@ for ijob, ichunk in enumerate(chunks):
         )
         
     for idx, ifile in enumerate(ichunk):
-        to_write += 'ipython -- {dir}/{cfg} --inputFiles={infiles} --logfreq=5000 --destination=/scratch/manzoni/{scratch_dir} --mc --filename={outfile}_chunk{ijob}_part{idx} \n'.format(
+        to_write += 'ipython -- {dir}/{cfg} --inputFiles={infiles} --logfreq=5000 --destination=/scratch/manzoni/{scratch_dir} --mc --filename={outfile}_chunk{ijob}_part{idx} --savenontrig \n'.format(
             dir         = '/'.join([os.getcwd(), out_dir]), 
             scratch_dir = out_dir, 
             cfg         = cfg, 
