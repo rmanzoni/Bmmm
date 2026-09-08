@@ -21,7 +21,6 @@ adds the track (kaon + pion) reconstruction.
 import ROOT
 import argparse
 import numpy as np
-import pandas as pd
 import uproot
 from time import time
 from datetime import datetime, timedelta

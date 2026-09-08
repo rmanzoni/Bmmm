@@ -55,7 +55,7 @@ import uproot
 from time import time
 from datetime import datetime, timedelta
 from glob import glob
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
@@ -88,6 +88,11 @@ parser.add_argument('--filemode'     , dest='filemode'   , default='recreate', t
 parser.add_argument('--skip'         , dest='skip'       , default=-1    , type=int)
 parser.add_argument('--savenontrig'  , dest='savenontrig', action='store_true' )
 parser.add_argument('--redirector'   , dest='redirector' , default='root://cms-xrd-global.cern.ch//', type=str)
+# Grid bookkeeping: dump {run: {lumi: nevents}} for the events actually READ
+# (not the ones that survive selection), so a CRAB job can build a truthful
+# FrameworkJobReport and `crab report` accounts for the right lumis.
+parser.add_argument('--lumi-json'    , dest='lumi_json'  , default=''    , type=str,
+                    help='write the processed run/lumi map to this path')
 args = parser.parse_args()
 
 inputFiles  = args.inputFiles
@@ -100,7 +105,11 @@ filemode    = args.filemode
 skip        = args.skip
 savenontrig = args.savenontrig
 redirector  = args.redirector
+lumi_json   = args.lumi_json
 mc = False; mc = args.mc
+
+# run -> lumi -> events read. Filled for EVERY event the loop touches.
+processed_lumis = defaultdict(lambda : defaultdict(int))
 
 handles_mc = OrderedDict()
 handles_mc['genpr'  ] = ('prunedGenParticles'  , Handle('std::vector<reco::GenParticle>')     )
@@ -297,6 +306,7 @@ for i, event in enumerate(events):
             
     lumi = event.eventAuxiliary().luminosityBlock()
     iev  = event.eventAuxiliary().event()
+    processed_lumis[event.eventAuxiliary().run()][lumi] += 1
         
     ######################################################################################
     #####      RECO PART HERE (GEN PART REMOVED FOR NOW)
@@ -658,4 +668,16 @@ for i, event in enumerate(events):
 flush(fout, row_list, branches)
 print('\nnumber of selected candidates', fout['tree'].num_entries)
 fout.close()
+
+# Grid bookkeeping, written whether or not any candidate survived: an empty
+# ntuple is still a job that legitimately read its share of the dataset.
+if lumi_json:
+    import json
+    payload = {'events_read'    : sum(sum(l.values()) for l in processed_lumis.values()),
+               'processed_lumis': {str(r) : {str(l) : n for l, n in sorted(ls.items())}
+                                   for r, ls in sorted(processed_lumis.items())}}
+    with open(lumi_json, 'w') as _f:
+        json.dump(payload, _f)
+    print('wrote %s: %d events read over %d run(s)'
+          % (lumi_json, payload['events_read'], len(processed_lumis)))
 

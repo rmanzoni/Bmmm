@@ -37,9 +37,10 @@ from CRABAPI.RawCommand import crabCommand
 # ------------------------------------------------------------------------------------
 # Campaign
 # ------------------------------------------------------------------------------------
-TAG    = 'dimuon_run3_part1_07sep26'
-OUTDIR = '/store/user/manzoni/dimuon_ntuples'
-SITE   = 'T2_CH_CSCS'
+TAG    = 'dimuon_run3_part1_08sep26'
+OUTDIR = '/store/user/manzoni/dimuon_ntuples_run3_08sep2026'
+# SITE   = 'T2_CH_CSCS'
+SITE   = 'T3_CH_PSI'
 WORKAREA = 'crab_%s' % TAG
 
 # Part 1 only, as submitted for the RJpsi Run 3 skims -- this list is exactly the
@@ -70,6 +71,15 @@ DATASETS = [
 INSPECTOR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          '..', 'inspector_mm_analysis.py')
 
+# Writes FrameworkJobReport.xml at the end of the job. Without it every job
+# fails with exit code 50115 (BadFWJRXML): CRAB's post-job parses that file
+# whatever the job ran, cmsRun writes one and a scriptExe does not.
+MAKE_FJR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'make_fjr.py')
+
+# Opens every input file before the event loop starts, falling through to the
+# next xrootd door if one does not answer.
+RESOLVE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resolve_pfns.py')
+
 
 def dataset_suffix(dataset):
     '''Filesystem-safe tag taken verbatim from the dataset name, so two
@@ -99,10 +109,13 @@ def create_config(dataset, request_name, dataset_tag):
     # job; the work is done by scriptExe
     config.JobType.psetName                = 'PSet.py'
     config.JobType.scriptExe               = 'crab_script.sh'
-    config.JobType.inputFiles              = ['PSet.py', 'crab_script.sh', INSPECTOR]
+    config.JobType.inputFiles              = ['PSet.py', 'crab_script.sh',
+                                              INSPECTOR, MAKE_FJR, RESOLVE]
     config.JobType.outputFiles             = ['dimuon_ntuple.root']
     config.JobType.allowUndistributedCMSSW = True
-    config.JobType.maxMemoryMB             = 2500
+    # measured: 619 MB peak over 257 jobs. Asking for 2500 only made the jobs
+    # queue behind smaller ones.
+    config.JobType.maxMemoryMB             = 1500
     #config.JobType.maxJobRuntimeMin       = 1440
 
     ##########################################################################################
@@ -147,6 +160,10 @@ def main():
             sys.exit('missing %s -- run this from %s' % (needed, here))
     if not os.path.isfile(INSPECTOR):
         sys.exit('cannot find the ntuplizer at %s' % INSPECTOR)
+    if not os.path.isfile(MAKE_FJR):
+        sys.exit('cannot find the job-report writer at %s' % MAKE_FJR)
+    if not os.path.isfile(RESOLVE):
+        sys.exit('cannot find the PFN resolver at %s' % RESOLVE)
 
     print('\nsubmitting %d dataset(s):' % len(DATASETS))
     for d in DATASETS:
