@@ -1,54 +1,98 @@
 '''
-CRAB submission: dimuon ntuples on Run 3 ParkingDoubleMuonLowMass, Part 1.
+CRAB3 submitter to run inspector_mm_analysis.py over the Run 3
+ParkingDoubleMuonLowMass1 MINIAOD datasets (Part 1 only).
 
-Same dataset family and same trigger as the RJpsi Run 3 skims
-(HLT_DoubleMu4_3_LowMass), but run on the ORIGINAL MINIAOD rather than on the
-skims -- the tag-and-probe measurement needs events the skim selection would
-have thrown away.
+A transliteration of test/tau3mu/crab/crab_submitter_tau3mu_data.py, which is a
+WORKING setup for the same shape of job. Where this differs, the difference is
+forced by the dimuon inspector and is flagged DIFFERENT below. Nothing else is
+invented.
 
-Structured like skims/rjpsi/crab_data_*.py so the two campaigns are managed the
-same way, with two differences that follow from what is being run:
+Why CRAB instead of the SLURM submitter:
+  - The SLURM jobs read remote files through the global xrootd redirector over
+    the WAN, which is slow and flaky once a few thousand jobs hammer it.
+  - CRAB leaves locality scheduling ON, so each job runs at a site that hosts
+    the data and reads it over the LAN; failed jobs are auto-resubmitted.
+  - You no longer manage the job count by hand.
 
-  * the dimuon ntuplizer is a FWLite script, not a cmsRun configuration, so the
-    job goes through scriptExe with a dummy PSet (see PSet.py, crab_script.sh)
-    instead of psetName pointing at a real config;
-  * the output is a flat ntuple, not EDM, so publication is off. The files land
-    under outLFNDirBase and are collected with hadd_uproot.py, not by DBS.
+How it works (scriptExe mode):
+  - The real processing is still inspector_mm_analysis.py, launched by
+    crab_script.sh.
+  - PSet.py is a dummy parameter-set; CRAB injects each job's input files into
+    it, and crab_script.sh reads them back via `import PSet`.
+  - FrameworkJobReport.xml is a static minimal report shipped with each job so
+    CRAB's bookkeeping is happy without running cmsRun.
 
-remember to do
-    source /cvmfs/cms.cern.ch/common/crab-setup.sh
-before using crab.
+The inspector lives in $CMSSW_BASE/src/Bmmm/Analysis/test/mm/. That directory is
+NOT on the worker-node python path, so we ship *all* of its .py/.h files via
+JobType.inputFiles -- shipping only the inspector makes every job die at import
+time (exit code 5, 0% CPU).
 
-    python crab_dimuon_data_run3.py            # submit
-    python crab_dimuon_data_run3.py --dry-run  # print the configs, submit nothing
+DIFFERENT from tau3mu, and only these two things:
+
+  1. The dimuon inspector imports the PACKAGE, not siblings:
+         from Bmmm.Analysis.MuMuBranches import ...
+     The tau3mu one imports Tau3MuCandidate etc. by bare name, which the
+     flattened sandbox satisfies on its own. So we additionally ship
+     src/Bmmm/Analysis/python as a directory, and crab_script.sh rebuilds a
+     Bmmm/Analysis package from it on PYTHONPATH. (sendPythonFolder is NOT set:
+     this CRAB rejects it as deprecated, "Now pythonFolder is always added to
+     sandbox" -- so that route exists anyway, and the bootstrap is the belt to
+     its braces, depending on nothing but the shipped directory.)
+
+  2. The inspector reads L1 menus from $CMSSW_BASE/src/Bmmm/Analysis/data at
+     import. That directory is 247 MB and only l1menus/ is needed (2.2 MB
+     packed), so l1menus/ alone is shipped and BMMM_DATADIR points the
+     inspector at the job directory.
+
+Required files in this directory (alongside this submitter):
+    crab_script.sh
+    PSet.py
+    FrameworkJobReport.xml
+    pylibs/          <- build with ./make_pylibs.sh, NOT with a bare pip install
+inspector_mm_analysis.py is shipped from $CMSSW_BASE/src/Bmmm/Analysis/test/mm/.
+
+Setup before running (order matters):
+    cmsenv          # in the CMSSW src you built Bmmm in
+    scram b
+    ./make_pylibs.sh                       # only the packages CMSSW lacks
+    source /cvmfs/cms.cern.ch/crab3/crab.sh
+    voms-proxy-init -rfc -voms cms -valid 192:00
+    python3 crab_dimuon_data_run3.py
+
+Useful afterwards:
+    crab status   -d crab_<work_area>/crab_<requestName>
+    crab getlog --short -d crab_<work_area>/crab_<requestName>   # job stdout
+    crab resubmit -d crab_<work_area>/crab_<requestName>
+    crab report   -d crab_<work_area>/crab_<requestName>
 '''
 
-from __future__ import division
-
-import argparse
 import os
-import sys
+import glob
+from multiprocessing import Process
 
-from http.client import HTTPException
-from CRABClient.UserUtilities import config as Configuration
+from CRABClient.UserUtilities import config
 from CRABAPI.RawCommand import crabCommand
+from CRABClient.ClientExceptions import ClientException
+from http.client import HTTPException
 
 
-# ------------------------------------------------------------------------------------
-# Campaign
-# ------------------------------------------------------------------------------------
-TAG    = 'dimuon_run3_part1_08sep26'
-OUTDIR = '/store/user/manzoni/dimuon_ntuples_run3_08sep2026'
-# SITE   = 'T2_CH_CSCS'
-SITE   = 'T3_CH_PSI'
-WORKAREA = 'crab_%s' % TAG
+# ----------------------------------------------------------------------------
+# user knobs
+# ----------------------------------------------------------------------------
+work_area     = 'crab_dimuon_run3_part1_v3'
+out_dir       = 'dimuon_ntuples_run3_08sep2026'      # under /store/user/manzoni/
+files_per_job = 5
+storage_site  = 'T3_CH_PSI'
 
-# Part 1 only, as submitted for the RJpsi Run 3 skims -- this list is exactly the
+# requestNames listed here are skipped (already submitted / done)
+already_submitted = [
+]
+
+# Part 1 only, as submitted for the RJpsi Run 3 skims -- exactly the
 # ParkingDoubleMuonLowMass1 entries of skims/rjpsi/crab_data_*.py, so the two
-# campaigns cover the same runs. Comment out eras to submit a subset; starting
-# with a single era is the sensible way to find out what the job costs before
-# committing to the lot.
-DATASETS = [
+# campaigns cover the same runs. Comment out entries to submit a subset;
+# submitting ONE first is how you find out what a job costs.
+productions = [
     '/ParkingDoubleMuonLowMass1/Run2022C-PromptReco-v1/MINIAOD',
     '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v1/MINIAOD',
     '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v2/MINIAOD',
@@ -65,147 +109,144 @@ DATASETS = [
     '/ParkingDoubleMuonLowMass1/Run2026D-PromptReco-v1/MINIAOD',
 ]
 
-# The ntuplizer, shipped into the job alongside this directory's two wrappers.
-# CRAB flattens inputFiles into the job working directory, which is why
-# crab_script.sh calls it by bare name.
-INSPECTOR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                         '..', 'inspector_mm_analysis.py')
 
-# Writes FrameworkJobReport.xml at the end of the job. Without it every job
-# fails with exit code 50115 (BadFWJRXML): CRAB's post-job parses that file
-# whatever the job ran, cmsRun writes one and a scriptExe does not.
-MAKE_FJR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'make_fjr.py')
+# ----------------------------------------------------------------------------
+# config builder
+# ----------------------------------------------------------------------------
+def create_config(dataset):
+    cmssw_base = os.environ.get('CMSSW_BASE', '')
+    if not cmssw_base:
+        raise RuntimeError('CMSSW_BASE is not set -- run `cmsenv` first.')
 
-# Opens every input file before the event loop starts, falling through to the
-# next xrootd door if one does not answer.
-RESOLVE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resolve_pfns.py')
+    # ship the inspector AND all its sibling modules from test/mm/. That
+    # directory is not importable as a package on the WN, so anything it might
+    # reach for must travel in the sandbox alongside it (CRAB flattens them into
+    # the job's working dir).
+    mm_dir = os.path.join(cmssw_base, 'src', 'Bmmm', 'Analysis', 'test', 'mm')
+    helpers = sorted(set(
+        glob.glob(os.path.join(mm_dir, '*.py')) +
+        glob.glob(os.path.join(mm_dir, '*.h'))
+    ))
+    if not any(f.endswith('inspector_mm_analysis.py') for f in helpers):
+        raise RuntimeError('inspector_mm_analysis.py not found under %s' % mm_dir)
+
+    # DIFFERENT (1): the package itself. inspector_mm_analysis.py does
+    #     from Bmmm.Analysis.MuMuBranches import ...
+    # so the flattened siblings are not enough. Ship the package python
+    # directory; crab_script.sh rebuilds Bmmm/Analysis from it on PYTHONPATH.
+    package_dir = os.path.join(cmssw_base, 'src', 'Bmmm', 'Analysis', 'python')
+    if not os.path.isdir(package_dir):
+        raise RuntimeError('%s not found' % package_dir)
+
+    # DIFFERENT (2): L1 menus, read at import from
+    # $CMSSW_BASE/src/Bmmm/Analysis/data. Only l1menus/ is needed; the rest of
+    # data/ is 247 MB and would not be worth the sandbox.
+    l1menus_dir = os.path.join(cmssw_base, 'src', 'Bmmm', 'Analysis', 'data', 'l1menus')
+    if not os.path.isdir(l1menus_dir):
+        raise RuntimeError('%s not found' % l1menus_dir)
+
+    # third-party python packages that are NOT in CMSSW (particle, uproot) and
+    # are normally picked up from ~/.local -- which the WN does not have. Build
+    # the tree with ./make_pylibs.sh; do NOT pip install into it directly, see
+    # the numpy check below. Ship the whole tree (CRAB recurses into directories
+    # given in inputFiles); crab_script.sh prepends ./pylibs to PYTHONPATH.
+    here       = os.path.dirname(os.path.abspath(__file__))
+    pylibs_dir = os.path.join(here, 'pylibs')
+    if not os.path.isdir(pylibs_dir):
+        raise RuntimeError(
+            'pylibs/ not found under %s -- build it first:\n'
+            '  cd %s && ./make_pylibs.sh' % (here, here))
+
+    # A bare `pip install --target=pylibs uproot` resolves dependencies against
+    # PyPI, not against CMSSW, and pulls in numpy 2.x. On PYTHONPATH that
+    # shadows the CMSSW numpy, and CMSSW's scipy -- compiled against the 1.x
+    # ABI -- then refuses to import:
+    #     A module that was compiled using NumPy 1.x cannot be run in NumPy 2.x
+    # Refuse to submit 257 jobs that would all die on that.
+    for shadowed in ('numpy', 'scipy'):
+        if os.path.isdir(os.path.join(pylibs_dir, shadowed)):
+            raise RuntimeError(
+                'pylibs/%s exists and would shadow the CMSSW one on the worker '
+                'node.\n'
+                '  Rebuild the tree properly:  cd %s && ./make_pylibs.sh\n'
+                '  (it installs, then deletes everything CMSSW already provides)'
+                % (shadowed, here))
+
+    # human-readable, unique request name, e.g. dimuon_LowMass1_Run2022C_PromptReco_v1
+    #   dataset = /ParkingDoubleMuonLowMass1/Run2022C-PromptReco-v1/MINIAOD
+    primary   = dataset.split('/')[1]                   # ParkingDoubleMuonLowMass1
+    part      = primary.replace('ParkingDoubleMuonLowMass', '')
+    processed = dataset.split('/')[2]                   # Run2022C-PromptReco-v1
+    era       = processed.split('-')[0].replace('Run', '')           # 2022C
+    ver_clean = '_'.join(processed.split('-')[1:]).replace('-', '')  # PromptReco_v1
+    request   = 'dimuon_LowMass%s_Run%s_%s' % (part, era, ver_clean)
+
+    cfg = config()
+
+    cfg.General.requestName     = request[:100]
+    cfg.General.workArea        = work_area
+    cfg.General.transferOutputs = True
+    cfg.General.transferLogs    = True
+
+    cfg.JobType.pluginName = 'Analysis'
+    cfg.JobType.psetName   = 'PSet.py'
+    cfg.JobType.scriptExe  = 'crab_script.sh'
+    # inspector + all mm siblings + the package python + l1menus + pylibs +
+    # the static report
+    cfg.JobType.inputFiles = helpers + [package_dir, l1menus_dir, pylibs_dir,
+                                        'FrameworkJobReport.xml']
+    cfg.JobType.outputFiles = ['dimuon_ntuple.root']
+    # the inspector produces a plain ROOT file, not an EDM output: tell CRAB
+    # not to try to harvest outputs from the (non-existent) cmsRun report
+    cfg.JobType.disableAutomaticOutputCollection = True
+    # NB: no sendPythonFolder. This CRAB rejects it outright --
+    #   "Parameter JobType.sendPythonFolder has been deprecated. Please remove it
+    #    Reason: Now pythonFolder is always added to sandbox"
+    # which also settles what it was for: $CMSSW_BASE/python travels with every
+    # job now, so `import Bmmm.Analysis...` has that route regardless. The
+    # bootstrap in crab_script.sh stays as the belt to that braces, since it
+    # depends on nothing but the shipped directory.
+    cfg.JobType.maxMemoryMB      = 2500
+    # cfg.JobType.maxJobRuntimeMin = 1440   # uncomment/raise if jobs time out
+
+    cfg.Data.inputDataset   = dataset
+    cfg.Data.inputDBS       = 'global'
+    cfg.Data.splitting      = 'FileBased'
+    cfg.Data.unitsPerJob    = files_per_job
+    cfg.Data.outLFNDirBase  = '/store/user/manzoni/' + out_dir + '/Run' + era
+    cfg.Data.publication    = False
+    cfg.Data.outputDatasetTag = out_dir + '_' + ver_clean
+
+    cfg.Site.storageSite = storage_site
+    # If some input blocks sit only at T2_CH_CSCS and trip the global
+    # blacklist, uncomment:
+    # cfg.Site.ignoreGlobalBlacklist = True
+
+    return cfg
 
 
-def dataset_suffix(dataset):
-    '''Filesystem-safe tag taken verbatim from the dataset name, so two
-    datasets can never collapse onto the same one. Same rule as the RJpsi
-    skim configs.'''
-    primary   = dataset.split('/')[1]
-    processed = dataset.split('/')[2].replace('-', '_')
-    return '%s_%s' % (primary, processed)
-
-
-def create_config(dataset, request_name, dataset_tag):
-
-    config = Configuration()
-
-    ##########################################################################################
-    config.section_("General")
-    config.General.instance                = 'prod'
-    config.General.workArea                = WORKAREA
-    config.General.requestName             = request_name
-    config.General.transferOutputs         = True
-    config.General.transferLogs            = True
-
-    ##########################################################################################
-    config.section_("JobType")
-    config.JobType.pluginName              = 'Analysis'
-    # dummy PSet: CRAB parses it for splitting and rewrites its fileNames per
-    # job; the work is done by scriptExe
-    config.JobType.psetName                = 'PSet.py'
-    config.JobType.scriptExe               = 'crab_script.sh'
-    config.JobType.inputFiles              = ['PSet.py', 'crab_script.sh',
-                                              INSPECTOR, MAKE_FJR, RESOLVE]
-    config.JobType.outputFiles             = ['dimuon_ntuple.root']
-    config.JobType.allowUndistributedCMSSW = True
-    # measured: 619 MB peak over 257 jobs. Asking for 2500 only made the jobs
-    # queue behind smaller ones.
-    config.JobType.maxMemoryMB             = 1500
-    #config.JobType.maxJobRuntimeMin       = 1440
-
-    ##########################################################################################
-    config.section_("Data")
-    config.Data.inputDataset               = dataset
-    config.Data.outLFNDirBase              = OUTDIR
-
-    # FileBased rather than Automatic: the ntuplizer is a python event loop, so
-    # per-event cost is high and fairly flat, and file-based splitting keeps a
-    # failed job cheap to resubmit. Start low and raise once a first campaign
-    # has shown the runtime per file.
-    config.Data.splitting                  = 'FileBased'
-    config.Data.unitsPerJob                = 5
-    config.Data.totalUnits                 = -1
-
-    # flat ntuple, not EDM -- nothing to publish to DBS
-    config.Data.publication                = False
-    config.Data.outputDatasetTag           = dataset_tag
-
-    ##########################################################################################
-    config.section_("User")
-
-    ##########################################################################################
-    config.section_("Site")
-    config.Site.storageSite                = SITE
-
-    ##########################################################################################
-    config.section_("Debug")
-
-    return config
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--dry-run', action='store_true',
-                        help='print the configs and the dataset list, submit nothing')
-    args = parser.parse_args()
-
-    here = os.path.dirname(os.path.abspath(__file__))
-    for needed in ('PSet.py', 'crab_script.sh'):
-        if not os.path.isfile(os.path.join(here, needed)):
-            sys.exit('missing %s -- run this from %s' % (needed, here))
-    if not os.path.isfile(INSPECTOR):
-        sys.exit('cannot find the ntuplizer at %s' % INSPECTOR)
-    if not os.path.isfile(MAKE_FJR):
-        sys.exit('cannot find the job-report writer at %s' % MAKE_FJR)
-    if not os.path.isfile(RESOLVE):
-        sys.exit('cannot find the PFN resolver at %s' % RESOLVE)
-
-    print('\nsubmitting %d dataset(s):' % len(DATASETS))
-    for d in DATASETS:
-        print('   ', d)
-
-    # Provenance: freeze exactly what this campaign submitted, as the RJpsi
-    # skim configs do.
+# ----------------------------------------------------------------------------
+# submit (each in its own process to dodge the FWCore pset cache conflict)
+# ----------------------------------------------------------------------------
+def submit(cfg):
     try:
-        with open(os.path.join(here, 'campaign_datasets.txt'), 'w') as fout:
-            fout.write('\n'.join(DATASETS) + '\n')
-    except OSError as err:
-        print('WARNING: could not write campaign_datasets.txt: %s' % err)
-
-    already_submitted = [
-    ]
-
-    for ids in DATASETS:
-        if ids in already_submitted:
-            print('\n\nAlready submitted', ids, 'SKIPPING')
-            continue
-
-        full_tag = '%s_%s' % (TAG, dataset_suffix(ids))
-
-        iconfig = create_config(
-            dataset      = ids           ,
-            request_name = full_tag[:100],   # CRAB caps requestName at 100 chars
-            dataset_tag  = full_tag      ,
-        )
-
-        print('\n\nsubmitting config:')
-        print(iconfig)
-
-        if args.dry_run:
-            continue
-
-        try:
-            crabCommand('submit', config=iconfig)
-        except HTTPException as hte:
-            print("HTTPException occurred: %s" % str(hte))
-        except Exception as e:
-            print("Failed to submit job: %s" % str(e))
+        crabCommand('submit', config=cfg)
+    except HTTPException as hte:
+        print('failed submitting %s: %s' % (cfg.General.requestName, hte.headers))
+    except ClientException as cle:
+        print('failed submitting %s: %s' % (cfg.General.requestName, cle))
 
 
 if __name__ == '__main__':
-    main()
+    for dataset in productions:
+        cfg = create_config(dataset)
+
+        if cfg.General.requestName in already_submitted:
+            print('skipping (already submitted): %s' % cfg.General.requestName)
+            continue
+
+        print('%s  ->  %s' % (dataset, cfg.General.requestName))
+
+        p = Process(target=submit, args=(cfg,))
+        p.start()
+        p.join()

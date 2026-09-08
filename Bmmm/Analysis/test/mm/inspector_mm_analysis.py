@@ -60,8 +60,10 @@ from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
 
-# only restricted number of HLT paths, see MuMuBranches
-os.environ["BMMM_MM_HLT_PATHS"] = "HLT_DoubleMu4_3_LowMass"
+# only restricted number of HLT paths, see MuMuBranches. setdefault, not [] =:
+# a caller (crab_script.sh, or a 2018 run wanting the full list) must be able to
+# override it, and this line runs before MuMuBranches is imported either way.
+os.environ.setdefault("BMMM_MM_HLT_PATHS", "HLT_DoubleMu4_3_LowMass")
 
 from Bmmm.Analysis.MuMuBranches import (
     branches, paths, event_branches, cand_branches, muon_branches,
@@ -188,7 +190,10 @@ maxevents = maxevents if maxevents>=0 else events.size() # total number of event
 # load L1 prescale files and add them to the branches
 l1_prescales = {}
 
-datadir = '/'.join([
+# BMMM_DATADIR wins when set: a CRAB job has no
+# $CMSSW_BASE/src/Bmmm/Analysis/data (247 MB, not worth the sandbox) and carries
+# l1menus/ in its working directory instead, so crab_script.sh points here.
+datadir = os.environ.get('BMMM_DATADIR', '') or '/'.join([
     os.environ['CMSSW_BASE'],
     'src',
     'Bmmm',

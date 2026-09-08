@@ -1,146 +1,162 @@
 #!/bin/bash
 #
-# What CRAB actually executes on the worker node (JobType.scriptExe).
+# CRAB scriptExe wrapper for the dimuon inspector.
 #
-# CRAB has already unpacked the sandbox and set up the CMSSW environment by the
-# time this runs, and has told this job which files to process. CRAB passes the
-# job number as $1.
+# A transliteration of test/tau3mu/crab/crab_script.sh, which works. The only
+# additions are the two marked DIFFERENT, both forced by the dimuon inspector.
 #
-# Three things happen here: work out this job's input files, turn them into
-# something FWLite can open, and run the ntuplizer -- then write the
-# FrameworkJobReport CRAB insists on reading afterwards.
+# CRAB runs this *instead of* cmsRun, after:
+#   - setting up the CMSSW environment (cmsenv already done -> python3 is the
+#     CMSSW python, FWLite is importable),
+#   - tweaking PSet.py so that process.source.fileNames holds *this* job's
+#     slice of the input dataset (LFNs, e.g. /store/data/...),
+#   - placing a valid grid proxy in $X509_USER_PROXY.
+#
+# CRAB passes the job id as $1.
+#
+# Because locality scheduling is left ON (we do NOT set Data.ignoreLocality),
+# CRAB sends each job to a site that hosts the data, so the redirector below
+# resolves to the LOCAL xrootd door -> LAN read, not a WAN read.
 
 set -o pipefail
 
-JOBID=${1:-0}
+echo "=================== dimuon scriptExe ==================="
+echo ">>> job id   : $1"
+echo ">>> host     : $(hostname)"
+echo ">>> pwd      : $(pwd)"
+echo ">>> proxy    : ${X509_USER_PROXY}"
+echo ">>> python3  : $(which python3)"
+echo ">>> CMSSW    : ${CMSSW_BASE}"
+echo ">>> files in working dir:"
+ls -la
+echo "========================================================"
 
-echo "=================================================================="
-echo " dimuon ntuple, CRAB job ${JOBID}"
-echo " host    : $(hostname)"
-echo " date    : $(date)"
-echo " pwd     : $(pwd)"
-echo " CMSSW   : ${CMSSW_BASE}"
-echo "=================================================================="
-ls -l
-
-# Only the Run 3 low-mass dimuon path. Read by MuMuBranches at import, before
-# the branch list is built, so the ntuple carries this path's decision,
-# prescale and tag-and-probe branches and not ~200 columns of 2018 paths that
-# no Run 3 menu contains. Must be exported BEFORE python starts.
-export BMMM_MM_HLT_PATHS=HLT_DoubleMu4_3_LowMass
-
-OUTFILE=dimuon_ntuple.root
-
-# ------------------------------------------------------------------------------
-# 1. This job's input files.
-#
-# Recent CRAB writes them as a JSON list in job_input_file_list_<jobid>.txt and
-# that is the authoritative source; PSet.py is the older route and is kept as a
-# fallback (in the sandbox it is a stub that unpickles PSet.pkl, which is why it
-# has to be imported rather than read). Same order of preference as
-# NanoAODTools' crabhelper.
-# ------------------------------------------------------------------------------
-: > lfns.txt
-if [ -f "job_input_file_list_${JOBID}.txt" ]; then
-    echo "--- inputs from job_input_file_list_${JOBID}.txt ---"
-    python3 - "job_input_file_list_${JOBID}.txt" > lfns.txt <<'PYEOF'
-import json, sys
-with open(sys.argv[1]) as f:
-    entries = json.load(f)
-for e in entries:
-    # entries are plain strings in every CRAB version seen so far, but a dict
-    # with a 'lfn' key has appeared; handle both rather than crash on one
-    print(e['lfn'] if isinstance(e, dict) else e)
-PYEOF
+# non-CMSSW python packages (particle, uproot) shipped in ./pylibs/ via
+# JobType.inputFiles. Prepend them to PYTHONPATH. PYTHONNOUSERSITE guards
+# against accidentally importing from any stray ~/.local on the WN.
+export PYTHONNOUSERSITE=1
+if [ -d pylibs ]; then
+    export PYTHONPATH="${PWD}/pylibs:${PYTHONPATH}"
+    echo ">>> added $(pwd)/pylibs to PYTHONPATH"
+    # a numpy inside pylibs shadows the CMSSW one, and CMSSW's scipy is
+    # compiled against the 1.x ABI. Say so here rather than let it surface as
+    # an opaque ImportError.
+    for shadowed in numpy scipy; do
+        if [ -d "pylibs/${shadowed}" ]; then
+            echo ">>> FATAL: pylibs/${shadowed} shadows the CMSSW one."
+            echo ">>>        rebuild pylibs with make_pylibs.sh and resubmit."
+            exit 1
+        fi
+    done
 else
-    echo "--- inputs from PSet.py ---"
-    python3 - > lfns.txt <<'PYEOF'
-from PSet import process
-for f in process.source.fileNames:
+    echo ">>> WARNING: pylibs/ not present in working dir"
+fi
+
+# --- DIFFERENT (1): rebuild the Bmmm.Analysis package ------------------------
+# inspector_mm_analysis.py imports the PACKAGE, not flattened siblings:
+#     from Bmmm.Analysis.MuMuBranches import ...
+# CRAB ships src/Bmmm/Analysis/python as ./python/. Turn it back into an
+# importable Bmmm/Analysis tree here rather than relying on sendPythonFolder
+# having landed where python expects it -- this way the import cannot depend on
+# CRAB internals.
+if [ -d python ]; then
+    mkdir -p bmmmpkg/Bmmm/Analysis
+    touch bmmmpkg/Bmmm/__init__.py bmmmpkg/Bmmm/Analysis/__init__.py
+    cp python/*.py bmmmpkg/Bmmm/Analysis/ 2>/dev/null
+    export PYTHONPATH="${PWD}/bmmmpkg:${PYTHONPATH}"
+    echo ">>> rebuilt Bmmm/Analysis from ./python ($(ls python/*.py | wc -l) modules)"
+else
+    echo ">>> WARNING: ./python not present -- relying on sendPythonFolder alone"
+fi
+
+# --- DIFFERENT (2): where the inspector looks for the L1 menus ---------------
+# it reads $CMSSW_BASE/src/Bmmm/Analysis/data/l1menus at import; the sandbox
+# carries l1menus/ in the job directory instead.
+if [ -d l1menus ]; then
+    export BMMM_DATADIR="${PWD}"
+    echo ">>> BMMM_DATADIR=${PWD} (l1menus/ present)"
+else
+    echo ">>> WARNING: l1menus/ not present in working dir"
+fi
+
+# say plainly whether the imports resolve, BEFORE the event loop, so a failure
+# here is one line in the log rather than a traceback with no context
+echo ">>> import check:"
+python3 -c "
+import Bmmm.Analysis.MuMuBranches, Bmmm.Analysis.MuMuCandidate
+import particle, uproot, numpy, scipy
+print('    all imports OK')
+" || { echo ">>> FATAL: imports failed, aborting job $1"; ls -la; exit 1; }
+
+OUTNAME="dimuon_ntuple"
+for arg in "$@"; do
+    case "${arg}" in
+        OUTNAME=*) OUTNAME="${arg#*=}" ;;
+    esac
+done
+echo ">>> output basename: ${OUTNAME}"
+
+# --- pull this job's input LFNs out of the CRAB-tweaked PSet ---
+python3 - > inputfiles.txt <<'PYEOF'
+import PSet
+for f in PSet.process.source.fileNames:
     print(f)
 PYEOF
-fi
 
-if [ ! -s lfns.txt ]; then
-    echo "ERROR: could not determine this job's input files" >&2
-    ls -l
+NFILES=$(grep -c . inputfiles.txt)
+echo ">>> this job has ${NFILES} input file(s):"
+cat inputfiles.txt
+
+if [ "${NFILES}" -eq 0 ]; then
+    echo ">>> FATAL: no input files in tweaked PSet. Aborting job $1."
     exit 1
 fi
 
-# ------------------------------------------------------------------------------
-# 2. Turn the LFNs into something FWLite can open, and PROVE each one opens.
-#
-# Measured, not assumed -- check_file_access.sh on t3ui07 against a real 2022C
-# file from DAS:
-#
-#     bare LFN      FAIL      FWLite Events()  FAIL
-#     site TFC      FAIL      (edmFileUtil -d, an off-site fiction)
-#     regional AAA  ok        FWLite Events()  ok, 16156 events
-#     global AAA    ok
-#
-# So the rewriting is needed: FWLite does not resolve a bare LFN the way
-# PoolSource does for a cmsRun job, which is the one real cost of the scriptExe
-# route. The regional door is the right default.
-#
-# resolve_pfns.py then opens every file before the event loop starts and falls
-# through to the next door if one does not answer -- xrootd being sometimes
-# unreliable is why this campaign runs on CRAB at all, and a job should not die
-# because one door had a bad minute when another serves the same file.
-# BMMM_DOORS overrides the list and its order.
-# ------------------------------------------------------------------------------
-DOORS=${BMMM_DOORS:-xrootd-cms.infn.it,cms-xrd-global.cern.ch}
+# --- build comma-separated --inputFiles string, prefixing bare LFNs ---
+REDIRECTOR="root://cms-xrd-global.cern.ch/"
 
-echo "--- resolving this job's input files (doors: ${DOORS}) ---"
-python3 resolve_pfns.py --lfns lfns.txt --out pfns.txt --doors "${DOORS}"
-if [ $? -ne 0 ]; then
-    echo "ERROR: could not open this job's input files through any door" >&2
-    # still write a report, so CRAB shows THIS failure rather than BadFWJRXML
-    python3 make_fjr.py --output "${OUTFILE}" --inputs lfns.txt || true
-    exit 65
-fi
+INFILES=$(python3 - "${REDIRECTOR}" <<'PYEOF'
+import sys
+red = sys.argv[1]
+out = []
+for line in open('inputfiles.txt'):
+    f = line.strip()
+    if not f:
+        continue
+    if f.startswith('root://') or f.startswith('file:'):
+        out.append(f)                 # already a usable PFN
+    elif f.startswith('/store/'):
+        out.append(red + f)           # LFN -> xrootd URL
+    else:
+        out.append(f)
+print(','.join(out))
+PYEOF
+)
 
-INFILES=$(paste -sd, pfns.txt)
-if [ -z "$INFILES" ]; then
-    echo "ERROR: no input files resolved for this job" >&2
-    exit 1
-fi
-
-# ------------------------------------------------------------------------------
-# 3. Run it. The output name is fixed and must match JobType.outputFiles; CRAB
-#    appends the job id on the storage side, so jobs cannot collide.
-#
-#    Deliberately NOT under `set -e`: if the ntuplizer dies we still want to
-#    write a job report, so that CRAB shows the real exit code instead of
-#    burying it under BadFWJRXML.
-# ------------------------------------------------------------------------------
-python3 inspector_mm_analysis.py       \
-    --inputFiles="${INFILES}"          \
-    --filename=dimuon_ntuple           \
-    --destination=.                    \
-    --lumi-json=processed_lumis.json   \
-    --logfreq=5000
+echo ">>> launching inspector ..."
+# -u: unbuffered, so a crash traceback is fully flushed to the job log.
+python3 -u inspector_mm_analysis.py \
+    --inputFiles="${INFILES}" \
+    --filename="${OUTNAME}" \
+    --destination=. \
+    --logfreq=5000 \
+    --maxevents=-1
 RC=$?
-echo "ntuplizer exit code: ${RC}"
 
-# ------------------------------------------------------------------------------
-# 4. The FrameworkJobReport.
-#
-# CRAB's post-job parses FrameworkJobReport.xml whatever the job ran. cmsRun
-# writes one; a scriptExe does not, and without it every job fails with
-#     exit code 50115 : BadFWJRXML
-# regardless of whether the analysis worked. Write it here, from the ntuple and
-# the run/lumi map the ntuplizer just produced.
-# ------------------------------------------------------------------------------
-echo "--- produced ---"
-ls -l "${OUTFILE}" processed_lumis.json 2>&1
+if [ ${RC} -ne 0 ]; then
+    echo ">>> inspector FAILED (exit ${RC}) for job $1"
+    echo ">>> working dir at failure:"
+    ls -la
+    exit ${RC}
+fi
 
-python3 make_fjr.py               \
-    --output    "${OUTFILE}"      \
-    --inputs    pfns.txt          \
-    --lumi-json processed_lumis.json
+if [ ! -f "${OUTNAME}.root" ]; then
+    echo ">>> FATAL: ${OUTNAME}.root was not produced. Aborting job $1."
+    exit 1
+fi
 
-echo "--- FrameworkJobReport.xml ---"
-cat FrameworkJobReport.xml
-
-echo "job ${JOBID} done: $(date), exit ${RC}"
-exit ${RC}
+echo ">>> done. output:"
+ls -latrh "${OUTNAME}.root"
+echo "=================== scriptExe finished ==================="
+# NB: FrameworkJobReport.xml is shipped via JobType.inputFiles and left
+# untouched, which satisfies CRAB's bookkeeping for non-cmsRun jobs.
