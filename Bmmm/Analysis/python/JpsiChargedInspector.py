@@ -31,43 +31,17 @@ from itertools import product, combinations
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 
-from Bmmm.Analysis.utils import drop_hlt_version, cutflow, make_cov_scaler
+from Bmmm.Analysis.utils import drop_hlt_version, cutflow, make_cov_scaler, resolve_input_files
 from Bmmm.Analysis.Handles import handles_mc
 from Bmmm.Analysis.Handles import handles      as handles_std   # full MINIAOD collections
 from Bmmm.Analysis.Handles import handles_skim                  # SKIM collections (BS-constrained vertices)
 
-######################################################################################
-#####      INCREMENTAL (BATCHED) OUTPUT   (channel-agnostic)
-######################################################################################
-# Memory footprint of the job is bounded by WRITE_EVERY rows instead of growing
-# with the whole file: rows are flushed to the TTree and the buffer is cleared.
-WRITE_EVERY  = 50000
-INT_BRANCHES = ('run', 'lumi', 'event')
-
-def build_branch_types(branches):
-    '''Fixed schema for the TTree: int64 for the event identifiers, float32 for
-    everything else. Used by mktree so every extend() call matches it exactly.'''
-    return {c: (np.int64 if c in INT_BRANCHES else np.float32) for c in branches}
-
-def rows_to_columns(rows, branches):
-    '''list-of-dicts -> {branch: numpy array} with a FIXED dtype per branch, so
-    every uproot extend() presents an identical schema.'''
-    df = pd.DataFrame(rows, columns=branches)
-    out = {}
-    for col in branches:
-        s = pd.to_numeric(df[col], errors='coerce')
-        if col in INT_BRANCHES:
-            out[col] = s.fillna(0).astype(np.int64).to_numpy()
-        else:
-            out[col] = s.astype(np.float32).to_numpy()
-    return out
-
-def flush(fout, row_list, branches):
-    '''Append the buffered rows to the TTree and clear the buffer in place.'''
-    if not row_list:
-        return
-    fout['tree'].extend(rows_to_columns(row_list, branches))
-    row_list.clear()
+# Batched output lives in NtupleWriter, shared with the other channels.
+# Re-exported here so existing "from ...JpsiChargedInspector import flush" style
+# imports keep working.
+from Bmmm.Analysis.NtupleWriter import (
+    WRITE_EVERY, INT_BRANCHES, build_branch_types, rows_to_columns, flush,
+)
 
 
 class BaseInspector(object):
@@ -320,16 +294,7 @@ class BaseInspector(object):
             print('#### rescaling the track covariance with %s (%r)'
                   % (type(cov_scaler).__name__, options.cov_scale))
 
-        if 'txt' in options.inputFiles:
-            with open(options.inputFiles) as f:
-                files = [options.redirector + line for line in f.read().splitlines()]
-        elif (',' in options.inputFiles
-              or 'cms-xrd-global'    in options.inputFiles
-              or 'cms03.lcg.cscs.ch' in options.inputFiles
-              or 't3dcachedb'        in options.inputFiles):
-            files = options.inputFiles.split(',')
-        else:
-            files = glob(options.inputFiles)
+        files = resolve_input_files(options.inputFiles, options.redirector)
 
         if options.maxfiles > 0:
             files = files[:options.maxfiles]

@@ -31,8 +31,8 @@ event_branches = {
 
 #     'qscale'  : lambda ev : ev.genInfo.qScale()                     ,
     'npv'     : _common_event['npv']    ,
-    'npu'     : lambda ev : ev.pu_at_bx0.getPU_NumInteractions()  if ev.mc else np.nan,
-    'nti'     : lambda ev : ev.pu_at_bx0.getTrueNumInteractions() if ev.mc else np.nan,
+    'npu'     : _common_event['npu']    ,
+    'nti'     : _common_event['nti']    ,
 
     'bs_x0'   : _common_event['bs_x0']  ,
     'bs_x0e'  : lambda ev : ev.bs.x0Error()                         ,

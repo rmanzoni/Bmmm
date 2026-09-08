@@ -38,6 +38,15 @@ from Bmmm.Analysis.utils import (
 
 FAILURES = []
 
+# reco::TrackBase stores  float covariance_[15]  and reco::Vertex stores
+# float covariance_[6] -- single precision, not double. So every comparison
+# that crosses one of those objects is only good to float32 epsilon (1.19e-7),
+# no matter how the value was computed on the python side. Asserting
+# double-precision equality across that boundary is a bug in the test, not in
+# the code: it was what made this file fail on its first real run.
+# Comparisons that stay on one side of the boundary are still exact.
+FLOAT_RTOL = 1e-6      # ~8 float32 epsilons of margin
+
 
 def check(name, condition, extra=''):
     print(('  OK   ' if condition else '  FAIL ') + name + (('   ' + extra) if extra else ''))
@@ -79,9 +88,12 @@ def main():
     print('== 1. element ordering, against a real reco::Track round trip ==')
     trk = make_track(cov)
     back = convert_cov(trk.covariance())
-    check('cov -> reco::Track -> cov is the identity',
-          np.allclose(back, cov, rtol=1e-12, atol=0),
-          'max |diff| %.3e' % np.abs(back - cov).max())
+    rel = np.abs(back - cov).max() / np.abs(cov).max()
+    check('cov -> reco::Track -> cov, to the precision the track stores',
+          np.allclose(back, cov, rtol=FLOAT_RTOL, atol=0),
+          'max relative diff %.2e (float32 eps %.2e)' % (rel, np.finfo(np.float32).eps))
+    print('         (stored at %.2e relative -- reco::TrackBase keeps the '
+          'covariance as float, so this is float32 epsilon, not double)' % rel)
     check('the matrix comes back symmetric', np.allclose(back, back.T))
     ut = cov_upper_triangle(cov)
     check('cov_upper_triangle == row-major upper triangle',
@@ -92,9 +104,25 @@ def main():
     idx_dxy_dxy = COV_ELEMENT_NAMES.index('dxy_dxy')
     check('cov_dxy_dxy is the dxy variance',
           abs(ut[idx_dxy_dxy] - cov[3][3]) < 1e-30)
+    # Reading the same element two ways must be exact -- both go through the
+    # element accessor on the same stored float. This is the check that would
+    # catch a wrong or transposed index.
+    back_ut = cov_upper_triangle(back)
+    check('cov_upper_triangle agrees with reco::Track.covariance(i,j)',
+          all(abs(cov_upper_triangle(back)[k] - trk.covariance(i, j)) < 1e-30
+              for k, (i, j) in enumerate(COV_INDEX_PAIRS)))
+    # dxyError() is a DERIVED accessor: it agrees to float precision, not
+    # bitwise. Observed 3.1e-8 relative on CMSSW_16_0_8, about half a float32
+    # epsilon on the variance -- one rounding step somewhere inside it, more
+    # than a float sqrt of the same value would explain (that is 4e-9). Which
+    # is fine: the point here is that the branch we persist is sigma_dxy^2, and
+    # agreement to eight significant figures settles that. A wrong element
+    # would be off by orders of magnitude, not by an ulp.
     check('sqrt(cov_dxy_dxy) == the track dxyError',
-          abs(np.sqrt(ut[idx_dxy_dxy]) - trk.dxyError()) < 1e-9 * trk.dxyError(),
-          'stored %.6e  track %.6e' % (np.sqrt(ut[idx_dxy_dxy]), trk.dxyError()))
+          abs(np.sqrt(back_ut[idx_dxy_dxy]) - trk.dxyError()) < FLOAT_RTOL * trk.dxyError(),
+          'stored %.9e  track %.9e  (%.1e relative)'
+          % (np.sqrt(back_ut[idx_dxy_dxy]), trk.dxyError(),
+             abs(np.sqrt(back_ut[idx_dxy_dxy]) - trk.dxyError()) / trk.dxyError()))
 
     print('== 2. scale_cov: sigmas scale, correlations do not ==')
     scales = np.array([1.00, 0.90, 1.30, 1.07, 1.02])
@@ -111,7 +139,9 @@ def main():
     print('== 3. scale_track_cov: only the uncertainty moves ==')
     scaled_trk = scale_track_cov(trk, scales, cov=cov)
     check('covariance is the scaled one',
-          np.allclose(convert_cov(scaled_trk.covariance()), scaled, rtol=1e-12, atol=0))
+          np.allclose(convert_cov(scaled_trk.covariance()), scaled, rtol=FLOAT_RTOL, atol=0),
+          'max relative diff %.2e' % (np.abs(convert_cov(scaled_trk.covariance()) - scaled).max()
+                                      / np.abs(scaled).max()))
     check('momentum untouched',
           (abs(scaled_trk.px() - trk.px()) < 1e-12 and
            abs(scaled_trk.py() - trk.py()) < 1e-12 and
@@ -124,12 +154,12 @@ def main():
     check('chi2 / ndof untouched',
           abs(scaled_trk.chi2() - trk.chi2()) < 1e-12 and
           abs(scaled_trk.ndof() - trk.ndof()) < 1e-12)
-    check('dxyError picks up exactly the dxy scale',
-          abs(scaled_trk.dxyError() - scales[3] * trk.dxyError()) < 1e-9 * trk.dxyError(),
+    check('dxyError picks up the dxy scale',
+          abs(scaled_trk.dxyError() - scales[3] * trk.dxyError()) < FLOAT_RTOL * trk.dxyError(),
           '%.6e vs %.6e' % (scaled_trk.dxyError(), scales[3] * trk.dxyError()))
     # dzError() = sigma_dsz / |sin(theta)|, so it follows the dsz scale
-    check('dzError picks up exactly the dsz scale',
-          abs(scaled_trk.dzError() - scales[4] * trk.dzError()) < 1e-9 * trk.dzError(),
+    check('dzError picks up the dsz scale',
+          abs(scaled_trk.dzError() - scales[4] * trk.dzError()) < FLOAT_RTOL * trk.dzError(),
           '%.6e vs %.6e' % (scaled_trk.dzError(), scales[4] * trk.dzError()))
 
     print('== 4. unit scales are a genuine no-op ==')
@@ -147,6 +177,22 @@ def main():
     check('fix_track leaves a good track alone', fix_track(trk) is trk)
     check('fix_track preserves the momentum',
           abs(fixed.px() - bad_trk.px()) < 1e-12 and abs(fixed.pz() - bad_trk.pz()) < 1e-12)
+
+    # A badly measured track: diagonal large enough that the default delta of
+    # 1e-9 is at or below float granularity, so the shift can be rounded away
+    # when the track stores it. fix_track must escalate until the matrix is
+    # positive definite AS STORED, not merely as computed.
+    big = random_cov(seed=3, scale=1e-1)
+    big[4][4] = -abs(big[4][4])
+    big_trk = make_track(big)
+    check('the large-diagonal matrix is not pos-def either',
+          not is_pos_def(convert_cov(big_trk.covariance())))
+    big_fixed = fix_track(big_trk)
+    stored = convert_cov(big_fixed.covariance())
+    check('fix_track survives the float store on a large-diagonal track',
+          is_pos_def(stored),
+          'min eigenvalue as stored %.3e, float granularity there %.3e'
+          % (np.linalg.eigvalsh(stored).min(), np.spacing(np.float32(stored.max()))))
 
     print('== 6. scalers and --cov-scale parsing ==')
     con = ConstantCovScaler(dxy=1.05, dsz=1.02)
@@ -194,9 +240,10 @@ def main():
         ROOT.Math.SVector('double', 6)(upper, 6), False)
     reco_vtx = ROOT.reco.Vertex(ROOT.reco.Vertex.Point(0.09, -0.04, 2.1),
                                 err, 21.0, 30.0, 18)
-    check('reco::Vertex path: every element',
-          np.allclose(vertex_covariance(reco_vtx), vcov, rtol=1e-12, atol=0),
-          'max |diff| %.3e' % np.abs(vertex_covariance(reco_vtx) - vcov).max())
+    check('reco::Vertex path: every element, to the stored precision',
+          np.allclose(vertex_covariance(reco_vtx), vcov, rtol=FLOAT_RTOL, atol=0),
+          'max relative diff %.2e' % (np.abs(vertex_covariance(reco_vtx) - vcov)
+                                      / np.abs(vcov)).max())
     check('reco::Vertex path: agrees with reco::Vertex.covariance(i,j)',
           all(abs(vertex_cov_element(reco_vtx, i, j) - reco_vtx.covariance(i, j)) < 1e-30
               for i, j in VTX_COV_INDEX_PAIRS))
@@ -204,10 +251,13 @@ def main():
     check('6 elements, 6 names',
           len(ut) == 6 and len(VTX_COV_ELEMENT_NAMES) == 6)
     check('cov_zz is the z variance',
-          abs(ut[VTX_COV_ELEMENT_NAMES.index('zz')] - vcov[2][2]) < 1e-30)
+          abs(ut[VTX_COV_ELEMENT_NAMES.index('zz')] - vcov[2][2]) < FLOAT_RTOL * vcov[2][2])
+    # zError() happens to agree bitwise on CMSSW_16_0_8, unlike the track's
+    # dxyError(), but it is a derived accessor too -- hold it to the same float
+    # tolerance rather than depending on that
     check('sqrt(cov_zz) == reco::Vertex.zError()',
           abs(np.sqrt(ut[VTX_COV_ELEMENT_NAMES.index('zz')]) - reco_vtx.zError())
-          < 1e-9 * reco_vtx.zError())
+          < FLOAT_RTOL * reco_vtx.zError())
 
     # KinematicVertex hands back a GlobalError; build one directly (lower
     # triangle: xx, yx, yy, zx, zy, zz) and wrap it in the same duck type
@@ -222,7 +272,7 @@ def main():
                 return gerr
         kin_like = _KinVtxLike()
         check('KinematicVertex path: every element',
-              np.allclose(vertex_covariance(kin_like), vcov, rtol=1e-12, atol=0),
+              np.allclose(vertex_covariance(kin_like), vcov, rtol=FLOAT_RTOL, atol=0),
               'max |diff| %.3e' % np.abs(vertex_covariance(kin_like) - vcov).max())
         check('both paths give the same answer',
               np.allclose(vertex_covariance(kin_like), vertex_covariance(reco_vtx)))
@@ -256,7 +306,7 @@ def main():
             def positionError(self):
                 return gerr2
         check('positionError() fallback gives the same matrix',
-              np.allclose(vertex_covariance(_TV()), vcov, rtol=1e-12, atol=0))
+              np.allclose(vertex_covariance(_TV()), vcov, rtol=FLOAT_RTOL, atol=0))
 
     print('\n' + ('ALL CHECKS PASSED' if not FAILURES
                   else 'FAILURES: %s' % FAILURES))

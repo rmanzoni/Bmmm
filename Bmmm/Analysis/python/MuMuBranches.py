@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 
 from Bmmm.Analysis.utils import VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element
@@ -8,18 +10,17 @@ from Bmmm.Analysis.CommonBranches import track_cov_branches as _track_cov
 ##########################################################################################
 #####      EVENT-LEVEL
 ##########################################################################################
-# run / lumi / event / ncands / npv come from the block every channel shares.
-# n_pu / n_true_int are this ntuple's spelling of what the RJpsi one calls
-# npu / nti -- same quantity, different name, so they stay here until the names
-# are harmonised deliberately.
+# Every event-level quantity of this ntuple is now the shared one, under the
+# shared name: the pileup pair used to be spelled n_pu / n_true_int here and
+# npu / nti in the RJpsi ntuples, for the same two numbers.
 event_branches = {
-    'run'        : _common_event['run']    ,
-    'lumi'       : _common_event['lumi']   ,
-    'event'      : _common_event['event']  ,
-    'ncands'     : _common_event['ncands'] ,
-    'npv'        : _common_event['npv']    ,
-    'n_pu'       : lambda ev : ev.pu_at_bx0.getPU_NumInteractions()  if ev.mc else np.nan,
-    'n_true_int' : lambda ev : ev.pu_at_bx0.getTrueNumInteractions() if ev.mc else np.nan,
+    'run'    : _common_event['run']    ,
+    'lumi'   : _common_event['lumi']   ,
+    'event'  : _common_event['event']  ,
+    'ncands' : _common_event['ncands'] ,
+    'npv'    : _common_event['npv']    ,
+    'npu'    : _common_event['npu']    ,
+    'nti'    : _common_event['nti']    ,
 }
 
 ##########################################################################################
@@ -238,6 +239,38 @@ paths['HLT_Mu9_IP6'     ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered9Q"   ]
 paths['HLT_Mu10p5_IP3p5'] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered10p5Q"]
 paths['HLT_Mu12_IP6'    ] = ["hltL3fL1sMu22OrParkL1f0L2f10QL3Filtered12Q"  ]
 
+
+##########################################################################################
+#####      RUN 3
+##########################################################################################
+# The list above is the 2018 menu. This is the Run 3 low-mass dimuon path, the one
+# the RJpsi Run 3 skims trigger on (same filter labels as
+# JpsiChargedBranches.paths), so the dimuon and RJpsi Run 3 samples are selected
+# by the same trigger.
+paths['HLT_DoubleMu4_3_LowMass'] = ['hltDisplacedmumuFilterDoubleMu43LowMass',
+                                    'hltDisplacedmumuFilterDoubleMu43LowMass']
+
+# Opt-in restriction of the path set, applied BEFORE the branch list is built
+# because the schema is derived from it. Unset (the default) keeps every path,
+# so 2018 running is untouched; a Run 3 job exports
+#
+#     BMMM_MM_HLT_PATHS=HLT_DoubleMu4_3_LowMass
+#
+# and gets an ntuple carrying only that path's decision, prescale and
+# tag-and-probe branches instead of ~200 columns of 2018 paths that no Run 3
+# menu contains. An env var rather than a command-line flag because the branch
+# list is assembled at import, before any argument parsing happens.
+_ONLY = os.environ.get('BMMM_MM_HLT_PATHS', '').strip()
+if _ONLY:
+    _keep = set(n.strip() for n in _ONLY.split(',') if n.strip())
+    _unknown = _keep - set(paths)
+    if _unknown:
+        raise ValueError('BMMM_MM_HLT_PATHS names paths that are not defined: %s'
+                         % sorted(_unknown))
+    for _drop in [k for k in paths if k not in _keep]:
+        del paths[_drop]
+    print('[MuMuBranches] BMMM_MM_HLT_PATHS -> keeping %d path(s): %s'
+          % (len(paths), ', '.join(paths)))
 
 # add branches for T&P
 for k, v in paths.items():

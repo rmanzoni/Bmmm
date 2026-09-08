@@ -8,9 +8,9 @@ its own branch list in its own order, because those orders are historical and
 changing them would reshuffle existing files for no gain.
 
 Only quantities that are already spelled and computed identically in every
-channel belong in event_branches. Anything a channel spells differently
-(the dimuon ntuple's n_pu / n_true_int against the RJpsi npu / nti) stays with
-that channel until the names are deliberately harmonised.
+channel belong in event_branches. A channel that spells one differently either
+gets harmonised onto the common name or keeps its own definition locally --
+what must not happen is two names for one quantity living in two files.
 '''
 
 import ROOT
@@ -30,6 +30,8 @@ event_branches = {
     'event'  : lambda ev : ev.eventAuxiliary().event()           ,
     'ncands' : lambda ev : ev.ncands                             ,
     'npv'    : lambda ev : len(ev.vtx)                           ,
+    'npu'    : lambda ev : ev.pu_at_bx0.getPU_NumInteractions()  if ev.mc else np.nan,
+    'nti'    : lambda ev : ev.pu_at_bx0.getTrueNumInteractions() if ev.mc else np.nan,
     'bs_x0'  : lambda ev : ev.bs.x0()                            ,
     'bs_y0'  : lambda ev : ev.bs.y0()                            ,
     'bs_z0'  : lambda ev : ev.bs.z0()                            ,

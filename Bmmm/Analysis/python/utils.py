@@ -6,6 +6,7 @@ import gzip
 import particle
 import numpy as np
 from array import array
+from glob import glob
 from scipy import stats
 from particle import Particle
 from collections import defaultdict, OrderedDict
@@ -29,6 +30,62 @@ masses['k'   ] = particle.literals.K_plus   .mass/1000.
 masses['pi'  ] = particle.literals.pi_plus  .mass/1000.
 masses['mu'  ] = particle.literals.mu_plus  .mass/1000.
 masses['jpsi'] = particle.literals.Jpsi_1S  .mass/1000.
+
+##########################################################################################
+##########################################################################################
+
+##########################################################################################
+#####      INPUT FILE RESOLUTION
+##########################################################################################
+# --inputFiles -> the list of paths handed to FWLite Events(), shared by every
+# channel so the same argument means the same thing everywhere.
+#
+# Three shapes of entry live in this repository and each needs different
+# treatment, which is why a blanket rule does not work:
+#
+#   root://host//store/...   already a full URL           -> use as is
+#   /store/...               a CMS LFN, needs a door      -> prepend the redirector
+#   /pnfs/psi.ch/...         a mounted POSIX path         -> use as is
+#
+# The J/psi + charged-object inspector used to prepend the redirector to every
+# line of a .txt list, which is right only for the middle case: it double-
+# prefixed entries that were already URLs and sent the T3 skim lists
+# (files_bc_skim / files_hb_skim, both /pnfs/...) through xrootd. The dimuon
+# inspector prepended it to none, which is wrong for the first. Production
+# submissions are unaffected either way -- the submitters read the lists
+# themselves and pass comma-separated, already-resolved URLs -- so this is the
+# interactive path, but it should still do the right thing.
+_URL_SCHEME_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9+.-]*://')
+
+# hosts that mark an argument as a list of URLs rather than a glob pattern
+_XROOTD_HINTS = ('cms-xrd-global', 'cms03.lcg.cscs.ch', 't3dcachedb', 'xrootd-cms.infn.it')
+
+def resolve_input_file(path, redirector=''):
+    '''One entry -> the path to open, or None for a blank line.'''
+    path = path.strip()
+    if not path:
+        return None
+    if _URL_SCHEME_RE.match(path):
+        return path                      # already addressed, leave it alone
+    if path.startswith('/store/') and redirector:
+        return redirector + path         # bare LFN: concatenated verbatim, so the
+                                         # redirector's own trailing slashes are
+                                         # preserved (root://host///store/... is
+                                         # the form already used in this repo)
+    return path                          # local or mounted, open directly
+
+def resolve_input_files(input_files, redirector=''):
+    '''--inputFiles -> list of paths. A .txt argument is read as a file list, a
+    comma-separated or URL-bearing argument is split, anything else is globbed.'''
+    if 'txt' in input_files:
+        with open(input_files) as fin:
+            entries = fin.read().splitlines()
+    elif ',' in input_files or any(h in input_files for h in _XROOTD_HINTS):
+        entries = input_files.split(',')
+    else:
+        return glob(input_files)
+    resolved = [resolve_input_file(e, redirector) for e in entries]
+    return [e for e in resolved if e is not None]
 
 ##########################################################################################
 ##########################################################################################
@@ -572,6 +629,10 @@ def is_pos_def(x):
     '''
     return np.all(np.linalg.eigvalsh(np.nan_to_num(x)) > 0)
 
+# largest diagonal shift fix_track will escalate to before giving up:
+# enough to clear float granularity for any physical track covariance
+_FIX_TRACK_MAX_DELTA = 1e-3
+
 def fix_track(trk, delta=1e-9):
     '''
     https://github.com/CMSKStarMuMu/miniB0KstarMuMu/blob/master/miniKstarMuMu/plugins/miniKstarMuMu.cc#L1611-L1678
@@ -597,10 +658,26 @@ def fix_track(trk, delta=1e-9):
     # the SMatrix incantation lives in smatrix55_from_cov now
     new_trk = track_with_cov(trk, new_cov)
 
-    if not is_pos_def(new_cov):
-        fix_track(new_trk, delta)
-    
-    return new_trk
+    # Check what the track actually STORES, not the double we just built.
+    # reco::TrackBase keeps the covariance as float, and delta is the same size
+    # as float granularity once a diagonal element reaches ~1e-1 -- a badly
+    # measured track, which is exactly the case this function exists for -- so
+    # the shift can be rounded away on the way in. Retry with a bigger delta
+    # until it survives.
+    #
+    # The previous check tested new_cov, whose smallest eigenvalue is delta by
+    # construction, so it never fired; and it discarded the result of the
+    # recursive call, so it would have done nothing if it had.
+    if is_pos_def(convert_cov(new_trk.covariance())):
+        return new_trk
+
+    if delta >= _FIX_TRACK_MAX_DELTA:
+        print('WARNING: fix_track could not make the stored covariance '
+              'positive definite up to delta %g; returning the track as is '
+              '(its cov_pos_def flag stays False).' % delta)
+        return new_trk
+
+    return fix_track(new_trk, delta * 10.)
 
 ##########################################################################################
 ##########################################################################################

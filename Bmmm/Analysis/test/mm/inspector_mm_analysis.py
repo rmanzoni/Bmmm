@@ -48,9 +48,9 @@ import argparse
 import pickle
 import json
 import numpy as np
+import uproot
 from time import time
 from datetime import datetime, timedelta
-from array import array
 from glob import glob
 from collections import OrderedDict
 from DataFormats.FWLite import Events, Handle
@@ -60,11 +60,12 @@ from Bmmm.Analysis.MuMuBranches import (
     branches, paths, event_branches, cand_branches, muon_branches,
 )
 from Bmmm.Analysis.CommonBranches import safe_get
+from Bmmm.Analysis.NtupleWriter import WRITE_EVERY, build_branch_types, flush
 from Bmmm.Analysis.MuMuCandidate import Candidate
 from Bmmm.Analysis.utils import (
     COV_ELEMENT_NAMES, COV_INDEX_PAIRS,
     VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element,
-    drop_hlt_version,
+    drop_hlt_version, resolve_input_files,
 )
         
 parser = argparse.ArgumentParser(description='')
@@ -78,6 +79,7 @@ parser.add_argument('--logfreq'      , dest='logfreq'    , default=100   , type=
 parser.add_argument('--filemode'     , dest='filemode'   , default='recreate', type=str)
 parser.add_argument('--skip'         , dest='skip'       , default=-1    , type=int)
 parser.add_argument('--savenontrig'  , dest='savenontrig', action='store_true' )
+parser.add_argument('--redirector'   , dest='redirector' , default='root://cms-xrd-global.cern.ch//', type=str)
 args = parser.parse_args()
 
 inputFiles  = args.inputFiles
@@ -89,6 +91,7 @@ logfreq     = args.logfreq
 filemode    = args.filemode
 skip        = args.skip
 savenontrig = args.savenontrig
+redirector  = args.redirector
 mc = False; mc = args.mc
 
 handles_mc = OrderedDict()
@@ -146,13 +149,7 @@ handles['glb_alg'] = (("gtStage2Digis", ""     ), Handle('BXVector<GlobalAlgBlk>
 # vector<pat::TriggerObjectStandAlone>    "slimmedPatTrigger"         ""                "PAT"
 # vector<string>                        "slimmedPatTrigger"         "filterLabels"    "PAT"
 
-if ('txt' in inputFiles):
-    with open(inputFiles) as f:
-        files = f.read().splitlines()
-elif ',' in inputFiles or 'cms-xrd-global' in inputFiles:
-    files = inputFiles.split(',')
-else:
-    files = glob(inputFiles)
+files = resolve_input_files(inputFiles, redirector)
 
 print("files:", files)
 
@@ -182,32 +179,47 @@ datadir = '/'.join([
     'data',
 ])
 
+# brilcalc L1 prescale tables, one pickle per path. Only the 2018 paths have
+# one: a Run 3 path (HLT_DoubleMu4_3_LowMass) has no table here, so skip it
+# rather than dying at import. The HLT side does not depend on these -- the
+# decision and the HLT prescale come from TriggerResults and
+# PackedTriggerPrescales in the MINIAOD itself, which are era-independent. It
+# is only the L1 seed branches that need the tables.
 for ipath in paths.keys():
-    with open('%s/%s.pickle' %(datadir, ipath), 'rb') as handle:
+    ipickle = '%s/%s.pickle' %(datadir, ipath)
+    if not os.path.isfile(ipickle):
+        print('WARNING: no L1 prescale table for %s (%s); its L1 seed branches '
+              'will not be produced. The HLT decision and prescale are '
+              'unaffected.' % (ipath, os.path.basename(ipickle)))
+        continue
+    with open(ipickle, 'rb') as handle:
         l1_prescales.update(pickle.load(handle))
 
-# create run:L1 menu dictionary
-with open('%s/l1menus/goodRuns2013to2022ByYear.json' %datadir) as f:
+# create run:L1 menu dictionary. Skipped entirely when no L1 table was loaded
+# (a Run 3 job), so a Run 3 run is never looked up in a 2018 map.
+menus, run_menu_dict = {}, {}
+if l1_prescales:
+ with open('%s/l1menus/goodRuns2013to2022ByYear.json' %datadir) as f:
    data = json.load(f)
 
-menus = {}
-for run in data["2018"]:
-    menus.setdefault(run["l1_menu"],[]).append(run["run_number"])
+ menus = {}
+ for run in data["2018"]:
+     menus.setdefault(run["l1_menu"],[]).append(run["run_number"])
 
-run_menu_dict = {}
-for k, v in menus.items():
-    for irun in v:
-        run_menu_dict[irun] = k
+ run_menu_dict = {}
+ for k, v in menus.items():
+     for irun in v:
+         run_menu_dict[irun] = k
 
-menus = {}
+ menus = {}
 
-for imenu in ['L1Menu_Collisions2018_v2_1_0',
-              'L1Menu_Collisions2018_v2_0_0',
-              'L1Menu_Collisions2018_v1_0_0',
-              'L1Menu_Collisions2018_0_0_1']:
-#               'L1Menu_Collisions2018_v0_0_1']:
-    with open('%s/l1menus/%s.pickle' %(datadir, imenu)) as f:
-       menus[imenu] = pickle.load(f)
+ for imenu in ['L1Menu_Collisions2018_v2_1_0',
+               'L1Menu_Collisions2018_v2_0_0',
+               'L1Menu_Collisions2018_v1_0_0',
+               'L1Menu_Collisions2018_0_0_1']:
+ #               'L1Menu_Collisions2018_v0_0_1']:
+     with open('%s/l1menus/%s.pickle' %(datadir, imenu), 'rb') as f:
+        menus[imenu] = pickle.load(f)
 
 for l1 in l1_prescales.keys():
     branches.append(l1)
@@ -218,11 +230,18 @@ for l1 in l1_prescales.keys():
 ##########################################################################################
 
 
-fout = ROOT.TFile(destination + '/' + fileName + '.root', filemode)
-if filemode=='update':
-    ntuple = fout.Get('tree')
+# Written through uproot rather than as a TNtuple: a TNtuple stores every
+# column as float32, which rounds any event number above 2^24 -- 2018 event
+# numbers are well past that, and the tag-and-probe sample is de-duplicated on
+# run/lumi/event. build_branch_types keeps those three as int64.
+# Rows are buffered and flushed every WRITE_EVERY, so memory stays bounded.
+outfile = destination + '/' + fileName + '.root'
+if filemode == 'update':
+    fout = uproot.update(outfile)          # the file must already exist
 else:
-    ntuple = ROOT.TNtuple('tree', 'tree', ':'.join(branches))
+    fout = uproot.recreate(outfile, compression=uproot.ZSTD(5))
+    fout.mktree('tree', build_branch_types(branches))
+row_list = []
 tofill = OrderedDict(zip(branches, [np.nan]*len(branches)))
 
 # start the stopwatch
@@ -522,8 +541,28 @@ for i, event in enumerate(events):
         #    except:
         #        import ipdb ; ipdb.set_trace()
         
-        if mc:
+        if not run_menu_dict:
+            # no L1 tables were loaded (a Run 3 job): nothing to look up, and the
+            # L1 loop below is keyed on MENU_DICT, so its branches stay at NaN
+            MENU_DICT = {}
+
+        elif mc:
             MENU_DICT = menus['L1Menu_Collisions2018_v1_0_0']
+
+        elif not (min(run_menu_dict) <= RUN <= max(run_menu_dict)):
+            # The run lies outside the period the menu map covers at all -- a
+            # Run 3 run against a 2018 map, say. The closest-run fallback below
+            # is for a good run MISSING FROM the covered period; extrapolating
+            # past its edges would hand back 2018 prescales for Run 3 data,
+            # which is worse than no number, because it looks like one.
+            if RUN not in missing_run_warnings:
+                print('WARNING: RUN %d is outside the range the L1 menu map covers '
+                      '(%d-%d). L1 prescales left empty for this run; the HLT '
+                      'decision and prescale are unaffected.'
+                      % (RUN, min(run_menu_dict), max(run_menu_dict)))
+                missing_run_warnings.add(RUN)
+            MENU_DICT = {}
+
         else:
             try:
                 MENU = run_menu_dict[RUN]
@@ -531,7 +570,7 @@ for i, event in enumerate(events):
         
             except KeyError:
         
-                # find the closest available run number
+                # a good run missing from the json, inside the covered period
                 closest_run = min(run_menu_dict.keys(), key=lambda x: abs(x - RUN))
         
                 # print warning only once per missing RUN
@@ -542,9 +581,20 @@ for i, event in enumerate(events):
                 MENU = run_menu_dict[closest_run]
                 MENU_DICT = menus[MENU]
         
-            except Exception:
-                import ipdb
-                ipdb.set_trace()
+            except Exception as exc:
+
+                # anything other than a missing run is unexpected. Warn once and
+                # carry on with an empty menu, which leaves this event's L1
+                # branches at NaN -- the L1 loop below is keyed on MENU_DICT.
+                # (This used to drop into ipdb, which in a batch job either hangs
+                # waiting on stdin or dies on the import.)
+                if RUN not in missing_run_warnings:
+                    print('WARNING: could not resolve the L1 menu for RUN %d: %s: %s. '
+                          'L1 prescales left empty for this run.'
+                          % (RUN, type(exc).__name__, exc))
+                    missing_run_warnings.add(RUN)
+
+                MENU_DICT = {}
 
                         
         ## L1Menu_Collisions2018_v1_0_0-d1_xml
@@ -591,9 +641,11 @@ for i, event in enumerate(events):
 
         #import pdb ; pdb.set_trace() 
         
-        ntuple.Fill(array('f', tofill.values()))
-            
-fout.cd()
-ntuple.Write()
-fout.Close()
+        row_list.append(dict(tofill))
+        if len(row_list) >= WRITE_EVERY:
+            flush(fout, row_list, branches)
+
+flush(fout, row_list, branches)
+print('\nnumber of selected candidates', fout['tree'].num_entries)
+fout.close()
 
