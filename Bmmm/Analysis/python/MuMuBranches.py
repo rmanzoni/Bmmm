@@ -59,10 +59,23 @@ cand_branches = {
     'vtx_chi2' : lambda cand : cand.vtx.chi2           ,
     'vtx_prob' : lambda cand : cand.vtx.prob           ,
 
-    'cos2d'    : lambda cand : cand.vtx.cos            ,
-    'lxy'      : lambda cand : cand.lxy.value()        ,
-    'lxy_err'  : lambda cand : cand.lxy.error()        ,
-    'lxy_sig'  : lambda cand : cand.lxy.significance() ,
+    # Displacement wrt the refit PV (cand.pv_bs): beamspot constrained, signal
+    # muons removed. Same reference and same names as the RJpsi channel.
+    'cos2d'     : lambda cand : cand.cos2d              ,
+    'cos3d'     : lambda cand : cand.cos3d              ,
+    'lxy'       : lambda cand : cand.lxy.value()        ,
+    'lxy_err'   : lambda cand : cand.lxy.error()        ,
+    'lxy_sig'   : lambda cand : cand.lxy.significance() ,
+    'lxyz'      : lambda cand : cand.lxyz.value()       ,
+    'lxyz_err'  : lambda cand : cand.lxyz.error()       ,
+    'lxyz_sig'  : lambda cand : cand.lxyz.significance(),
+
+    # the pre-refit convention (bare beamspot), kept as a fixed comparator:
+    # lxy - lxy_bs is the size of the change
+    'cos2d_bs'  : lambda cand : cand.cos2d_bs              ,
+    'lxy_bs'    : lambda cand : cand.lxy_bs.value()        ,
+    'lxy_bs_err': lambda cand : cand.lxy_bs.error()        ,
+    'lxy_bs_sig': lambda cand : cand.lxy_bs.significance() ,
 }
 
 branches = list(event_branches) + list(cand_branches)
@@ -93,17 +106,34 @@ muon_branches = dict(_common_muon)
 # correlated with it.
 muon_branches.update(_track_cov)
 
+# The per-candidate refit PV: position, provenance and the track count that fed
+# it. pv_refit_valid==0 means the refit was not available and every pv_bs_*
+# quantity below is the hybrid fallback (beamspot x,y + PV z, PV covariance),
+# so cut on it before using the refit as such.
+cand_branches['pv_bs_x'        ] = lambda c : c.pv_bs.position().x()
+cand_branches['pv_bs_y'        ] = lambda c : c.pv_bs.position().y()
+cand_branches['pv_bs_z'        ] = lambda c : c.pv_bs.position().z()
+cand_branches['pv_refit_valid' ] = lambda c : int(c.pv_refit_valid)
+cand_branches['pv_refit_ntrk'  ] = lambda c : c.pv_refit_ntrk
+branches += ['pv_bs_x', 'pv_bs_y', 'pv_bs_z', 'pv_refit_valid', 'pv_refit_ntrk']
+
 # Per vertex: the 6 independent elements of the 3x3 position covariance.
-#   pv_cov_*  the chosen primary vertex (cand.pv) -- again, not refitted here
-#   vtx_cov_* the dimuon vertex from the Kalman fit (cand.vtx)
+#   pv_cov_*    the CHOSEN primary vertex as it comes out of the collection
+#               (cand.pv), kept as the pre-refit comparator
+#   pv_bs_cov_* the reference actually used for every wrt-PV quantity: the
+#               beamspot-constrained refit with the signal muons removed, or
+#               the hybrid fallback when pv_refit_valid==0
+#   vtx_cov_*   the dimuon vertex from the Kalman fit (cand.vtx)
 # vtx_ rather than sv_ to match the vx/vy/vz/vtx_chi2/vtx_prob already in this
 # ntuple; the RJpsi channel calls the same thing sv_cov_* because that is what
 # its own vertex block is called.
 for _iname, (_ii, _jj) in zip(VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS):
-    cand_branches['pv_cov_%s'  % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.pv,  i, j))
-    cand_branches['vtx_cov_%s' % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.vtx, i, j))
-branches += ['pv_cov_%s'  % iname for iname in VTX_COV_ELEMENT_NAMES]
-branches += ['vtx_cov_%s' % iname for iname in VTX_COV_ELEMENT_NAMES]
+    cand_branches['pv_cov_%s'    % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.pv,    i, j))
+    cand_branches['pv_bs_cov_%s' % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.pv_bs, i, j))
+    cand_branches['vtx_cov_%s'   % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.vtx,   i, j))
+branches += ['pv_cov_%s'    % iname for iname in VTX_COV_ELEMENT_NAMES]
+branches += ['pv_bs_cov_%s' % iname for iname in VTX_COV_ELEMENT_NAMES]
+branches += ['vtx_cov_%s'   % iname for iname in VTX_COV_ELEMENT_NAMES]
 
 for idx in [1,2]:
     for ibr in muon_branches:
@@ -265,8 +295,12 @@ if _ONLY:
     _keep = set(n.strip() for n in _ONLY.split(',') if n.strip())
     _unknown = _keep - set(paths)
     if _unknown:
-        raise ValueError('BMMM_MM_HLT_PATHS names paths that are not defined: %s'
-                         % sorted(_unknown))
+        raise ValueError(
+            'BMMM_MM_HLT_PATHS names paths that are not defined: %s\n'
+            'It is a comma-separated list of HLT path names to KEEP, not a flag '
+            '-- e.g. BMMM_MM_HLT_PATHS=HLT_DoubleMu4_3_LowMass. Leave it unset '
+            'to keep all %d. Defined here:\n    %s'
+            % (sorted(_unknown), len(paths), '\n    '.join(sorted(paths))))
     for _drop in [k for k in paths if k not in _keep]:
         del paths[_drop]
     print('[MuMuBranches] BMMM_MM_HLT_PATHS -> keeping %d path(s): %s'

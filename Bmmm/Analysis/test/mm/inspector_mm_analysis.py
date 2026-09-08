@@ -10,6 +10,9 @@ ipython -i -- inspector_mm_analysis.py --inputFiles="C1ACDC94-EBC6-1745-A410-359
 DATI
 ipython -i -- inspector_mm_analysis.py --inputFiles="5EBF575A-A990-CB41-8EC8-28A3F2035C1B.root" --filename=data_2026 --maxevents=-1
 
+ipython -i -- inspector_mm_analysis.py 	\
+    --inputFiles=/store/data/Run2024D/ParkingDoubleMuonLowMass1/MINIAOD/PromptReco-v1/000/380/306/00000/a329dab4-a486-4044-aa45-374fe182a63c.root \
+    --filename=data_2024d_test --maxevents=10000
 
 DEBUG
 ipython -i -- inspector_mm_analysis.py --inputFiles="root://cms-xrd-global.cern.ch///store/data/Run2018D/Charmonium/MINIAOD/UL2018_MiniAODv2_GT36-v1/2820000/CD88CAFB-B897-3F43-AC78-7DFCA16973D8.root" --filename=debug --skip=55000
@@ -56,6 +59,10 @@ from collections import OrderedDict
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
+
+# only restricted number of HLT paths, see MuMuBranches
+os.environ["BMMM_MM_HLT_PATHS"] = "HLT_DoubleMu4_3_LowMass"
+
 from Bmmm.Analysis.MuMuBranches import (
     branches, paths, event_branches, cand_branches, muon_branches,
 )
@@ -67,7 +74,8 @@ from Bmmm.Analysis.utils import (
     VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element,
     drop_hlt_version, resolve_input_files,
 )
-        
+       
+ 
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('--inputFiles'   , dest='inputFiles' , required=True, type=str)
 parser.add_argument('--verbose'      , dest='verbose'    , action='store_true' )
@@ -429,7 +437,9 @@ for i, event in enumerate(events):
     for itriplet in combinations(muons, 2): 
 
         # 4 muon candidate
-        cand = Candidate(itriplet, event.vtx, event.bs)
+        # pf / lost are the PV-refit track set: the candidate rebuilds the
+        # chosen PV from them with the signal muons removed
+        cand = Candidate(itriplet, event.vtx, event.bs, event.trk, event.ltrk)
         
         # 4 muons somewhat close in dz, max distance 1 cm
         if max([abs( imu.bestTrack().dz(cand.pv.position()) - jmu.bestTrack().dz(cand.pv.position()) ) for imu, jmu in combinations(cand.muons, 2)])>1: 

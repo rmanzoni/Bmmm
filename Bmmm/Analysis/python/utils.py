@@ -57,8 +57,8 @@ masses['jpsi'] = particle.literals.Jpsi_1S  .mass/1000.
 # interactive path, but it should still do the right thing.
 _URL_SCHEME_RE = re.compile(r'^[a-zA-Z][a-zA-Z0-9+.-]*://')
 
-# hosts that mark an argument as a list of URLs rather than a glob pattern
-_XROOTD_HINTS = ('cms-xrd-global', 'cms03.lcg.cscs.ch', 't3dcachedb', 'xrootd-cms.infn.it')
+# characters that make a local path a pattern rather than a name
+_GLOB_CHARS = ('*', '?', '[')
 
 def resolve_input_file(path, redirector=''):
     '''One entry -> the path to open, or None for a blank line.'''
@@ -75,24 +75,61 @@ def resolve_input_file(path, redirector=''):
     return path                          # local or mounted, open directly
 
 def resolve_input_files(input_files, redirector=''):
-    '''--inputFiles -> list of paths. A .txt argument is read as a file list, a
-    comma-separated or URL-bearing argument is split, anything else is globbed.'''
-    if 'txt' in input_files:
+    '''--inputFiles -> the list of paths to hand to Events().
+
+    An argument ending in .txt is read as a file list, anything else is split on
+    commas. Every entry is then resolved on its own merits: a URL and an LFN are
+    passed through resolve_input_file, and only a local path is globbed -- and
+    only when it actually looks like a pattern, so that a name that simply does
+    not exist reaches ROOT and produces a real error instead of vanishing.'''
+    if input_files.endswith('.txt'):
         with open(input_files) as fin:
             entries = fin.read().splitlines()
-    elif ',' in input_files or any(h in input_files for h in _XROOTD_HINTS):
-        entries = input_files.split(',')
     else:
-        return glob(input_files)
-    resolved = [resolve_input_file(e, redirector) for e in entries]
-    return [e for e in resolved if e is not None]
+        entries = input_files.split(',')
+
+    resolved = []
+    for entry in entries:
+        entry = entry.strip()
+        if not entry:
+            continue
+        if _URL_SCHEME_RE.match(entry) or entry.startswith('/store/'):
+            resolved.append(resolve_input_file(entry, redirector))
+        elif any(c in entry for c in _GLOB_CHARS):
+            hits = sorted(glob(entry))
+            if not hits:
+                raise IOError('no file matches the pattern %r' % entry)
+            resolved.extend(hits)
+        else:
+            resolved.append(resolve_input_file(entry, redirector))
+
+    resolved = [e for e in resolved if e is not None]
+    if not resolved:
+        raise IOError('--inputFiles=%r resolved to no files at all' % input_files)
+
+    # A bare LFN with no redirector cannot be opened by FWLite: say so here,
+    # where the argument is still visible, rather than letting Events() report
+    # a missing file with no hint as to why.
+    bare = [e for e in resolved if e.startswith('/store/')]
+    if bare:
+        raise IOError(
+            '%d input file(s) are bare LFNs and no --redirector was given, e.g.\n'
+            '    %s\n'
+            'pass --redirector=root://cms-xrd-global.cern.ch/ (or the full URL, '
+            'or a site-local /pnfs path)' % (len(bare), bare[0]))
+
+    return resolved
 
 ##########################################################################################
 ##########################################################################################
 
 _HLT_VER_RE = re.compile(r'(_part\d+|_v\d+)+$')
-def drop_hlt_version(s): 
-    return _HLT_VER_RE.sub('', s)
+def drop_hlt_version(s):
+    # str() first: iterating the std::vector<std::string> behind
+    # TriggerNames::triggerNames() hands back cppyy std::string proxies rather
+    # than python strings on the ROOT shipped with recent CMSSW releases, and
+    # re refuses those. Harmless when it is already a str.
+    return _HLT_VER_RE.sub('', str(s))
 
 # def drop_hlt_version(string, pattern=r"_v\d+"):
 #     regex = re.compile(pattern + "$")
