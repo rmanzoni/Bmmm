@@ -26,7 +26,8 @@ import uproot
 INPUT_FILE  = "charmonium_2018_24may2026.root"
 # OUTPUT_FILE = "probe_skim_charmonium_2018_24may2026.root"
 # OUTPUT_FILE = "probe_skim_charmonium_2018_27aug2026.root"
-OUTPUT_FILE = "probe_skim_charmonium_2018_31aug2026.root"
+# OUTPUT_FILE = "probe_skim_charmonium_2018_31aug2026.root"
+OUTPUT_FILE = "probe_skim_charmonium_2018_14sep2026.root"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -119,7 +120,7 @@ quality = (
     (v("dr_12")  > 0.12) &
     (v("cos2d")  > 0.9) &
 #     (v("run")  >= 320673) &
-    (v("lxy") * v("cos2d") * 3.0969 >= 0.008) & # 80 micron pseudo proper decay length
+    (v("lxy") * v("cos2d") * 3.0969 / v("pt") >= 0.015) & # 80 micron pseudo proper decay length
     ps_or
 )
 

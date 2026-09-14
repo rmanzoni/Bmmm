@@ -40,8 +40,11 @@ queue = 'standard'; time = 720
 # queue = 'short'   ; time = 60
 # queue = 'long'    ; time = 10080
 
-out_dir = 'RJpsi_15Jun2026_notrig_BcToJPsiMuMu_inclusive_v3'
+# out_dir = 'RJpsi_15Jun2026_notrig_BcToJPsiMuMu_inclusive_v3'
 # out_dir = 'RJpsi_10Jun2026_notrig_Hb_inclusive_v1'
+# out_dir = 'RJpsi_02Sep2026_notrig_BcToJPsiMuMu_inclusive_v1'
+# out_dir = 'RJpsi_08Sep2026_notrig_BcToJPsiMuMu_inclusive_v1'
+out_dir = 'RJpsi_09Sep2026_notrig_BcToJPsiMuMu_inclusive_v1'
 
 out_file_name = 'rjpsi'
 
@@ -127,6 +130,7 @@ for ijob, ichunk in enumerate(chunks):
             '--destination=/scratch/manzoni/{scratch_dir} '
             '--savenontrig '
             '--mc '
+            '--skim '
             '--filename={outfile}_chunk{ijob}_part{idx} \n'
             'if [ $? -ne 0 ]; then\n'
             '    echo ">>>> FAILED: part{idx} of chunk{ijob} ({infiles})"\n'

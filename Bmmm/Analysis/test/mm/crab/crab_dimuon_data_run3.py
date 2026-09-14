@@ -34,10 +34,9 @@ DIFFERENT from tau3mu, and only these two things:
      The tau3mu one imports Tau3MuCandidate etc. by bare name, which the
      flattened sandbox satisfies on its own. So we additionally ship
      src/Bmmm/Analysis/python as a directory, and crab_script.sh rebuilds a
-     Bmmm/Analysis package from it on PYTHONPATH. (sendPythonFolder is NOT set:
-     this CRAB rejects it as deprecated, "Now pythonFolder is always added to
-     sandbox" -- so that route exists anyway, and the bootstrap is the belt to
-     its braces, depending on nothing but the shipped directory.)
+     Bmmm/Analysis package from it on PYTHONPATH. sendPythonFolder is switched
+     on as well; either route alone would do, and the bootstrap has the
+     advantage of not depending on CRAB internals.
 
   2. The inspector reads L1 menus from $CMSSW_BASE/src/Bmmm/Analysis/data at
      import. That directory is 247 MB and only l1menus/ is needed (2.2 MB
@@ -48,13 +47,11 @@ Required files in this directory (alongside this submitter):
     crab_script.sh
     PSet.py
     FrameworkJobReport.xml
-    pylibs/          <- build with ./make_pylibs.sh, NOT with a bare pip install
+    pylibs/
 inspector_mm_analysis.py is shipped from $CMSSW_BASE/src/Bmmm/Analysis/test/mm/.
 
 Setup before running (order matters):
     cmsenv          # in the CMSSW src you built Bmmm in
-    scram b
-    ./make_pylibs.sh                       # only the packages CMSSW lacks
     source /cvmfs/cms.cern.ch/crab3/crab.sh
     voms-proxy-init -rfc -voms cms -valid 192:00
     python3 crab_dimuon_data_run3.py
@@ -79,9 +76,9 @@ from http.client import HTTPException
 # ----------------------------------------------------------------------------
 # user knobs
 # ----------------------------------------------------------------------------
-work_area     = 'crab_dimuon_run3_part1_v3'
-out_dir       = 'dimuon_ntuples_run3_08sep2026'      # under /store/user/manzoni/
-files_per_job = 5
+work_area     = 'crab_dimuon_run3_add_nhits'
+out_dir       = 'dimuon_ntuples_run3_09sep2026'      # under /store/user/manzoni/
+files_per_job = 2
 storage_site  = 'T3_CH_PSI'
 
 # requestNames listed here are skipped (already submitted / done)
@@ -94,19 +91,19 @@ already_submitted = [
 # submitting ONE first is how you find out what a job costs.
 productions = [
     '/ParkingDoubleMuonLowMass1/Run2022C-PromptReco-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v2/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2022E-PromptReco-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2022F-22Sep2023-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2022G-22Sep2023-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v1-v2/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v2-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v3-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v4-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v1-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v2-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2026B-PromptReco-v1/MINIAOD',
-    '/ParkingDoubleMuonLowMass1/Run2026D-PromptReco-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v2/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2022E-PromptReco-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2022F-22Sep2023-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2022G-22Sep2023-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v1-v2/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v2-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v3-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v4-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v1-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v2-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2026B-PromptReco-v1/MINIAOD',
+#     '/ParkingDoubleMuonLowMass1/Run2026D-PromptReco-v1/MINIAOD',
 ]
 
 
@@ -146,31 +143,21 @@ def create_config(dataset):
         raise RuntimeError('%s not found' % l1menus_dir)
 
     # third-party python packages that are NOT in CMSSW (particle, uproot) and
-    # are normally picked up from ~/.local -- which the WN does not have. Build
-    # the tree with ./make_pylibs.sh; do NOT pip install into it directly, see
-    # the numpy check below. Ship the whole tree (CRAB recurses into directories
-    # given in inputFiles); crab_script.sh prepends ./pylibs to PYTHONPATH.
+    # are normally picked up from ~/.local -- which the WN does not have. Install
+    # them into this directory's pylibs/ with:
+    #   PYTHONNOUSERSITE=1 pip3 install --no-cache-dir --target=pylibs particle uproot
+    # Ship the whole tree (CRAB recurses into directories given in inputFiles)
+    # and crab_script.sh prepends ./pylibs to PYTHONPATH.
+    # NB: do NOT put numpy or scipy in there -- CMSSW has them, and a second
+    # numpy is how the NumPy 1.x/2.x ImportError arises.
     here       = os.path.dirname(os.path.abspath(__file__))
     pylibs_dir = os.path.join(here, 'pylibs')
     if not os.path.isdir(pylibs_dir):
         raise RuntimeError(
-            'pylibs/ not found under %s -- build it first:\n'
-            '  cd %s && ./make_pylibs.sh' % (here, here))
-
-    # A bare `pip install --target=pylibs uproot` resolves dependencies against
-    # PyPI, not against CMSSW, and pulls in numpy 2.x. On PYTHONPATH that
-    # shadows the CMSSW numpy, and CMSSW's scipy -- compiled against the 1.x
-    # ABI -- then refuses to import:
-    #     A module that was compiled using NumPy 1.x cannot be run in NumPy 2.x
-    # Refuse to submit 257 jobs that would all die on that.
-    for shadowed in ('numpy', 'scipy'):
-        if os.path.isdir(os.path.join(pylibs_dir, shadowed)):
-            raise RuntimeError(
-                'pylibs/%s exists and would shadow the CMSSW one on the worker '
-                'node.\n'
-                '  Rebuild the tree properly:  cd %s && ./make_pylibs.sh\n'
-                '  (it installs, then deletes everything CMSSW already provides)'
-                % (shadowed, here))
+            'pylibs/ not found under %s -- install the non-CMSSW packages first:\n'
+            '  cd %s\n'
+            '  PYTHONNOUSERSITE=1 pip3 install --no-cache-dir --target=pylibs '
+            'particle uproot' % (here, here))
 
     # human-readable, unique request name, e.g. dimuon_LowMass1_Run2022C_PromptReco_v1
     #   dataset = /ParkingDoubleMuonLowMass1/Run2022C-PromptReco-v1/MINIAOD
@@ -199,14 +186,11 @@ def create_config(dataset):
     # the inspector produces a plain ROOT file, not an EDM output: tell CRAB
     # not to try to harvest outputs from the (non-existent) cmsRun report
     cfg.JobType.disableAutomaticOutputCollection = True
-    # NB: no sendPythonFolder. This CRAB rejects it outright --
-    #   "Parameter JobType.sendPythonFolder has been deprecated. Please remove it
-    #    Reason: Now pythonFolder is always added to sandbox"
-    # which also settles what it was for: $CMSSW_BASE/python travels with every
-    # job now, so `import Bmmm.Analysis...` has that route regardless. The
-    # bootstrap in crab_script.sh stays as the belt to that braces, since it
-    # depends on nothing but the shipped directory.
-    cfg.JobType.maxMemoryMB      = 2500
+    # ship $CMSSW_BASE/python so `import Bmmm.Analysis...` works on the WN even
+    # if you haven't re-scram-built since editing the package python.
+    # ON here (tau3mu has it off): see DIFFERENT (1).
+#     cfg.JobType.sendPythonFolder = True
+    cfg.JobType.maxMemoryMB      = 3000
     # cfg.JobType.maxJobRuntimeMin = 1440   # uncomment/raise if jobs time out
 
     cfg.Data.inputDataset   = dataset

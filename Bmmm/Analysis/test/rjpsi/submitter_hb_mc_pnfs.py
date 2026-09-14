@@ -27,7 +27,7 @@ with open('files_hb_skim_15jun26.txt') as f:
 
 # random.shuffle(files)
 
-files_per_job = 5
+files_per_job = 1
 chunks = list(map(list, list(zip(*[iter(files)]*files_per_job))))
 
 if len(files)%files_per_job!=0:
@@ -40,6 +40,7 @@ queue = 'standard'; time = 720
 
 out_dir = 'RJpsi_15Jun2026_notrig_HbToJPsiMuMu_inclusive_v3'
 # out_dir = 'RJpsi_10Jun2026_notrig_Hb_inclusive_v1'
+out_dir = 'RJpsi_09Sep2026_notrig_HbToJPsiMuMu_inclusive_v1'
 
 out_file_name = 'rjpsi'
 
@@ -125,6 +126,7 @@ for ijob, ichunk in enumerate(chunks):
             '--destination=/scratch/manzoni/{scratch_dir} '
             '--savenontrig '
             '--mc '
+            '--skim '
             '--filename={outfile}_chunk{ijob}_part{idx} \n'
             'if [ $? -ne 0 ]; then\n'
             '    echo ">>>> FAILED: part{idx} of chunk{ijob} ({infiles})"\n'
@@ -184,9 +186,9 @@ for ijob, ichunk in enumerate(chunks):
         '-o %s/logs/chunk%d.log' %(out_dir, ijob),
         '-e %s/errs/chunk%d.err' %(out_dir, ijob),
         '--job-name=%d_%s' %(ijob, out_dir),
-        '--mem=4000',
         '--time=%d'%time,
         '--nodes=1 --ntasks=1 --nodelist=t3wn[80-91]',
+        '--mem=4000',
         # '-w t3wn70,t3wn71,t3wn72,t3wn73', # only the best nodes
         '%s/submitter_chunk%d.sh' %(out_dir, ijob),
     ])

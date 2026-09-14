@@ -94,7 +94,8 @@ MC_KW = dict(color="#3f7fbf", label="Hb MC")
 
 def needed_branches():
     ev = ["mass", "charge", "vtx_prob", "vtx_chi2", "lxy",
-          "mu1_id_medium", "mu2_id_medium", "pt", "cos2d"]
+          "mu1_id_medium", "mu2_id_medium", "pt", "cos2d",
+          "mu1_id_soft", "mu2_id_soft"]
     for L in (1, 2):
         ev += [HLT_TAG.format(L=L), HLT_PROBE.format(L=L),
                f"mu{L}_eta", f"mu{L}_pt"]
@@ -119,8 +120,10 @@ def base_event_mask(a):
     m &= a["cos2d"] > 0.9
     m &= a["vtx_prob"] > 0.01
     m &= (a["lxy"] * a["cos2d"] * JPSI_MASS / a["pt"]) > PPDL_MIN   # was: a["lxy"] > 0.03
-    m &= a["mu1_id_medium"].astype(bool)
-    m &= a["mu2_id_medium"].astype(bool)
+#     m &= a["mu1_id_medium"].astype(bool)
+#     m &= a["mu2_id_medium"].astype(bool)
+    m &= a["mu1_id_soft"].astype(bool)
+    m &= a["mu2_id_soft"].astype(bool)
     return m
 
 
