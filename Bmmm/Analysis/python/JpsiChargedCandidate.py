@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats
 from itertools import product, combinations
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
-from Bmmm.Analysis.utils import masses, is_pos_def, convert_cov, fix_track, compute_IP3D, p4_with_mass, scale_track_cov
+from Bmmm.Analysis.utils import masses, is_pos_def, convert_cov, fix_track, compute_IP3D, p4_with_mass, scale_track_cov, track_with_cov
 from Bmmm.Analysis.RJPsiNuReco import reconstruct, M_BC   # M_BC: single source (RJPsiGenHistory)
 
 import ROOT
@@ -100,6 +100,13 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
     # covariance and nothing else changes). Installed once per job via
     # set_cov_scaler / --cov-scale. See fit_track.
     cov_scaler = None
+
+    # utils.CovCorrector (covflow) applied to every track before it is handed to
+    # a fitter, or None. Same insertion point and same guarantee as cov_scaler,
+    # but it replaces the WHOLE matrix instead of rescaling the diagonal.
+    # Installed once per job via set_cov_corrector / --covflow. Mutually
+    # exclusive with cov_scaler -- enforced in the inspector, asserted here.
+    cov_corrector = None
 
     def __init__(self, jpsi_muons, bachelor, mother_pdgid=541):
 
@@ -450,7 +457,31 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
     def set_cov_scaler(cls, scaler):
         '''Install a utils.CovScaler (or None to disable) for every candidate of
         this class. Set once per job from --cov-scale; see fit_track.'''
+        if scaler is not None and cls.cov_corrector is not None:
+            raise RuntimeError('--cov-scale and --covflow both installed: they '
+                               'are two different corrections of the same '
+                               'matrix, applied at the same point. Pick one.')
         cls.cov_scaler = scaler
+
+    @classmethod
+    def set_cov_corrector(cls, corrector):
+        '''Install a utils.CovCorrector (or None to disable) for every candidate
+        of this class. Set once per job from --covflow; see fit_track.'''
+        if corrector is not None and cls.cov_scaler is not None:
+            raise RuntimeError('--cov-scale and --covflow both installed: they '
+                               'are two different corrections of the same '
+                               'matrix, applied at the same point. Pick one.')
+        cls.cov_corrector = corrector
+
+    @classmethod
+    def prime_cov_corrector(cls, objs):
+        '''Pre-compute the covflow correction for a whole muon collection in one
+        batched call. Call once per event, AFTER the muon selection and BEFORE
+        any candidate is built: the same muon enters many candidates and must
+        carry the same corrected covariance in all of them. A no-op when no
+        corrector is installed.'''
+        if cls.cov_corrector is not None:
+            cls.cov_corrector.prime(objs)
 
     def fit_track(self, obj):
         '''The reco::Track handed to the vertex fitters and to the IP / jet-track
@@ -462,7 +493,9 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
 
         With a scaler installed, the track is rebuilt around D cov D, so every
         sigma_i is scaled and every correlation is left alone (utils.scale_cov).
-        Momentum, charge and reference point are untouched: only the uncertainty
+        With a covflow corrector installed, it is rebuilt around the full
+        corrected matrix instead -- scales AND correlations. Momentum, charge and
+        reference point are untouched in both cases: only the uncertainty
         changes, which is the whole point -- it moves the vertex chi2/prob, the
         IP significances and Lxy_sig without moving the trajectory.
 
@@ -475,7 +508,7 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
         are shared across the candidates of an event, so the rebuild happens once
         per object per event rather than once per candidate.
         '''
-        if self.cov_scaler is None:
+        if self.cov_scaler is None and self.cov_corrector is None:
             return obj.bestTrack()
 
         cached = getattr(obj, '_cov_fit_track', None)
@@ -483,13 +516,24 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
             return cached
 
         raw = obj.bestTrack()
-        scales = self.cov_scaler(raw)
         cov = getattr(obj, 'cov', None)
-        scaled = scale_track_cov(raw, scales, cov=cov)
+        if cov is None:
+            cov = convert_cov(raw.covariance())
 
-        obj.cov_scale      = tuple(scales)   # persisted as <obj>_cov_scale_<par>
-        obj._cov_fit_track = scaled
-        return scaled
+        if self.cov_corrector is not None:
+            # covflow: the whole matrix is replaced. A track the corrector
+            # cannot handle (non-PD input, morph failure) comes back as None and
+            # is used RAW -- never silently half-corrected. It is counted by the
+            # corrector and flagged per track as <obj>_covflow_ok.
+            corrected_cov = self.cov_corrector(obj, raw, cov)
+            fitted = raw if corrected_cov is None else track_with_cov(raw, corrected_cov)
+        else:
+            scales = self.cov_scaler(raw)
+            fitted = scale_track_cov(raw, scales, cov=cov)
+            obj.cov_scale = tuple(scales)   # persisted as <obj>_cov_scale_<par>
+
+        obj._cov_fit_track = fitted
+        return fitted
 
     def fit_vertex(self, particles, bachelor_mass=None):
         '''

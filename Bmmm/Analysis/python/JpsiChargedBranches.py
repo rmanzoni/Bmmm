@@ -11,6 +11,7 @@ from Bmmm.Analysis.utils import (
 from Bmmm.Analysis.CommonBranches import event_branches as _common_event
 from Bmmm.Analysis.CommonBranches import muon_branches as _common_muon
 from Bmmm.Analysis.CommonBranches import track_cov_branches as _track_cov
+from Bmmm.Analysis.CommonBranches import track_cov_corr_branches as _track_cov_corr
 from Bmmm.Analysis.CommonBranches import safe_get
 
 # Shared branch definitions for the J/psi + charged-object ntuples. These are
@@ -89,6 +90,11 @@ cov_branches = dict(_track_cov)          # the 15 elements, shared with every ch
 for _i, _par in enumerate(COV_PARAM_NAMES):
     cov_branches['cov_scale_%s' % _par] = (
         lambda iobj, i=_i : getattr(iobj, 'cov_scale', COV_NO_SCALE)[i])
+
+# the covflow-corrected matrix (--covflow) and its two per-track diagnostics.
+# NaN / 0 when running without it, exactly as cov_scale_* is 1 without
+# --cov-scale: the ntuple says for itself what was done to it.
+cov_branches.update(_track_cov_corr)
 
 muon_branches.update(cov_branches)
 

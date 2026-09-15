@@ -30,7 +30,7 @@ from itertools import product, combinations
 from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 
-from Bmmm.Analysis.utils import drop_hlt_version, cutflow, make_cov_scaler, resolve_input_files
+from Bmmm.Analysis.utils import drop_hlt_version, cutflow, make_cov_scaler, make_cov_corrector, resolve_input_files
 from Bmmm.Analysis.Handles import handles_mc
 from Bmmm.Analysis.Handles import handles      as handles_std   # full MINIAOD collections
 from Bmmm.Analysis.Handles import handles_skim                  # SKIM collections (BS-constrained vertices)
@@ -212,6 +212,12 @@ class BaseInspector(object):
             if len(muons) < self.MIN_MUONS:
                 continue
 
+            # covflow, batched over the event's muons in one torch call, BEFORE
+            # any candidate exists: a muon shared by several candidates must
+            # carry the same corrected covariance in all of them. No-op without
+            # --covflow.
+            self.CANDIDATE.prime_cov_corrector(muons)
+
             cutflow['at least %d muons' % self.MIN_MUONS] += 1
 
             ##################################################################
@@ -277,6 +283,17 @@ class BaseInspector(object):
                                  "(pt_edges/abs_eta_edges/scales), or a correctionlib file, "
                                  "optionally as 'file.json:dxy=<correction name>'. "
                                  'See utils.make_cov_scaler.')
+        parser.add_argument('--covflow',     dest='covflow',     default='',             type=str,
+                            help='CORRECT the full track covariance with a trained covflow '
+                                 'model before every vertex fit / IP computation -- all 5 '
+                                 'scales and all 10 correlations, not just the diagonal. '
+                                 'Takes the directory a covflow training run wrote '
+                                 '(flow_mc.pt, flow_data.pt, scalers.json) plus a covflow.json '
+                                 'describing the context and the flow hyperparameters, '
+                                 "optionally as 'dir:key=value,...' to override them. "
+                                 'MC only, and mutually exclusive with --cov-scale. The raw '
+                                 'cov_* branches are untouched; the corrected matrix is written '
+                                 'alongside as cov_corr_*. See utils.make_cov_corrector.')
         args = parser.parse_args()
         return namedtuple('options', args.__dict__.keys())(*args.__dict__.values())
 
@@ -292,6 +309,28 @@ class BaseInspector(object):
         if cov_scaler is not None:
             print('#### rescaling the track covariance with %s (%r)'
                   % (type(cov_scaler).__name__, options.cov_scale))
+
+        # covflow: the full-matrix version of the same correction, at the same
+        # insertion point. MC only -- the morph is f_data^-1 . f_mc, defined
+        # MC -> data, so running it on data is not a closure test, it is wrong.
+        # The data file for the comparison is the plain no-flag run, which is
+        # bit-for-bit the uncorrected reconstruction.
+        covflow_spec = getattr(options, 'covflow', '')
+        if covflow_spec and cov_scaler is not None:
+            raise RuntimeError('--cov-scale and --covflow are two different '
+                               'corrections of the same matrix at the same '
+                               'point in the chain. Pass one, not both.')
+        if covflow_spec and not options.mc:
+            raise RuntimeError('--covflow without --mc: the covflow morph maps '
+                               'MC onto data and must not be applied to data.')
+        cov_corrector = make_cov_corrector(covflow_spec)
+        self.CANDIDATE.set_cov_corrector(cov_corrector)
+        if cov_corrector is not None:
+            print('#### correcting the track covariance with %s (%r)'
+                  % (type(cov_corrector).__name__, covflow_spec))
+            print('####   context    %s' % cov_corrector.context_names)
+            print('####   features   %s' % cov_corrector.idx)
+            print('####   flow cfg   %s' % (cov_corrector.flow_config,))
 
         files = resolve_input_files(options.inputFiles, options.redirector)
 
@@ -333,6 +372,9 @@ class BaseInspector(object):
         with open('%s.txt' % logger_name, 'w') as logger_file:
             for k, v in cutflow_result.items():
                 print(k, v, file=logger_file)
+
+        if cov_corrector is not None:
+            print(cov_corrector.summary())
 
         finish = time()
         print('done in %.1f hours' % ((finish - start) / 3600.))

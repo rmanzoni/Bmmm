@@ -16,7 +16,7 @@ what must not happen is two names for one quantity living in two files.
 import ROOT
 import numpy as np
 
-from Bmmm.Analysis.utils import COV_ELEMENT_NAMES, COV_INDEX_PAIRS
+from Bmmm.Analysis.utils import COV_ELEMENT_NAMES, COV_INDEX_PAIRS, COV_NAN_5X5
 
 ##########################################################################################
 #####      EVENT-LEVEL QUANTITIES, COMMON TO ALL CHANNELS
@@ -122,6 +122,33 @@ muon_branches = {
 track_cov_branches = {}
 for _name, (_i, _j) in zip(COV_ELEMENT_NAMES, COV_INDEX_PAIRS):
     track_cov_branches['cov_%s' % _name] = (lambda iobj, i=_i, j=_j : iobj.cov[i][j])
+
+# The covflow-corrected covariance, as <obj>_cov_corr_<par_i>_<par_j>, plus two
+# per-track diagnostics. All NaN / False when running without --covflow.
+#
+# This block exists because the cov_* branches above are, and must remain, RAW:
+# they are the input to the measurement, so overwriting them with the corrected
+# values would make the ntuple unable to say what was done to it. With both sets
+# present a single file answers "what did the correction do to this track",
+# which is the whole point of running --covflow in the first place.
+#
+#   <obj>_covflow_ok    the correction was actually applied to this track.
+#                       False means the raw matrix was used for the fits too --
+#                       a non-PD input covariance, or a morph failure.
+#   <obj>_covflow_zmax  max_i |z_i| of the MC latent. Large values are tracks
+#                       sitting where the data flow saw little or nothing, i.e.
+#                       where the morph extrapolates. Cut on it offline; the
+#                       honest per-component bound from the training run can be
+#                       passed in through covflow.json (latent_bounds), in which
+#                       case the job also counts how many tracks fall outside.
+track_cov_corr_branches = {}
+for _name, (_i, _j) in zip(COV_ELEMENT_NAMES, COV_INDEX_PAIRS):
+    track_cov_corr_branches['cov_corr_%s' % _name] = (
+        lambda iobj, i=_i, j=_j : getattr(iobj, 'cov_corr', COV_NAN_5X5)[i][j])
+track_cov_corr_branches['covflow_ok']   = (
+    lambda iobj : int(getattr(iobj, 'covflow_ok', False)))
+track_cov_corr_branches['covflow_zmax'] = (
+    lambda iobj : getattr(iobj, 'covflow_zmax', np.nan))
 
 ##########################################################################################
 #####      FILLING

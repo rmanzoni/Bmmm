@@ -440,7 +440,7 @@ for i, event in enumerate(events):
                     good_tobjs_seen[k].add(id(to))
 
     # muons = [mu for mu in event.muons if mu.pt()>4. and abs(mu.eta())<2.5 and mu.isPFMuon() and mu.isGlobalMuon()]
-    muons = [mu for mu in event.muons if mu.pt()>4. and abs(mu.eta())<2.5]
+    muons = [mu for mu in event.muons if mu.pt()>2. and abs(mu.eta())<2.5]
     muons.sort(key = lambda x : x.pt(), reverse = True)
 
     if len(muons)<2:
@@ -450,6 +450,9 @@ for i, event in enumerate(events):
     cands = []
     
     for itriplet in combinations(muons, 2): 
+        
+        if itriplet[0].pt()<4 and itriplet[1].pt()<4:
+            continue
 
         # 4 muon candidate
         # pf / lost are the PV-refit track set: the candidate rebuilds the

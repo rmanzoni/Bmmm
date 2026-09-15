@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import re
 import sys
 import json
@@ -612,6 +613,337 @@ class CorrectionlibCovScaler(CovScaler):
         for key, name in self.corrections.items():
             vals[COV_PARAM_NAMES.index(key)] = float(self.cset[name].evaluate(pt, abs_eta))
         return tuple(vals)
+
+##########################################################################################
+#####      TRACK COVARIANCE CORRECTION: full matrix (covflow)
+##########################################################################################
+# A CovScaler can only stretch the diagonal: cov -> D cov D, every correlation
+# frozen. covflow corrects the WHOLE matrix -- all 5 scales and all 10
+# correlations at once -- by transporting the 15 unconstrained features
+#
+#     y[0:5]  = log sigma_i
+#     y[5:15] = atanh(canonical partial correlations)
+#
+# through  y_corr = f_data^-1( f_mc(y | c) | c ),  f_* being the two conditional
+# normalising flows trained by the covflow package. The feature map is a
+# bijection R^15 -> {PD 5x5}, so no output can be an invalid covariance.
+#
+# The two objects below are DELIBERATELY separate from CovScaler rather than a
+# subclass of it: a scaler answers "by how much", a corrector answers "what
+# matrix", and collapsing the two contracts would let a covflow run silently
+# write meaningless <obj>_cov_scale_* branches. --cov-scale and --covflow are
+# mutually exclusive for the same reason.
+#
+# Everything downstream is unchanged: the corrected matrix goes through the same
+# track_with_cov() rebuild as scale_track_cov(), i.e. it reaches the vertex fits,
+# the IP3D grid and the jet-track distances via JpsiChargedCandidate.fit_track.
+
+# Per-track context variables the flow may be conditioned on. The NAME is what
+# goes in covflow.json; the value must be computed from the very track whose
+# covariance is being corrected -- for a muon that is bestTrack(), which is also
+# where the covariance itself comes from. Do not switch to innerTrack() here
+# without switching the training branches too.
+#
+# The hit-content getters are spelled EXACTLY as the <obj>_n_pix_*_hit branches
+# in CommonBranches, so the context the flow sees at ntuplization time is the
+# same quantity it was trained on. If one of the two moves, the other must.
+COVFLOW_CONTEXT_GETTERS = {
+    'pt'            : lambda obj, trk : trk.pt(),
+    'log_pt'        : lambda obj, trk : np.log(max(trk.pt(), 1e-6)),
+    'eta'           : lambda obj, trk : trk.eta(),
+    'abs_eta'       : lambda obj, trk : abs(trk.eta()),
+    'phi'           : lambda obj, trk : trk.phi(),
+    'n_pix_hit'     : lambda obj, trk : trk.hitPattern().numberOfValidPixelHits(),
+    'n_pix_b_hit'   : lambda obj, trk : trk.hitPattern().numberOfValidPixelBarrelHits(),
+    'n_pix_e_hit'   : lambda obj, trk : trk.hitPattern().numberOfValidPixelEndcapHits(),
+    'n_pix_layer'   : lambda obj, trk : trk.hitPattern().pixelLayersWithMeasurement(),
+    'n_valid_hit'   : lambda obj, trk : trk.numberOfValidHits(),
+    'n_trk_layer'   : lambda obj, trk : trk.hitPattern().trackerLayersWithMeasurement(),
+    'chi2_norm'     : lambda obj, trk : trk.normalizedChi2(),
+}
+
+# The covariance is only defined in feature space if it is positive definite
+# with strictly positive variances; covflow.features raises otherwise. Tracks
+# that fail are left UNCORRECTED and counted, never silently patched: a
+# non-PD input covariance is a reconstruction problem, not a covflow one.
+COV_NAN_5X5 = np.full((5, 5), np.nan)
+
+
+class CovCorrector(object):
+    '''Full 5x5 covariance replacement, applied to every track before it is
+    handed to a fitter. Subclasses implement correct(obj, trk, cov) -> 5x5.
+
+    `obj` is the pat::Muon / pat::PackedCandidate, `trk` its bestTrack() and
+    `cov` the raw covariance as a numpy array (candidates memoize it as
+    obj.cov). All three are passed because the conditioning variables live on
+    different ones depending on the context set.
+
+    Return None to leave the track untouched.
+    '''
+    def correct(self, obj, trk, cov):
+        raise NotImplementedError
+
+    def __call__(self, obj, trk, cov):
+        return self.correct(obj, trk, cov)
+
+    def prime(self, objs):
+        '''Optional: pre-compute the correction for a whole collection in one
+        go. Default is a no-op; CovFlowCorrector overrides it because a single
+        batched torch call over an event's muons costs a fraction of one call
+        per muon.'''
+        return
+
+
+class CovFlowCorrector(CovCorrector):
+    '''The covflow morph, evaluated in-process with torch.
+
+    Constructed from the directory a covflow training run wrote, which must
+    contain flow_mc.pt, flow_data.pt, scalers.json and -- added by hand, once --
+    covflow.json describing how those weights were trained:
+
+        {"context"    : ["log_pt", "eta", "n_pix_hit"],
+         "features"   : "all",
+         "param"      : "logsigma_corr",
+         "transforms" : 4,
+         "hidden"     : [128, 128],
+         "bins"       : 8,
+         "seed"       : 0}
+
+    covflow.json is MANDATORY and has no defaults for `context`: flows are saved
+    as a bare state_dict, so nothing in the checkpoint records which variables it
+    was conditioned on or in what order. Getting that order wrong produces a
+    perfectly well-formed, completely wrong correction, and no downstream check
+    would catch it. The hyperparameters are checked for free -- load_state_dict
+    is strict, so a wrong `transforms`/`hidden`/`bins` raises rather than loads.
+
+    Optional keys: "active_features" (indices of the full 15 to actually apply),
+    "latent_bounds" {"lo": [...], "hi": [...]} from the training run, "device",
+    "batch".
+    '''
+
+    REQUIRED_FILES = ('flow_mc.pt', 'flow_data.pt', 'scalers.json', 'covflow.json')
+
+    def __init__(self, directory, overrides=None):
+        # lazy: torch/zuko/covflow are not dependencies of the rest of Bmmm, and
+        # a job running without --covflow must not pay for them
+        import torch
+        from covflow import correct as CF
+        from covflow import data as CD
+        from covflow import features as CFEAT
+        from covflow import flows as CFL
+
+        self.torch = torch
+        self.CF, self.CFEAT, self.CFL = CF, CFEAT, CFL
+
+        # the packed order must be the SAME 15 elements in the SAME order on
+        # both sides, or every correction is a silent permutation
+        if list(CFEAT.PACK_NAMES) != list(COV_ELEMENT_NAMES):
+            raise RuntimeError('covflow PACK_NAMES and Bmmm COV_ELEMENT_NAMES '
+                               'disagree:\n  covflow %s\n  Bmmm    %s'
+                               % (list(CFEAT.PACK_NAMES), list(COV_ELEMENT_NAMES)))
+
+        self.directory = directory
+        missing = [f for f in self.REQUIRED_FILES
+                   if not os.path.isfile(os.path.join(directory, f))]
+        if missing:
+            raise IOError('%s is not a covflow run directory: missing %s'
+                          % (directory, ', '.join(missing)))
+
+        with open(os.path.join(directory, 'covflow.json')) as fin:
+            cfg = json.load(fin)
+        cfg.update(overrides or {})
+
+        self.context_names = list(cfg['context'])
+        unknown = [n for n in self.context_names if n not in COVFLOW_CONTEXT_GETTERS]
+        if unknown:
+            raise KeyError('unknown covflow context variable(s) %s; known: %s'
+                           % (unknown, sorted(COVFLOW_CONTEXT_GETTERS)))
+        self.getters = [COVFLOW_CONTEXT_GETTERS[n] for n in self.context_names]
+
+        self.param    = cfg.get('param', 'logsigma_corr')
+        self.device   = cfg.get('device', 'cpu')
+        self.batch    = int(cfg.get('batch', 200000))
+        self.idx      = CFEAT.subset_indices(cfg.get('features', 'all'))
+        active        = cfg.get('active_features', None)
+        self.active_features = None if active is None else list(active)
+
+        self.scaler = CD.Standardiser.load(os.path.join(directory, 'scalers.json'))
+        if len(self.scaler.ctx_mean) != len(self.context_names):
+            raise ValueError(
+                'covflow.json lists %d context variables %s but scalers.json was '
+                'fitted on %d. The context set in covflow.json must be exactly '
+                'the --context of the training run, in the same order.'
+                % (len(self.context_names), self.context_names,
+                   len(self.scaler.ctx_mean)))
+
+        fcfg = CFL.FlowConfig(n_features = len(self.idx),
+                              n_context  = len(self.context_names),
+                              transforms = int(cfg.get('transforms', 4)),
+                              hidden     = tuple(cfg.get('hidden', [128, 128])),
+                              bins       = int(cfg.get('bins', 8)),
+                              seed       = int(cfg.get('seed', 0)))
+        self.flow_config = fcfg
+        self.flow_mc   = CFL.load_flow(fcfg, os.path.join(directory, 'flow_mc.pt'))
+        self.flow_data = CFL.load_flow(fcfg, os.path.join(directory, 'flow_data.pt'))
+        torch.set_num_threads(1)   # one core per job; torch's pool fights ROOT
+
+        bounds = cfg.get('latent_bounds', None)
+        self.latent_lo = None if bounds is None else np.asarray(bounds['lo'], float)
+        self.latent_hi = None if bounds is None else np.asarray(bounds['hi'], float)
+
+        self.to_feat, self.to_mat = CFEAT.get_transforms(self.param)
+
+        self.n_seen        = 0
+        self.n_corrected   = 0
+        self.n_not_pos_def = 0
+        self.n_failed      = 0
+        self.n_out_of_latent_range = 0
+
+    # ---------------------------------------------------------------------
+    def context(self, obj, trk):
+        '''The conditioning vector for one track, in covflow.json order.'''
+        return [float(getter(obj, trk)) for getter in self.getters]
+
+    def _morph_batch(self, packed, ctx):
+        '''packed (N,15), ctx (N,k) -> (packed_corr (N,15), zmax (N,)).
+
+        This is covflow.correct.morph inlined so the latent z -- which morph
+        discards -- can be kept for the per-track diagnostic. It MUST stay
+        step-for-step identical to morph(); test_covflow_correction.py asserts
+        exactly that against the covflow implementation.
+        '''
+        y_mc  = self.to_feat(self.CFEAT.packed_to_matrix(packed))
+        ys_mc = self.scaler.x(y_mc)
+        cs    = self.scaler.c(ctx)
+
+        z      = self.CFL.data_to_latent(self.flow_mc, ys_mc[:, self.idx], cs,
+                                         device=self.device, batch=self.batch)
+        ys_sub = self.CFL.latent_to_data(self.flow_data, z, cs,
+                                         device=self.device, batch=self.batch)
+
+        ys_corr = ys_mc.copy()
+        ys_corr[:, self.idx] = ys_sub
+        y_corr = self.scaler.x_inv(ys_corr)
+
+        if self.active_features is not None:
+            mask = np.zeros(self.CFEAT.N_FEATURES, dtype=bool)
+            mask[self.active_features] = True
+            y_corr = np.where(mask[None, :], y_corr, y_mc)
+
+        packed_corr = self.CFEAT.matrix_to_packed(self.to_mat(y_corr))
+
+        # how far into the tail of the MC latent this track sits. The training
+        # run's honest bound is the per-component min/max of the DATA latents;
+        # pass it through covflow.json as latent_bounds to use it, otherwise
+        # fall back to |z| and cut offline on the branch.
+        if self.latent_lo is not None:
+            out = (z < self.latent_lo[None, :]) | (z > self.latent_hi[None, :])
+            self.n_out_of_latent_range += int(out.any(1).sum())
+        zmax = np.max(np.abs(z), axis=1)
+        return packed_corr, zmax
+
+    # ---------------------------------------------------------------------
+    def prime(self, objs):
+        '''Correct a whole collection in ONE torch call and memoize the result
+        on the objects. Call once per event, before candidate building: the same
+        muon enters many candidates, and the correction must be identical in all
+        of them.'''
+        todo = []
+        for obj in objs:
+            if hasattr(obj, 'cov_corr'):
+                continue
+            trk = obj.bestTrack()
+            if not hasattr(obj, 'cov'):
+                obj.cov = convert_cov(trk.covariance())
+                obj.is_cov_pos_def = is_pos_def(obj.cov)
+            self.n_seen += 1
+            if not (obj.is_cov_pos_def and np.all(np.diagonal(obj.cov) > 0)):
+                self._mark_uncorrected(obj)
+                self.n_not_pos_def += 1
+                continue
+            todo.append((obj, trk))
+
+        if not todo:
+            return
+
+        packed = np.array([cov_upper_triangle(obj.cov) for obj, _ in todo])
+        ctx    = np.array([self.context(obj, trk) for obj, trk in todo])
+
+        try:
+            packed_corr, zmax = self._morph_batch(packed, ctx)
+        except Exception as exc:
+            # one bad track must not kill a multi-hour job, but it must be
+            # loud and it must be counted
+            print('[covflow] WARNING: morph failed on a batch of %d track(s): '
+                  '%s: %s -- left uncorrected' % (len(todo), type(exc).__name__, exc))
+            for obj, _ in todo:
+                self._mark_uncorrected(obj)
+            self.n_failed += len(todo)
+            return
+
+        for k, (obj, _) in enumerate(todo):
+            obj.cov_corr     = self.CFEAT.packed_to_matrix(packed_corr[k])
+            obj.covflow_ok   = True
+            obj.covflow_zmax = float(zmax[k])
+            self.n_corrected += 1
+
+    @staticmethod
+    def _mark_uncorrected(obj):
+        obj.cov_corr     = COV_NAN_5X5
+        obj.covflow_ok   = False
+        obj.covflow_zmax = np.nan
+
+    # ---------------------------------------------------------------------
+    def correct(self, obj, trk, cov):
+        '''Single-track entry point, for anything prime() did not cover (the
+        J/psi + track channel's bachelor, say). Returns None when the track
+        cannot be corrected, which fit_track reads as "use the raw track".'''
+        if not hasattr(obj, 'cov_corr'):
+            self.prime([obj])
+        return obj.cov_corr if obj.covflow_ok else None
+
+    def summary(self):
+        return ('[covflow] %d track(s) seen, %d corrected, %d skipped (not '
+                'positive definite), %d skipped (morph failure), %d outside the '
+                'training latent range'
+                % (self.n_seen, self.n_corrected, self.n_not_pos_def,
+                   self.n_failed, self.n_out_of_latent_range))
+
+
+def make_cov_corrector(spec):
+    '''Build a CovCorrector from a command-line string (see --covflow):
+
+        ''                          -> None, no correction (the default)
+        '/path/to/covflow_run1'     -> CovFlowCorrector on that run directory
+        '/path/run1:device=cuda,batch=4096'
+                                    -> same, with covflow.json keys overridden
+                                       (JSON values, so lists and strings work:
+                                       features=[0,1,2], param="log_cholesky")
+    '''
+    if spec is None or not spec.strip():
+        return None
+    spec = spec.strip()
+
+    overrides = {}
+    if ':' in spec and not os.path.isdir(spec):
+        path, _, mapping = spec.partition(':')
+        for token in mapping.split(','):
+            if not token:
+                continue
+            key, _, val = token.partition('=')
+            try:
+                overrides[key.strip()] = json.loads(val)
+            except ValueError:
+                overrides[key.strip()] = val
+    else:
+        path = spec
+
+    if not os.path.isdir(path):
+        raise IOError('--covflow expects the directory a covflow training run '
+                      'wrote (flow_mc.pt, flow_data.pt, scalers.json, '
+                      'covflow.json); %r is not a directory' % path)
+    return CovFlowCorrector(path, overrides)
+
 
 def make_cov_scaler(spec):
     '''Build a CovScaler from a command-line string (see --cov-scale):
