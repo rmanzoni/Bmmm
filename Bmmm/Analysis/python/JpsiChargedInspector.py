@@ -216,7 +216,7 @@ class BaseInspector(object):
             # any candidate exists: a muon shared by several candidates must
             # carry the same corrected covariance in all of them. No-op without
             # --covflow.
-            self.CANDIDATE.prime_cov_corrector(muons)
+            self.CANDIDATE.prime_cov_corrector(muons, event)
 
             cutflow['at least %d muons' % self.MIN_MUONS] += 1
 

@@ -474,14 +474,17 @@ class JpsiChargedCandidate(ROOT.reco.CompositeCandidate):
         cls.cov_corrector = corrector
 
     @classmethod
-    def prime_cov_corrector(cls, objs):
+    def prime_cov_corrector(cls, objs, event=None):
         '''Pre-compute the covflow correction for a whole muon collection in one
         batched call. Call once per event, AFTER the muon selection and BEFORE
         any candidate is built: the same muon enters many candidates and must
         carry the same corrected covariance in all of them. A no-op when no
-        corrector is installed.'''
+        corrector is installed.
+
+        Pass the event: a context conditioned on npv needs it, and the corrector
+        caches it for the single-track fallback inside fit_track.'''
         if cls.cov_corrector is not None:
-            cls.cov_corrector.prime(objs)
+            cls.cov_corrector.prime(objs, event=event)
 
     def fit_track(self, obj):
         '''The reco::Track handed to the vertex fitters and to the IP / jet-track

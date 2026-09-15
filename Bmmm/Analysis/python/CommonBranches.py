@@ -50,6 +50,28 @@ event_branches = {
 # and with its own additions -- the dimuon ntuple happens to use exactly this
 # list, the RJpsi one interleaves the refitted-J/psi rf_* quantities and appends
 # the gen bookkeeping.
+def cov_track(imu):
+    '''The track whose covariance the FITS actually used.
+
+    With --covflow (or --cov-scale) installed, Candidate.fit_track memoizes the
+    rebuilt track on the muon as _cov_fit_track and hands that to the vertex
+    fitters and the IP machinery. bestTrack() still returns the raw one. Any
+    branch describing an UNCERTAINTY should come from here, so the ntuple is
+    self-consistent: an error bar computed from a covariance no fit ever saw is
+    a number with no owner.
+
+    A branch describing a POSITION or a MOMENTUM should stay on bestTrack():
+    the two tracks carry identical parameters by construction (track_with_cov
+    copies momentum, charge and reference point), so using bestTrack() there
+    keeps <obj>_dxy an independent check that nothing moved the trajectory.
+
+    Falls back to bestTrack() when no corrector is installed, which is what
+    makes this a no-op for every channel and every job that does not use one.
+    '''
+    trk = getattr(imu, '_cov_fit_track', None)
+    return imu.bestTrack() if trk is None else trk
+
+
 muon_branches = {
     'pt'             :  lambda imu : imu.pt()                            ,
     'eta'            :  lambda imu : imu.eta()                           , 
@@ -84,14 +106,21 @@ muon_branches = {
     'pfiso04_ph'     :  lambda imu : imu.iso04.sumPhotonEt         ,
     'pfiso04_pu'     :  lambda imu : imu.iso04.sumPUPt             ,
     'dxy'            :  lambda imu : imu.bestTrack().dxy(imu.pv.position()),
-    'dxy_e'          :  lambda imu : imu.bestTrack().dxyError(imu.pv.position(), imu.pv.error()),
-    'dxy_sig'        :  lambda imu : imu.bestTrack().dxy(imu.pv.position()) / imu.bestTrack().dxyError(imu.pv.position(), imu.pv.error()),
+    'dxy_e'          :  lambda imu : cov_track(imu).dxyError(imu.pv.position(), imu.pv.error()),
+    'dxy_sig'        :  lambda imu : imu.bestTrack().dxy(imu.pv.position()) / cov_track(imu).dxyError(imu.pv.position(), imu.pv.error()),
     'dz'             :  lambda imu : imu.bestTrack().dz(imu.pv.position()),
-    'dz_e'           :  lambda imu : imu.bestTrack().dzError(),
-    'dz_sig'         :  lambda imu : imu.bestTrack().dz(imu.pv.position()) / imu.bestTrack().dzError(),
+    'dz_e'           :  lambda imu : cov_track(imu).dzError(),
+    'dz_sig'         :  lambda imu : imu.bestTrack().dz(imu.pv.position()) / cov_track(imu).dzError(),
     'bs_dxy'         :  lambda imu : imu.bestTrack().dxy(imu.bs.position()),
-    'bs_dxy_e'       :  lambda imu : imu.bestTrack().dxyError(imu.bs.position(), imu.bs.error()),
-    'bs_dxy_sig'     :  lambda imu : imu.bestTrack().dxy(imu.bs.position()) / imu.bestTrack().dxyError(imu.bs.position(), imu.bs.error()),
+    'bs_dxy_e'       :  lambda imu : cov_track(imu).dxyError(imu.bs.position(), imu.bs.error()),
+    'bs_dxy_sig'     :  lambda imu : imu.bestTrack().dxy(imu.bs.position()) / cov_track(imu).dxyError(imu.bs.position(), imu.bs.error()),
+    # The same three errors from the RAW covariance. Without a corrector these
+    # equal the branches above exactly; with one, the pair is what lets a single
+    # file say how much the correction moved the impact-parameter resolution --
+    # the cov_* / cov_corr_* pattern, one level up.
+    'dxy_e_raw'      :  lambda imu : imu.bestTrack().dxyError(imu.pv.position(), imu.pv.error()),
+    'dz_e_raw'       :  lambda imu : imu.bestTrack().dzError(),
+    'bs_dxy_e_raw'   :  lambda imu : imu.bestTrack().dxyError(imu.bs.position(), imu.bs.error()),
     'n_pix_hit'      :  lambda imu : imu.bestTrack().hitPattern().numberOfValidPixelHits(),
     'n_pix_b_hit'    :  lambda imu : imu.bestTrack().hitPattern().numberOfValidPixelBarrelHits(),
     'n_pix_e_hit'    :  lambda imu : imu.bestTrack().hitPattern().numberOfValidPixelEndcapHits(),

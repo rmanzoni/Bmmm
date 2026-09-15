@@ -95,6 +95,11 @@ parser.add_argument('--redirector'   , dest='redirector' , default='root://cms-x
 # FrameworkJobReport and `crab report` accounts for the right lumis.
 parser.add_argument('--lumi-json'    , dest='lumi_json'  , default=''    , type=str,
                     help='write the processed run/lumi map to this path')
+parser.add_argument('--readevery'    , dest='readevery'  , default=1     , type=int,
+                    help='process only one event every N scanned (default 1 = all). '
+                         'Subsampling is by POSITION in the scan, not by event number: '
+                         'event numbers are sparse in a skimmed dataset, so iev%%N would '
+                         'keep an unknown, run-dependent fraction.')
 args = parser.parse_args()
 
 inputFiles  = args.inputFiles
@@ -110,6 +115,10 @@ redirector  = args.redirector
 lumi_json   = args.lumi_json
 mc = False; mc = args.mc
 
+readevery   = args.readevery
+if readevery < 1:
+    raise ValueError('--readevery must be >= 1, got %d' % readevery)
+    
 # run -> lumi -> events read. Filled for EVERY event the loop touches.
 processed_lumis = defaultdict(lambda : defaultdict(int))
 
@@ -291,6 +300,13 @@ for i, event in enumerate(events):
         eta = datetime.now() + timedelta(seconds=(maxevents-i) / max(0.1, speed))
         print('\t===> processing %d / %d event \t completed %.1f%s \t %.1f ev/s \t ETA %s s' %(i, maxevents, percentage, '%', speed, eta.strftime('%Y-%m-%d %H:%M:%S')))
 
+    # Subsample: keep one event every readevery, counted by position in the scan.
+    # This MUST stay above the getByLabel block: everything before it is free,
+    # product retrieval is what costs. Position-based, so the kept fraction is
+    # exactly 1/readevery in every run and lumi and yields scale by readevery.
+    if readevery > 1 and (i % readevery) != 0:
+        continue
+        
     # reset trees
     for k, v in tofill.items():
        tofill[k] = np.nan

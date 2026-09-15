@@ -76,8 +76,9 @@ from http.client import HTTPException
 # ----------------------------------------------------------------------------
 # user knobs
 # ----------------------------------------------------------------------------
-work_area     = 'crab_dimuon_run3_add_nhits'
-out_dir       = 'dimuon_ntuples_run3_09sep2026'      # under /store/user/manzoni/
+work_area     = 'crab_dimuon_run3_relax_mu2pt'
+# out_dir       = 'dimuon_ntuples_run3_09sep2026'      # under /store/user/manzoni/
+out_dir       = 'dimuon_ntuples_run3_15sep2026'      # under /store/user/manzoni/
 files_per_job = 2
 storage_site  = 'T3_CH_PSI'
 
@@ -91,19 +92,19 @@ already_submitted = [
 # submitting ONE first is how you find out what a job costs.
 productions = [
     '/ParkingDoubleMuonLowMass1/Run2022C-PromptReco-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v2/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2022E-PromptReco-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2022F-22Sep2023-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2022G-22Sep2023-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v1-v2/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v2-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v3-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v4-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v1-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v2-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2026B-PromptReco-v1/MINIAOD',
-#     '/ParkingDoubleMuonLowMass1/Run2026D-PromptReco-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v2/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2022E-PromptReco-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2022F-22Sep2023-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2022G-22Sep2023-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v1-v2/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v2-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v3-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v4-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v1-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v2-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2026B-PromptReco-v1/MINIAOD',
+    '/ParkingDoubleMuonLowMass1/Run2026D-PromptReco-v1/MINIAOD',
 ]
 
 

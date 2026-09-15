@@ -648,19 +648,29 @@ class CorrectionlibCovScaler(CovScaler):
 # in CommonBranches, so the context the flow sees at ntuplization time is the
 # same quantity it was trained on. If one of the two moves, the other must.
 COVFLOW_CONTEXT_GETTERS = {
-    'pt'            : lambda obj, trk : trk.pt(),
-    'log_pt'        : lambda obj, trk : np.log(max(trk.pt(), 1e-6)),
-    'eta'           : lambda obj, trk : trk.eta(),
-    'abs_eta'       : lambda obj, trk : abs(trk.eta()),
-    'phi'           : lambda obj, trk : trk.phi(),
-    'n_pix_hit'     : lambda obj, trk : trk.hitPattern().numberOfValidPixelHits(),
-    'n_pix_b_hit'   : lambda obj, trk : trk.hitPattern().numberOfValidPixelBarrelHits(),
-    'n_pix_e_hit'   : lambda obj, trk : trk.hitPattern().numberOfValidPixelEndcapHits(),
-    'n_pix_layer'   : lambda obj, trk : trk.hitPattern().pixelLayersWithMeasurement(),
-    'n_valid_hit'   : lambda obj, trk : trk.numberOfValidHits(),
-    'n_trk_layer'   : lambda obj, trk : trk.hitPattern().trackerLayersWithMeasurement(),
-    'chi2_norm'     : lambda obj, trk : trk.normalizedChi2(),
+    'pt'            : lambda obj, trk, ev : trk.pt(),
+    'log_pt'        : lambda obj, trk, ev : np.log(max(trk.pt(), 1e-6)),
+    'eta'           : lambda obj, trk, ev : trk.eta(),
+    'abs_eta'       : lambda obj, trk, ev : abs(trk.eta()),
+    'phi'           : lambda obj, trk, ev : trk.phi(),
+    'n_pix_hit'     : lambda obj, trk, ev : trk.hitPattern().numberOfValidPixelHits(),
+    'n_pix_b_hit'   : lambda obj, trk, ev : trk.hitPattern().numberOfValidPixelBarrelHits(),
+    'n_pix_e_hit'   : lambda obj, trk, ev : trk.hitPattern().numberOfValidPixelEndcapHits(),
+    'n_pix_layer'   : lambda obj, trk, ev : trk.hitPattern().pixelLayersWithMeasurement(),
+    'n_valid_hit'   : lambda obj, trk, ev : trk.numberOfValidHits(),
+    'n_trk_layer'   : lambda obj, trk, ev : trk.hitPattern().trackerLayersWithMeasurement(),
+    'chi2_norm'     : lambda obj, trk, ev : trk.normalizedChi2(),
+    # EVENT-level. Spelled exactly as the matching branch in CommonBranches --
+    # npv must mean len(event.vtx) here as it does everywhere else, or the flow
+    # is conditioned on a different quantity at application time than it was
+    # trained on. These need the event handed in: see prime().
+    'npv'           : lambda obj, trk, ev : len(ev.vtx),
 }
+
+# Which of the above cannot be evaluated from the track alone. A corrector
+# conditioned on any of these refuses to run without an event rather than
+# silently substituting anything.
+COVFLOW_EVENT_CONTEXT = set(['npv'])
 
 # The covariance is only defined in feature space if it is positive definite
 # with strictly positive variances; covflow.features raises otherwise. Tracks
@@ -759,6 +769,8 @@ class CovFlowCorrector(CovCorrector):
             raise KeyError('unknown covflow context variable(s) %s; known: %s'
                            % (unknown, sorted(COVFLOW_CONTEXT_GETTERS)))
         self.getters = [COVFLOW_CONTEXT_GETTERS[n] for n in self.context_names]
+        self.needs_event = bool(set(self.context_names) & COVFLOW_EVENT_CONTEXT)
+        self._event = None
 
         self.param    = cfg.get('param', 'logsigma_corr')
         self.device   = cfg.get('device', 'cpu')
@@ -800,9 +812,9 @@ class CovFlowCorrector(CovCorrector):
         self.n_out_of_latent_range = 0
 
     # ---------------------------------------------------------------------
-    def context(self, obj, trk):
+    def context(self, obj, trk, event):
         '''The conditioning vector for one track, in covflow.json order.'''
-        return [float(getter(obj, trk)) for getter in self.getters]
+        return [float(getter(obj, trk, event)) for getter in self.getters]
 
     def _morph_batch(self, packed, ctx):
         '''packed (N,15), ctx (N,k) -> (packed_corr (N,15), zmax (N,)).
@@ -843,11 +855,23 @@ class CovFlowCorrector(CovCorrector):
         return packed_corr, zmax
 
     # ---------------------------------------------------------------------
-    def prime(self, objs):
+    def prime(self, objs, event=None):
         '''Correct a whole collection in ONE torch call and memoize the result
         on the objects. Call once per event, before candidate building: the same
         muon enters many candidates, and the correction must be identical in all
-        of them.'''
+        of them.
+
+        `event` is required when the context includes an event-level variable
+        (npv); it is also cached, so the single-track fallback in fit_track --
+        which has no event in hand -- uses the one from the current event.'''
+        if event is not None:
+            self._event = event
+        if self.needs_event and self._event is None:
+            raise RuntimeError(
+                'the covflow context %s includes an event-level variable but no '
+                'event was passed to prime(). Conditioning on a stale or absent '
+                'npv is worse than not correcting at all.' % self.context_names)
+
         todo = []
         for obj in objs:
             if hasattr(obj, 'cov_corr'):
@@ -867,7 +891,7 @@ class CovFlowCorrector(CovCorrector):
             return
 
         packed = np.array([cov_upper_triangle(obj.cov) for obj, _ in todo])
-        ctx    = np.array([self.context(obj, trk) for obj, trk in todo])
+        ctx    = np.array([self.context(obj, trk, self._event) for obj, trk in todo])
 
         try:
             packed_corr, zmax = self._morph_batch(packed, ctx)
