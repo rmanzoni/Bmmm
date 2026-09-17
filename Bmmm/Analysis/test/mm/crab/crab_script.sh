@@ -89,12 +89,19 @@ print('    all imports OK')
 " || { echo ">>> FATAL: imports failed, aborting job $1"; ls -la; exit 1; }
 
 OUTNAME="dimuon_ntuple"
+# Extra inspector flags, passed by the submitter through JobType.scriptArgs.
+# Empty by default, so a data job runs exactly as before this was added --
+# the MC submitter sets MC=1 SAVENONTRIG=1.
+EXTRA_FLAGS=""
 for arg in "$@"; do
     case "${arg}" in
-        OUTNAME=*) OUTNAME="${arg#*=}" ;;
+        OUTNAME=*)     OUTNAME="${arg#*=}" ;;
+        MC=1)          EXTRA_FLAGS="${EXTRA_FLAGS} --mc" ;;
+        SAVENONTRIG=1) EXTRA_FLAGS="${EXTRA_FLAGS} --savenontrig" ;;
     esac
 done
 echo ">>> output basename: ${OUTNAME}"
+echo ">>> extra flags    : ${EXTRA_FLAGS:-<none>}"
 
 # --- pull this job's input LFNs out of the CRAB-tweaked PSet ---
 python3 - > inputfiles.txt <<'PYEOF'
@@ -140,7 +147,8 @@ python3 -u inspector_mm_analysis.py \
     --filename="${OUTNAME}" \
     --destination=. \
     --logfreq=5000 \
-    --maxevents=-1
+    --maxevents=-1 \
+    ${EXTRA_FLAGS}
 RC=$?
 
 if [ ${RC} -ne 0 ]; then
