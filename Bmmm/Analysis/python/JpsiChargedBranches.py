@@ -98,6 +98,67 @@ cov_branches.update(_track_cov_corr)
 
 muon_branches.update(cov_branches)
 
+##########################################################################################
+#####      Bc LIFETIME REWEIGHTING   (AN-20-223 Sec. 7.3.1)
+##########################################################################################
+# The Bc sample is generated with a lifetime that differs from the PDG one:
+#
+#     tau_MC  = 0.507            e-12 s     (generator setting)
+#     tau_PDG = (0.510 +/- 0.010)e-12 s     (AN-20-223 Sec. 7.3.1)
+#
+# Every Bc-derived channel (both signals AND the whole cocktail: feeddown,
+# J/psi+Hc, psi(2S), ...) is therefore reweighted from the generated proper-time
+# exponential to the PDG one, and the +/-1 sigma targets provide the `ctau`
+# shape nuisance of the fit (Table 5, syst. #4).
+#
+# The natural variable is the proper decay length ell = L3D/(beta*gamma) [cm],
+# i.e. c*t_proper, which is exactly the existing gen_b_ct branch. The weight is
+# the ratio of the two exponential pdfs in ell,
+#
+#     w(ell) = (ctau_MC / ctau_tgt) * exp( ell * (1/ctau_MC - 1/ctau_tgt) )
+#
+# whose mean is 1 by construction over the *generated* ell spectrum (shape
+# only). After selection <w> deviates from 1 at the permille level: that is the
+# genuine efficiency dependence on the lifetime, not a normalisation bug.
+_C_CM_PER_S         = 2.99792458e10        # speed of light [cm/s]
+BC_TAU_MC_S         = 0.507e-12            # generated Bc lifetime [s]  <-- verify vs Run 3 DEC table
+BC_TAU_PDG_S        = 0.510e-12            # PDG central value [s]
+BC_TAU_PDG_UNC_S    = 0.010e-12            # PDG uncertainty [s]
+
+CTAU_BC_MC_CM       = _C_CM_PER_S *  BC_TAU_MC_S                        # 0.0151995 cm (generated)
+CTAU_BC_PDG_CM      = _C_CM_PER_S *  BC_TAU_PDG_S                       # 0.0152894 cm (nominal target)
+CTAU_BC_PDG_UP_CM   = _C_CM_PER_S * (BC_TAU_PDG_S + BC_TAU_PDG_UNC_S)   # 0.0155892 cm
+CTAU_BC_PDG_DOWN_CM = _C_CM_PER_S * (BC_TAU_PDG_S - BC_TAU_PDG_UNC_S)   # 0.0149896 cm
+
+
+def bc_proper_decay_length(ib):
+    '''Bc proper decay length L3D/(beta*gamma) in cm (== c*t_proper).
+
+    Single source of truth for gen_b_ct and for the lifetime weights, so the
+    weight can never be evaluated at a different ell than the one written out.
+    daughter(0) of the last-copy Bc carries the decay vertex.
+    '''
+    dx   = ib.daughter(0).vx() - ib.vx()
+    dy   = ib.daughter(0).vy() - ib.vy()
+    dz   = ib.daughter(0).vz() - ib.vz()
+    l3d  = np.sqrt(dx*dx + dy*dy + dz*dz)
+    return l3d / ib.p4().Beta() / ib.p4().Gamma()
+
+
+def bc_ctau_weight(ib, ctau_target_cm):
+    '''Per-event Bc lifetime weight, target vs generated exponential in ell.
+
+    Returns NaN (not 1.0) when ell is unusable: an event that HAS a Bc
+    (gen_bc_decay is not NaN) but a NaN weight flags a broken gen record
+    instead of silently entering the histograms unweighted.
+    '''
+    ell = bc_proper_decay_length(ib)
+    if not np.isfinite(ell) or ell < 0.:
+        return np.nan
+    return (CTAU_BC_MC_CM / ctau_target_cm) * \
+           np.exp(ell * (1. / CTAU_BC_MC_CM - 1. / ctau_target_cm))
+
+
 bc_branches = {
     'gen_bc_decay'      :  lambda ib : ib.bc_code    ,
     'gen_bc_q2'         :  lambda ib : ib.q2         ,
@@ -119,7 +180,13 @@ bc_branches = {
 
     'gen_b_beta'   :  lambda ib : ib.p4().Beta(),
     'gen_b_gamma'  :  lambda ib : ib.p4().Gamma(),
-    'gen_b_ct'     :  lambda ib : np.sqrt( (ib.daughter(0).vx() - ib.vx())**2 + (ib.daughter(0).vy() - ib.vy())**2 + (ib.daughter(0).vz() - ib.vz())**2 )/ib.p4().Beta()/ib.p4().Gamma(),
+    'gen_b_ct'     :  lambda ib : bc_proper_decay_length(ib),
+
+    # --- Bc lifetime reweighting, AN-20-223 Sec. 7.3.1. Filled for EVERY event
+    #     with a gen Bc, i.e. the whole cocktail, not just the two signals.
+    'gen_bc_ctau_weight'      :  lambda ib : bc_ctau_weight(ib, CTAU_BC_PDG_CM)     , # 0.507 -> 0.510 ps (nominal)
+    'gen_bc_ctau_weight_up'   :  lambda ib : bc_ctau_weight(ib, CTAU_BC_PDG_UP_CM)  , # 0.507 -> 0.520 ps (ctau up)
+    'gen_bc_ctau_weight_down' :  lambda ib : bc_ctau_weight(ib, CTAU_BC_PDG_DOWN_CM), # 0.507 -> 0.500 ps (ctau down)
 
     'gen_pv_x'     :  lambda ib : ib.vx()    ,
     'gen_pv_y'     :  lambda ib : ib.vy()    ,
