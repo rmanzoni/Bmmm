@@ -31,6 +31,7 @@ from DataFormats.FWLite import Events, Handle
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow, make_cov_scaler, make_cov_corrector, resolve_input_files
+from Bmmm.Analysis.HammerFF import make_hammer_session
 from Bmmm.Analysis.Handles import handles_mc
 from Bmmm.Analysis.Handles import handles      as handles_std   # full MINIAOD collections
 from Bmmm.Analysis.Handles import handles_skim                  # SKIM collections (BS-constrained vertices)
@@ -59,6 +60,7 @@ class BaseInspector(object):
     MUON_BRANCHES   = None     # per-muon getters
     SAFE_GET        = None     # safe_get helper
     EVENT_GEN_KEYS  = ()       # event-level branches filled by setup_event_gen (e.g. bc_branches)
+    HAMMER          = None     # HammerFF.HammerSession, built by main() when --hammer is given
     MIN_MUONS       = 2        # minimum selected muons
 
     def __init__(self):
@@ -294,6 +296,19 @@ class BaseInspector(object):
                                  'MC only, and mutually exclusive with --cov-scale. The raw '
                                  'cov_* branches are untouched; the corrected matrix is written '
                                  'alongside as cov_corr_*. See utils.make_cov_corrector.')
+        parser.add_argument('--hammer',      dest='hammer',      default='',             type=str,
+                            help='REWEIGHT the Bc -> J/psi l nu form factors from the '
+                                 'generated Kiselev model to Harrison-2024 lattice QCD with '
+                                 'Hammer, at production time. Takes the FF coefficient card: '
+                                 "'default' for Bmmm/Analysis/data/harrison_bglvar.json, or a "
+                                 'path to another one. Appending \':nominal\' writes only the '
+                                 "central weight, ':allow-stale' writes the eigenvariations "
+                                 'from a card whose covariance is not yet validated. MC only, '
+                                 'and it needs Hammer importable (see '
+                                 'test/rjpsi/hammer/hammer_env.sh). The hammer_* branches are '
+                                 'in the schema either way -- without the flag they are NaN, '
+                                 'and the same weights can be added afterwards with '
+                                 'test/rjpsi/hammer/add_hammer_weights.py.')
         args = parser.parse_args()
         return namedtuple('options', args.__dict__.keys())(*args.__dict__.values())
 
@@ -331,6 +346,15 @@ class BaseInspector(object):
             print('####   context    %s' % cov_corrector.context_names)
             print('####   features   %s' % cov_corrector.idx)
             print('####   flow cfg   %s' % (cov_corrector.flow_config,))
+
+        # Hammer FF reweighting, off by default. Built here rather than lazily on
+        # the first signal event so that a bad card, a missing Hammer install or
+        # a non-unitary fit kills the job now instead of after two hours.
+        hammer_spec = getattr(options, 'hammer', '')
+        if hammer_spec and not options.mc:
+            raise RuntimeError('--hammer without --mc: the form-factor weights '
+                               'are a generator-truth quantity and exist only for MC.')
+        self.HAMMER = make_hammer_session(hammer_spec)
 
         files = resolve_input_files(options.inputFiles, options.redirector)
 
@@ -375,6 +399,9 @@ class BaseInspector(object):
 
         if cov_corrector is not None:
             print(cov_corrector.summary())
+
+        if self.HAMMER is not None:
+            print(self.HAMMER.summary())
 
         finish = time()
         print('done in %.1f hours' % ((finish - start) / 3600.))

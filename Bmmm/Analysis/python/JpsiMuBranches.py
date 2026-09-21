@@ -6,6 +6,7 @@ import numpy as np
 # J/psi + track ntuple. Only the candidate-level block (cand_branches) and the
 # flat 'branches' assembly live here; they are a verbatim copy of the original
 # RJpsiBranches, so 'branches' reproduces the RJpsi schema branch-for-branch.
+from Bmmm.Analysis.HammerFF import BRANCH_NAMES as HAMMER_BRANCH_NAMES
 from Bmmm.Analysis.JpsiChargedBranches import (
     event_branches, muon_branches, bc_branches, jpsi_branches, paths, safe_get,
 )
@@ -341,6 +342,10 @@ for ibranch in cand_branches.keys():
 
 for ibranch in bc_branches.keys():
     branches.append(ibranch)
+
+# Hammer FF reweighting: fixed 32-branch block (nominal + 2 x 15 eigenvariations
+# + status), always in the schema, NaN unless the job runs with --hammer.
+branches += HAMMER_BRANCH_NAMES
 
 # for ibranch in jpsi_branches.keys():
 #     branches.append(ibranch)

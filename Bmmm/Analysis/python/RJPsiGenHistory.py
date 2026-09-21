@@ -539,6 +539,110 @@ def gen_helicity_angles(decay):
 
 
 # ----------------------------------------------------------------------------
+# Gen four-momenta needed to reweight the Bc form factors with Hammer.
+#
+# We store the *pre-FSR* (first-copy) momenta at each decay vertex for the two
+# SM semileptonic signal channels, so the reweighting can be run as a separate
+# post-hoc layer on the ntuples (see the standalone hammer script). Only the
+# leaves are stored; the parent nodes Hammer needs are the exact sums of these
+# leaves, so the post-hoc code reconstructs them and every vertex conserves
+# 4-momentum by construction:
+#
+#   J/psi  = mup + mum                         (J/psi -> mu+ mu-)
+#   tau    = taumu + taunut + taunum           (tau -> mu nu_tau nu_mu~, ch7)
+#   Bc     = gen_b_* (already stored) = J/psi + lep + nu   (pre-FSR)
+#
+# Channels handled:
+#   Jpsi_mu_nu  (code 1): mup, mum, lep(=bachelor mu), nu(=nu_mu)
+#   Jpsi_tau_nu (code 7): mup, mum, lep(=tau), nu(=nu_tau at the Bc vertex),
+#                         taumu, taunut(=nu_tau), taunum(=nu_mu~)
+# Every other channel / no-Bc event returns NaN for all keys.
+#
+# The stored components are pt/eta/phi/mass/pdgid (mass and signed pdgId make
+# the post-hoc four-vector build and the particle/antiparticle assignment
+# unambiguous, so Bc+ and Bc- are both handled from the branch content alone).
+#
+# FSR note: these are the momenta BEFORE PHOTOS radiation (the born-level muons
+# and lepton). If you ever prefer the post-FSR momenta instead, wrap the picks
+# below in last_copy(...).
+# ----------------------------------------------------------------------------
+_HAM_PARTICLES  = ('mup', 'mum', 'lep', 'nu', 'taumu', 'taunut', 'taunum')
+_HAM_COMPONENTS = ('pt', 'eta', 'phi', 'mass', 'pdgid')
+
+
+def _ham_nan_dict():
+    return {'ham_%s_%s' % (p, c): np.nan
+            for p in _HAM_PARTICLES for c in _HAM_COMPONENTS}
+
+
+def _ham_fill(out, name, p):
+    '''Store pt/eta/phi/mass/pdgid of gen particle p under ham_<name>_*.'''
+    if p is None:
+        return
+    out['ham_%s_pt'    % name] = p.pt()
+    out['ham_%s_eta'   % name] = p.eta()
+    out['ham_%s_phi'   % name] = p.phi()
+    out['ham_%s_mass'  % name] = p.mass()
+    out['ham_%s_pdgid' % name] = p.pdgId()
+
+
+def _decaying_daughters(mother, pdgids):
+    '''First-copy direct daughters of `mother` whose |pdgId| is in `pdgids`.
+    `mother` is descended to its last copy first (the copy that actually
+    decays), so we read the daughters of the decay vertex; the daughters are
+    returned as-is, i.e. their first copies = the pre-FSR vertex momenta.'''
+    m = last_copy(mother)
+    return [m.daughter(i) for i in range(m.numberOfDaughters())
+            if abs(m.daughter(i).pdgId()) in pdgids]
+
+
+def gen_hammer_p4(decay):
+    '''Pre-FSR four-momenta of the signal-decay particles needed by Hammer,
+    as a flat dict {ham_<particle>_<pt|eta|phi|mass|pdgid>: value}. Filled only
+    for the SM semileptonic signal channels (codes 1 and 7); NaN otherwise.
+
+    `decay` is a BcGenDecay (or a raw gen-particle collection, reconstructed on
+    the fly). The Bc itself is not duplicated here -- use the gen_b_* branches.
+    '''
+    out = _ham_nan_dict()
+    decay = _as_decay(decay)
+    if (decay is None or decay.code not in (1, 7)
+            or decay.charm is None or decay.lepton is None):
+        return out
+
+    # J/psi -> mu+ mu- : the two born muons of the decaying charmonium
+    jmus = _decaying_daughters(decay.charm, {MU})
+    if len(jmus) >= 2:
+        mu_a, mu_b = jmus[0], jmus[1]
+        mup = mu_a if mu_a.charge() > 0 else mu_b     # mu+  (pdgId -13)
+        mum = mu_b if mu_a.charge() > 0 else mu_a     # mu-  (pdgId +13)
+        _ham_fill(out, 'mup', mup)
+        _ham_fill(out, 'mum', mum)
+
+    # W* charged lepton and Bc-vertex neutrino: first-copy direct Bc daughters.
+    # For ch7 `lep` is the tau (its p4 is the exact sum of its daughters below).
+    lep0 = nu0 = None
+    for i in range(decay.bc.numberOfDaughters()):
+        d, ad = decay.bc.daughter(i), abs(decay.bc.daughter(i).pdgId())
+        if ad in (MU, TAU) and lep0 is None:
+            lep0 = d
+        elif ad in NEUTRINOS and nu0 is None:
+            nu0 = d
+    _ham_fill(out, 'lep', lep0)
+    _ham_fill(out, 'nu',  nu0)
+
+    # tau -> mu nu_tau nu_mu~ : born daughters of the decaying tau (ch7 only)
+    if decay.code == 7 and lep0 is not None:
+        for d in _decaying_daughters(lep0, {MU, NU_TAU, NU_MU}):
+            ad = abs(d.pdgId())
+            if   ad == MU:     _ham_fill(out, 'taumu',  d)
+            elif ad == NU_TAU: _ham_fill(out, 'taunut', d)
+            elif ad == NU_MU:  _ham_fill(out, 'taunum', d)
+
+    return out
+
+
+# ----------------------------------------------------------------------------
 # OPTIONAL: sub-decay of the tau (useful for the 3mu R(J/psi) signal, ch. 7/8).
 # Returns 'mu', 'e', 'had', or 'none' for how the tau from Bc decayed.
 # ----------------------------------------------------------------------------
