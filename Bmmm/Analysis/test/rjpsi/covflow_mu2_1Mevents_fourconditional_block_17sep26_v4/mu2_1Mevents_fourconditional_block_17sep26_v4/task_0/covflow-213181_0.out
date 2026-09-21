@@ -1,0 +1,1795 @@
+============================================================
+CovFlow GPU training
+============================================================
+date       : gio 17 set 2026, 11:19:25, CEST
+host       : t3gpu01
+job        : 213181
+array task : 0
+config     : configs/train_gpu_mu2_1Mevents_fourconditional.conf
+CUDA       : 3
+============================================================
+
+Conda:
+  base   : /work/manzoni/miniconda3
+  env    : covflow
+  python : /work/manzoni/miniconda3/envs/covflow/bin/python
+Python 3.12.14
+
+PyTorch/CUDA:
+PyTorch: 2.5.1+cu124
+CUDA runtime: 12.4
+CUDA available: True
+GPU: NVIDIA GeForce GTX 1080 Ti
+GPU capability: (6, 1)
+GPU computation: OK
+
+Repository:
+  path : /work/manzoni/correct_track_covariance/covflow
+  git  : 300fa6e
+
+Slurm grant:
+  stdout : /work/manzoni/correct_track_covariance/covflow-runs/mu2_1Mevents_fourconditional_block_17sep26_v4/task_0/covflow-213181_0.out
+  time   : 08:00:00
+  memory : 65536 MB  (--mem)
+
+============================================================
+Training configuration
+============================================================
+config     : configs/train_gpu_mu2_1Mevents_fourconditional.conf
+data       : /pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_run3/covflow_dimuon_ntuples_16sept26/dimuoun_run3_PARTIAL.root
+mc         : /pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_run3/covflow_dimuon_ntuples_16sept26/hb_dimuon_2018_mc_PARTIAL.root
+tree       : tree
+cov-prefix : mu2_cov_
+context    : mu2_pt mu2_eta mu2_n_pix_b_hit mu2_n_pix_e_hit
+log-pt     : mu2_pt
+epochs     : 800
+batch size : 8192
+lr         : 2e-3
+transforms : 4
+hidden     : 128 128
+bins       : 8
+seed       : 0
+output     : /work/manzoni/correct_track_covariance/covflow-runs/mu2_1Mevents_fourconditional_block_17sep26_v4/task_0
+============================================================
+
+Command:
+ python train_covflow.py --data /pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_run3/covflow_dimuon_ntuples_16sept26/dimuoun_run3_PARTIAL.root --mc /pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_run3/covflow_dimuon_ntuples_16sept26/hb_dimuon_2018_mc_PARTIAL.root --tree tree --cov-prefix mu2_cov_ --context mu2_pt mu2_eta mu2_n_pix_b_hit mu2_n_pix_e_hit --log-pt mu2_pt --epochs 800 --batch-size 8192 --lr 2e-3 --transforms 4 --hidden 128 128 --bins 8 --seed 0 --device cuda --out /work/manzoni/correct_track_covariance/covflow-runs/mu2_1Mevents_fourconditional_block_17sep26_v4/task_0 --features block --patience 50 --no-distill --max-events 1000000 --closure-bins 4\,4\,4\,4 --plot-bins 10\,3\,4\,4 --selection \(mu1_pt\ \>\ 4.5\)\ \&\ \(abs\(mu1_eta\)\ \<\ 2.4\)\ \&\ \(mu1_id_medium\>0.5\)\ \&\ \(mu2_id_medium\>0.5\)\ \&\ \(abs\(mass-3.0969\)\<0.1\)\ \&\ \(\(lxy\ \*\ cos2d\ /pt\ \*\ 3.0969\)\>0.008\) --mc-selection \(abs\(mu1_gen_pdgid\)==13\)\ \&\ \(abs\(mu2_gen_pdgid\)==13\)
+
+[log] printout duplicated to /work/manzoni/correct_track_covariance/covflow-runs/mu2_1Mevents_fourconditional_block_17sep26_v4/task_0/train.log
+[load] 1 data files, 1 MC files
+[load] data selection: (mu1_pt > 4.5) & (abs(mu1_eta) < 2.4) & (mu1_id_medium>0.5) & (mu2_id_medium>0.5) & (abs(mass-3.0969)<0.1) & ((lxy * cos2d /pt * 3.0969)>0.008)
+[load] MC   selection: (abs(mu1_gen_pdgid)==13) & (abs(mu2_gen_pdgid)==13)
+[warn] data and MC selections differ -- any resulting difference in the covariance distributions will be absorbed into the correction as if it were detector mismodelling
+[load]   /pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_run3/covflow_dimuon_ntuples_16sept26/dimuoun_run3_PARTIAL.root: 8,454,154 rows read, 1,373,541 pass selection, 1,373,541 usable
+[load] 1,000,000 tracks stored as float32 (76 MB for X, C, w); 0 dropped as non-finite or not positive definite
+[load]   /pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_run3/covflow_dimuon_ntuples_16sept26/hb_dimuon_2018_mc_PARTIAL.root: 12,407,414 rows read, 12,167,088 pass selection, 12,167,087 usable
+[load] 1,000,000 tracks stored as float32 (76 MB for X, C, w); 1 dropped as non-finite or not positive definite
+[load] data cutflow: read 8,454,154 -> selection 1,373,541 -> clean/PD 1,000,000
+[load] MC   cutflow: read 12,407,414 -> selection 12,167,088 -> clean/PD 1,000,000
+[load] MC 1,000,000 tracks, data 1,000,000 tracks, context = ['log_mu2_pt', 'mu2_eta', 'mu2_n_pix_b_hit', 'mu2_n_pix_e_hit']
+[validate] context spectra
+[context] log_mu2_pt             data +1.6140 +- 0.3151   MC +1.5070 +- 0.2859   W1 0.344 sigma
+[context] mu2_eta                data +0.0192 +- 1.1894   MC -0.0042 +- 1.2389   W1 0.046 sigma
+[context] mu2_n_pix_b_hit        data +3.0471 +- 1.1407   MC +3.0636 +- 1.1316   W1 0.043 sigma
+[context] mu2_n_pix_e_hit        data +0.7642 +- 1.4239   MC +0.9432 +- 1.6295   W1 0.128 sigma
+[context] 192 cells (bins [4, 4, 4, 4]): total variation 0.189, 0.0000 of data in cells MC does not populate, reweighting ESS 0.823 of MC
+[setup] feature arrays: 57 MB (MC) + 57 MB (data) as float32
+[setup] training flows in 9-D subspace (block): ['log_sigma_qoverp', 'log_sigma_lambda', 'log_sigma_phi', 'log_sigma_dxy', 'log_sigma_dsz', 'pcorr_phi_qoverp', 'pcorr_dxy_qoverp', 'pcorr_dxy_phi', 'pcorr_dsz_lambda']
+[setup] the other 6 feature(s) are copied from MC unchanged
+[train] MC flow
+[mc] Adam on cuda with {'fused': True}
+[mc] epoch   0  val NLL -0.0048  lr 1.00e-03  *
+[mc] epoch   1  val NLL -1.1456  lr 2.00e-03  *
+[mc] epoch   2  val NLL -1.4975  lr 2.00e-03  *
+[mc] epoch   3  val NLL -0.6844  lr 2.00e-03
+[mc] epoch   4  val NLL -2.6576  lr 2.00e-03  *
+[mc] epoch   5  val NLL -3.0436  lr 2.00e-03  *
+[mc] epoch   6  val NLL -2.6164  lr 2.00e-03
+[mc] epoch   7  val NLL -3.3523  lr 2.00e-03  *
+[mc] epoch   8  val NLL -3.6465  lr 2.00e-03  *
+[mc] epoch   9  val NLL -3.7521  lr 2.00e-03  *
+[mc] epoch  10  val NLL -3.9324  lr 2.00e-03  *
+[mc] epoch  11  val NLL -4.0042  lr 2.00e-03  *
+[mc] epoch  12  val NLL -4.2286  lr 2.00e-03  *
+[mc] epoch  13  val NLL -4.1392  lr 2.00e-03
+[mc] epoch  14  val NLL -4.1796  lr 2.00e-03
+[mc] epoch  15  val NLL -4.8083  lr 2.00e-03  *
+[mc] epoch  16  val NLL -4.5435  lr 2.00e-03
+[mc] epoch  17  val NLL -4.6317  lr 2.00e-03
+[mc] epoch  18  val NLL -4.6548  lr 2.00e-03
+[mc] epoch  19  val NLL -5.1192  lr 2.00e-03  *
+[mc] epoch  20  val NLL -3.3277  lr 2.00e-03
+[mc] epoch  21  val NLL -3.7147  lr 2.00e-03
+[mc] epoch  22  val NLL -5.3366  lr 2.00e-03  *
+[mc] epoch  23  val NLL -4.8619  lr 2.00e-03
+[mc] epoch  24  val NLL -5.1626  lr 2.00e-03
+[mc] epoch  25  val NLL -5.1125  lr 2.00e-03
+[mc] epoch  26  val NLL -5.3387  lr 2.00e-03  *
+[mc] epoch  27  val NLL -5.6275  lr 2.00e-03  *
+[mc] epoch  28  val NLL -5.1875  lr 1.99e-03
+[mc] epoch  29  val NLL -5.3716  lr 1.99e-03
+[mc] epoch  30  val NLL -5.4398  lr 1.99e-03
+[mc] epoch  31  val NLL -5.8166  lr 1.99e-03  *
+[mc] epoch  32  val NLL -4.4561  lr 1.99e-03
+[mc] epoch  33  val NLL -5.4833  lr 1.99e-03
+[mc] epoch  34  val NLL -5.1165  lr 1.99e-03
+[mc] epoch  35  val NLL -5.9059  lr 1.99e-03  *
+[mc] epoch  36  val NLL -3.8155  lr 1.99e-03
+[mc] epoch  37  val NLL -5.2231  lr 1.99e-03
+[mc] epoch  38  val NLL -5.8578  lr 1.99e-03
+[mc] epoch  39  val NLL -5.8995  lr 1.99e-03
+[mc] epoch  40  val NLL -5.8214  lr 1.99e-03
+[mc] epoch  41  val NLL -5.9050  lr 1.99e-03
+[mc] epoch  42  val NLL -5.7348  lr 1.99e-03
+[mc] epoch  43  val NLL -5.0574  lr 1.99e-03
+[mc] epoch  44  val NLL -6.0412  lr 1.99e-03  *
+[mc] epoch  45  val NLL -6.0424  lr 1.99e-03  *
+[mc] epoch  46  val NLL -5.9614  lr 1.99e-03
+[mc] epoch  47  val NLL -6.1556  lr 1.98e-03  *
+[mc] epoch  48  val NLL -5.4309  lr 1.98e-03
+[mc] epoch  49  val NLL -6.0564  lr 1.98e-03
+[mc] epoch  50  val NLL -5.4823  lr 1.98e-03
+[mc] epoch  51  val NLL -6.0733  lr 1.98e-03
+[mc] epoch  52  val NLL -6.5376  lr 1.98e-03  *
+[mc] epoch  53  val NLL -5.5367  lr 1.98e-03
+[mc] epoch  54  val NLL -5.0245  lr 1.98e-03
+[mc] epoch  55  val NLL -6.3069  lr 1.98e-03
+[mc] epoch  56  val NLL -5.9963  lr 1.98e-03
+[mc] epoch  57  val NLL -6.2195  lr 1.98e-03
+[mc] epoch  58  val NLL -6.5806  lr 1.98e-03  *
+[mc] epoch  59  val NLL -5.9233  lr 1.98e-03
+[mc] epoch  60  val NLL -6.1411  lr 1.97e-03
+[mc] epoch  61  val NLL -6.3625  lr 1.97e-03
+[mc] epoch  62  val NLL -6.3587  lr 1.97e-03
+[mc] epoch  63  val NLL -6.4280  lr 1.97e-03
+[mc] epoch  64  val NLL -6.2605  lr 1.97e-03
+[mc] epoch  65  val NLL -5.9740  lr 1.97e-03
+[mc] epoch  66  val NLL -6.5025  lr 1.97e-03
+[mc] epoch  67  val NLL -6.4928  lr 1.97e-03
+[mc] epoch  68  val NLL -6.0043  lr 1.97e-03
+[mc] epoch  69  val NLL -6.5511  lr 1.97e-03
+[mc] epoch  70  val NLL -6.3052  lr 1.97e-03
+[mc] epoch  71  val NLL -6.5712  lr 1.96e-03
+[mc] epoch  72  val NLL -6.2430  lr 1.96e-03
+[mc] epoch  73  val NLL -6.0504  lr 1.96e-03
+[mc] epoch  74  val NLL -6.5540  lr 1.96e-03
+[mc] epoch  75  val NLL -6.5421  lr 1.96e-03
+[mc] epoch  76  val NLL -6.6870  lr 1.96e-03  *
+[mc] epoch  77  val NLL -6.5160  lr 1.96e-03
+[mc] epoch  78  val NLL -6.7053  lr 1.96e-03  *
+[mc] epoch  79  val NLL -5.4465  lr 1.96e-03
+[mc] epoch  80  val NLL -6.3839  lr 1.95e-03
+[mc] epoch  81  val NLL -6.8214  lr 1.95e-03  *
+[mc] epoch  82  val NLL -6.7870  lr 1.95e-03
+[mc] epoch  83  val NLL -6.9392  lr 1.95e-03  *
+[mc] epoch  84  val NLL -3.6393  lr 1.95e-03
+[mc] epoch  85  val NLL -6.7625  lr 1.95e-03
+[mc] epoch  86  val NLL -6.8084  lr 1.95e-03
+[mc] epoch  87  val NLL -6.2763  lr 1.95e-03
+[mc] epoch  88  val NLL -6.7498  lr 1.94e-03
+[mc] epoch  89  val NLL -6.7016  lr 1.94e-03
+[mc] epoch  90  val NLL -6.5312  lr 1.94e-03
+[mc] epoch  91  val NLL -6.8993  lr 1.94e-03
+[mc] epoch  92  val NLL -6.4394  lr 1.94e-03
+[mc] epoch  93  val NLL -6.4881  lr 1.94e-03
+[mc] epoch  94  val NLL -6.8661  lr 1.94e-03
+[mc] epoch  95  val NLL -6.2673  lr 1.94e-03
+[mc] epoch  96  val NLL -6.8638  lr 1.93e-03
+[mc] epoch  97  val NLL -6.9280  lr 1.93e-03
+[mc] epoch  98  val NLL -6.9587  lr 1.93e-03  *
+[mc] epoch  99  val NLL -6.7724  lr 1.93e-03
+[mc] epoch 100  val NLL -6.8176  lr 1.93e-03
+[mc] epoch 101  val NLL -6.9706  lr 1.93e-03  *
+[mc] epoch 102  val NLL -6.4710  lr 1.93e-03
+[mc] epoch 103  val NLL -7.1022  lr 1.92e-03  *
+[mc] epoch 104  val NLL -6.4759  lr 1.92e-03
+[mc] epoch 105  val NLL -5.7278  lr 1.92e-03
+[mc] epoch 106  val NLL -6.9811  lr 1.92e-03
+[mc] epoch 107  val NLL -7.0423  lr 1.92e-03
+[mc] epoch 108  val NLL -6.9313  lr 1.92e-03
+[mc] epoch 109  val NLL -6.8409  lr 1.91e-03
+[mc] epoch 110  val NLL -6.9829  lr 1.91e-03
+[mc] epoch 111  val NLL -7.0395  lr 1.91e-03
+[mc] epoch 112  val NLL -6.6867  lr 1.91e-03
+[mc] epoch 113  val NLL -6.9309  lr 1.91e-03
+[mc] epoch 114  val NLL -7.1335  lr 1.91e-03  *
+[mc] epoch 115  val NLL -6.7729  lr 1.90e-03
+[mc] epoch 116  val NLL -7.1634  lr 1.90e-03  *
+[mc] epoch 117  val NLL -6.6119  lr 1.90e-03
+[mc] epoch 118  val NLL -7.1264  lr 1.90e-03
+[mc] epoch 119  val NLL -6.6760  lr 1.90e-03
+[mc] epoch 120  val NLL -7.0984  lr 1.90e-03
+[mc] epoch 121  val NLL -6.3100  lr 1.89e-03
+[mc] epoch 122  val NLL -6.4684  lr 1.89e-03
+[mc] epoch 123  val NLL -7.0780  lr 1.89e-03
+[mc] epoch 124  val NLL -6.4283  lr 1.89e-03
+[mc] epoch 125  val NLL -6.3240  lr 1.89e-03
+[mc] epoch 126  val NLL -7.1981  lr 1.89e-03  *
+[mc] epoch 127  val NLL -6.5277  lr 1.88e-03
+[mc] epoch 128  val NLL -7.1868  lr 1.88e-03
+[mc] epoch 129  val NLL -7.2707  lr 1.88e-03  *
+[mc] epoch 130  val NLL -7.2370  lr 1.88e-03
+[mc] epoch 131  val NLL -7.2567  lr 1.88e-03
+[mc] epoch 132  val NLL -6.9787  lr 1.87e-03
+[mc] epoch 133  val NLL -7.2829  lr 1.87e-03  *
+[mc] epoch 134  val NLL -7.2081  lr 1.87e-03
+[mc] epoch 135  val NLL -7.0921  lr 1.87e-03
+[mc] epoch 136  val NLL -7.2463  lr 1.87e-03
+[mc] epoch 137  val NLL -7.2089  lr 1.86e-03
+[mc] epoch 138  val NLL -7.4564  lr 1.86e-03  *
+[mc] epoch 139  val NLL -7.3308  lr 1.86e-03
+[mc] epoch 140  val NLL -6.3651  lr 1.86e-03
+[mc] epoch 141  val NLL -7.3103  lr 1.86e-03
+[mc] epoch 142  val NLL -7.2555  lr 1.85e-03
+[mc] epoch 143  val NLL -7.2031  lr 1.85e-03
+[mc] epoch 144  val NLL -7.3775  lr 1.85e-03
+[mc] epoch 145  val NLL -7.2489  lr 1.85e-03
+[mc] epoch 146  val NLL -7.3611  lr 1.85e-03
+[mc] epoch 147  val NLL -7.4558  lr 1.84e-03
+[mc] epoch 148  val NLL -7.4630  lr 1.84e-03  *
+[mc] epoch 149  val NLL -7.3656  lr 1.84e-03
+[mc] epoch 150  val NLL -7.3831  lr 1.84e-03
+[mc] epoch 151  val NLL -7.2392  lr 1.84e-03
+[mc] epoch 152  val NLL -7.3496  lr 1.83e-03
+[mc] epoch 153  val NLL -7.1861  lr 1.83e-03
+[mc] epoch 154  val NLL -6.0258  lr 1.83e-03
+[mc] epoch 155  val NLL -7.3142  lr 1.83e-03
+[mc] epoch 156  val NLL -6.9434  lr 1.83e-03
+[mc] epoch 157  val NLL -7.3428  lr 1.82e-03
+[mc] epoch 158  val NLL -7.4706  lr 1.82e-03  *
+[mc] epoch 159  val NLL -7.5024  lr 1.82e-03  *
+[mc] epoch 160  val NLL -7.4432  lr 1.82e-03
+[mc] epoch 161  val NLL -6.8832  lr 1.81e-03
+[mc] epoch 162  val NLL -7.5386  lr 1.81e-03  *
+[mc] epoch 163  val NLL -7.0431  lr 1.81e-03
+[mc] epoch 164  val NLL -6.1832  lr 1.81e-03
+[mc] epoch 165  val NLL -7.4479  lr 1.81e-03
+[mc] epoch 166  val NLL -7.4267  lr 1.80e-03
+[mc] epoch 167  val NLL -7.4299  lr 1.80e-03
+[mc] epoch 168  val NLL -6.4835  lr 1.80e-03
+[mc] epoch 169  val NLL -7.4216  lr 1.80e-03
+[mc] epoch 170  val NLL -7.4849  lr 1.79e-03
+[mc] epoch 171  val NLL -7.5782  lr 1.79e-03  *
+[mc] epoch 172  val NLL -7.4499  lr 1.79e-03
+[mc] epoch 173  val NLL -6.3623  lr 1.79e-03
+[mc] epoch 174  val NLL -7.4311  lr 1.78e-03
+[mc] epoch 175  val NLL -7.4643  lr 1.78e-03
+[mc] epoch 176  val NLL -7.4861  lr 1.78e-03
+[mc] epoch 177  val NLL -7.5751  lr 1.78e-03
+[mc] epoch 178  val NLL -7.1136  lr 1.77e-03
+[mc] epoch 179  val NLL -7.4876  lr 1.77e-03
+[mc] epoch 180  val NLL -7.6594  lr 1.77e-03  *
+[mc] epoch 181  val NLL -7.5313  lr 1.77e-03
+[mc] epoch 182  val NLL -7.6578  lr 1.76e-03
+[mc] epoch 183  val NLL -7.6030  lr 1.76e-03
+[mc] epoch 184  val NLL -7.6629  lr 1.76e-03  *
+[mc] epoch 185  val NLL -7.3965  lr 1.76e-03
+[mc] epoch 186  val NLL -7.2624  lr 1.75e-03
+[mc] epoch 187  val NLL -7.1395  lr 1.75e-03
+[mc] epoch 188  val NLL -7.5521  lr 1.75e-03
+[mc] epoch 189  val NLL -7.5480  lr 1.75e-03
+[mc] epoch 190  val NLL -6.8830  lr 1.74e-03
+[mc] epoch 191  val NLL -7.5403  lr 1.74e-03
+[mc] epoch 192  val NLL -7.7055  lr 1.74e-03  *
+[mc] epoch 193  val NLL -6.7485  lr 1.74e-03
+[mc] epoch 194  val NLL -7.3965  lr 1.73e-03
+[mc] epoch 195  val NLL -7.6856  lr 1.73e-03
+[mc] epoch 196  val NLL -7.4367  lr 1.73e-03
+[mc] epoch 197  val NLL -7.6892  lr 1.73e-03
+[mc] epoch 198  val NLL -7.3894  lr 1.72e-03
+[mc] epoch 199  val NLL -7.5239  lr 1.72e-03
+[mc] epoch 200  val NLL -7.6465  lr 1.72e-03
+[mc] epoch 201  val NLL -7.6011  lr 1.71e-03
+[mc] epoch 202  val NLL -7.6690  lr 1.71e-03
+[mc] epoch 203  val NLL -7.7864  lr 1.71e-03  *
+[mc] epoch 204  val NLL -7.8384  lr 1.71e-03  *
+[mc] epoch 205  val NLL -7.7586  lr 1.70e-03
+[mc] epoch 206  val NLL -7.4046  lr 1.70e-03
+[mc] epoch 207  val NLL -7.8044  lr 1.70e-03
+[mc] epoch 208  val NLL -7.6395  lr 1.70e-03
+[mc] epoch 209  val NLL -7.8995  lr 1.69e-03  *
+[mc] epoch 210  val NLL -7.6489  lr 1.69e-03
+[mc] epoch 211  val NLL -7.7550  lr 1.69e-03
+[mc] epoch 212  val NLL -7.6793  lr 1.68e-03
+[mc] epoch 213  val NLL -7.7121  lr 1.68e-03
+[mc] epoch 214  val NLL -7.8082  lr 1.68e-03
+[mc] epoch 215  val NLL -7.7947  lr 1.68e-03
+[mc] epoch 216  val NLL -7.4562  lr 1.67e-03
+[mc] epoch 217  val NLL -7.7006  lr 1.67e-03
+[mc] epoch 218  val NLL -7.2374  lr 1.67e-03
+[mc] epoch 219  val NLL -7.6274  lr 1.66e-03
+[mc] epoch 220  val NLL -7.3034  lr 1.66e-03
+[mc] epoch 221  val NLL -7.6869  lr 1.66e-03
+[mc] epoch 222  val NLL -7.9461  lr 1.65e-03  *
+[mc] epoch 223  val NLL -7.5562  lr 1.65e-03
+[mc] epoch 224  val NLL -7.6034  lr 1.65e-03
+[mc] epoch 225  val NLL -7.8356  lr 1.65e-03
+[mc] epoch 226  val NLL -7.6279  lr 1.64e-03
+[mc] epoch 227  val NLL -7.8959  lr 1.64e-03
+[mc] epoch 228  val NLL -7.8301  lr 1.64e-03
+[mc] epoch 229  val NLL -6.9889  lr 1.63e-03
+[mc] epoch 230  val NLL -7.8158  lr 1.63e-03
+[mc] epoch 231  val NLL -7.7752  lr 1.63e-03
+[mc] epoch 232  val NLL -7.9219  lr 1.62e-03
+[mc] epoch 233  val NLL -7.1432  lr 1.62e-03
+[mc] epoch 234  val NLL -7.8630  lr 1.62e-03
+[mc] epoch 235  val NLL -7.8013  lr 1.62e-03
+[mc] epoch 236  val NLL -7.9476  lr 1.61e-03  *
+[mc] epoch 237  val NLL -7.8575  lr 1.61e-03
+[mc] epoch 238  val NLL -7.8707  lr 1.61e-03
+[mc] epoch 239  val NLL -7.9147  lr 1.60e-03
+[mc] epoch 240  val NLL -7.3375  lr 1.60e-03
+[mc] epoch 241  val NLL -7.8216  lr 1.60e-03
+[mc] epoch 242  val NLL -7.8914  lr 1.59e-03
+[mc] epoch 243  val NLL -7.8845  lr 1.59e-03
+[mc] epoch 244  val NLL -7.9392  lr 1.59e-03
+[mc] epoch 245  val NLL -7.6816  lr 1.58e-03
+[mc] epoch 246  val NLL -7.9842  lr 1.58e-03  *
+[mc] epoch 247  val NLL -7.9371  lr 1.58e-03
+[mc] epoch 248  val NLL -7.9140  lr 1.58e-03
+[mc] epoch 249  val NLL -7.9406  lr 1.57e-03
+[mc] epoch 250  val NLL -7.9528  lr 1.57e-03
+[mc] epoch 251  val NLL -7.8824  lr 1.57e-03
+[mc] epoch 252  val NLL -7.9528  lr 1.56e-03
+[mc] epoch 253  val NLL -7.8371  lr 1.56e-03
+[mc] epoch 254  val NLL -7.8260  lr 1.56e-03
+[mc] epoch 255  val NLL -7.8719  lr 1.55e-03
+[mc] epoch 256  val NLL -7.9249  lr 1.55e-03
+[mc] epoch 257  val NLL -7.9511  lr 1.55e-03
+[mc] epoch 258  val NLL -7.9652  lr 1.54e-03
+[mc] epoch 259  val NLL -7.9174  lr 1.54e-03
+[mc] epoch 260  val NLL -7.5352  lr 1.54e-03
+[mc] epoch 261  val NLL -7.5653  lr 1.53e-03
+[mc] epoch 262  val NLL -7.9420  lr 1.53e-03
+[mc] epoch 263  val NLL -7.9862  lr 1.53e-03  *
+[mc] epoch 264  val NLL -8.0109  lr 1.52e-03  *
+[mc] epoch 265  val NLL -7.9624  lr 1.52e-03
+[mc] epoch 266  val NLL -8.0538  lr 1.52e-03  *
+[mc] epoch 267  val NLL -8.0251  lr 1.51e-03
+[mc] epoch 268  val NLL -8.0898  lr 1.51e-03  *
+[mc] epoch 269  val NLL -8.1145  lr 1.51e-03  *
+[mc] epoch 270  val NLL -7.7702  lr 1.50e-03
+[mc] epoch 271  val NLL -7.9633  lr 1.50e-03
+[mc] epoch 272  val NLL -8.0116  lr 1.50e-03
+[mc] epoch 273  val NLL -8.0421  lr 1.49e-03
+[mc] epoch 274  val NLL -8.0664  lr 1.49e-03
+[mc] epoch 275  val NLL -7.8305  lr 1.49e-03
+[mc] epoch 276  val NLL -7.6880  lr 1.48e-03
+[mc] epoch 277  val NLL -8.0605  lr 1.48e-03
+[mc] epoch 278  val NLL -7.6786  lr 1.48e-03
+[mc] epoch 279  val NLL -7.8931  lr 1.47e-03
+[mc] epoch 280  val NLL -8.0590  lr 1.47e-03
+[mc] epoch 281  val NLL -7.2051  lr 1.47e-03
+[mc] epoch 282  val NLL -7.7189  lr 1.46e-03
+[mc] epoch 283  val NLL -8.1278  lr 1.46e-03  *
+[mc] epoch 284  val NLL -7.9318  lr 1.46e-03
+[mc] epoch 285  val NLL -7.4489  lr 1.45e-03
+[mc] epoch 286  val NLL -8.0669  lr 1.45e-03
+[mc] epoch 287  val NLL -8.1138  lr 1.45e-03
+[mc] epoch 288  val NLL -8.1093  lr 1.44e-03
+[mc] epoch 289  val NLL -8.0851  lr 1.44e-03
+[mc] epoch 290  val NLL -8.0155  lr 1.43e-03
+[mc] epoch 291  val NLL -7.1098  lr 1.43e-03
+[mc] epoch 292  val NLL -8.1183  lr 1.43e-03
+[mc] epoch 293  val NLL -7.7224  lr 1.42e-03
+[mc] epoch 294  val NLL -7.8687  lr 1.42e-03
+[mc] epoch 295  val NLL -8.1075  lr 1.42e-03
+[mc] epoch 296  val NLL -7.9815  lr 1.41e-03
+[mc] epoch 297  val NLL -7.9020  lr 1.41e-03
+[mc] epoch 298  val NLL -8.1198  lr 1.41e-03
+[mc] epoch 299  val NLL -8.1469  lr 1.40e-03  *
+[mc] epoch 300  val NLL -8.1830  lr 1.40e-03  *
+[mc] epoch 301  val NLL -8.0455  lr 1.40e-03
+[mc] epoch 302  val NLL -8.1322  lr 1.39e-03
+[mc] epoch 303  val NLL -8.1815  lr 1.39e-03
+[mc] epoch 304  val NLL -7.4817  lr 1.39e-03
+[mc] epoch 305  val NLL -8.1689  lr 1.38e-03
+[mc] epoch 306  val NLL -8.2008  lr 1.38e-03  *
+[mc] epoch 307  val NLL -8.1392  lr 1.37e-03
+[mc] epoch 308  val NLL -8.2018  lr 1.37e-03  *
+[mc] epoch 309  val NLL -7.8236  lr 1.37e-03
+[mc] epoch 310  val NLL -7.9871  lr 1.36e-03
+[mc] epoch 311  val NLL -8.1731  lr 1.36e-03
+[mc] epoch 312  val NLL -8.1818  lr 1.36e-03
+[mc] epoch 313  val NLL -8.0644  lr 1.35e-03
+[mc] epoch 314  val NLL -8.0664  lr 1.35e-03
+[mc] epoch 315  val NLL -7.9341  lr 1.35e-03
+[mc] epoch 316  val NLL -8.2356  lr 1.34e-03  *
+[mc] epoch 317  val NLL -8.1847  lr 1.34e-03
+[mc] epoch 318  val NLL -8.0642  lr 1.33e-03
+[mc] epoch 319  val NLL -8.1647  lr 1.33e-03
+[mc] epoch 320  val NLL -6.6830  lr 1.33e-03
+[mc] epoch 321  val NLL -8.1440  lr 1.32e-03
+[mc] epoch 322  val NLL -8.2699  lr 1.32e-03  *
+[mc] epoch 323  val NLL -8.0723  lr 1.32e-03
+[mc] epoch 324  val NLL -8.1975  lr 1.31e-03
+[mc] epoch 325  val NLL -8.2544  lr 1.31e-03
+[mc] epoch 326  val NLL -8.1893  lr 1.31e-03
+[mc] epoch 327  val NLL -8.1835  lr 1.30e-03
+[mc] epoch 328  val NLL -8.2945  lr 1.30e-03  *
+[mc] epoch 329  val NLL -8.1961  lr 1.29e-03
+[mc] epoch 330  val NLL -7.9770  lr 1.29e-03
+[mc] epoch 331  val NLL -8.2560  lr 1.29e-03
+[mc] epoch 332  val NLL -8.2000  lr 1.28e-03
+[mc] epoch 333  val NLL -8.2624  lr 1.28e-03
+[mc] epoch 334  val NLL -8.1836  lr 1.28e-03
+[mc] epoch 335  val NLL -8.2864  lr 1.27e-03
+[mc] epoch 336  val NLL -8.2664  lr 1.27e-03
+[mc] epoch 337  val NLL -7.8094  lr 1.26e-03
+[mc] epoch 338  val NLL -8.1001  lr 1.26e-03
+[mc] epoch 339  val NLL -8.1547  lr 1.26e-03
+[mc] epoch 340  val NLL -8.2549  lr 1.25e-03
+[mc] epoch 341  val NLL -8.3136  lr 1.25e-03  *
+[mc] epoch 342  val NLL -7.4398  lr 1.25e-03
+[mc] epoch 343  val NLL -8.3062  lr 1.24e-03
+[mc] epoch 344  val NLL -8.2716  lr 1.24e-03
+[mc] epoch 345  val NLL -7.7690  lr 1.23e-03
+[mc] epoch 346  val NLL -8.2119  lr 1.23e-03
+[mc] epoch 347  val NLL -8.2740  lr 1.23e-03
+[mc] epoch 348  val NLL -8.3224  lr 1.22e-03  *
+[mc] epoch 349  val NLL -8.3517  lr 1.22e-03  *
+[mc] epoch 350  val NLL -8.2074  lr 1.22e-03
+[mc] epoch 351  val NLL -8.0552  lr 1.21e-03
+[mc] epoch 352  val NLL -8.2403  lr 1.21e-03
+[mc] epoch 353  val NLL -8.3057  lr 1.20e-03
+[mc] epoch 354  val NLL -8.1387  lr 1.20e-03
+[mc] epoch 355  val NLL -8.0065  lr 1.20e-03
+[mc] epoch 356  val NLL -8.3175  lr 1.19e-03
+[mc] epoch 357  val NLL -8.2709  lr 1.19e-03
+[mc] epoch 358  val NLL -8.2765  lr 1.19e-03
+[mc] epoch 359  val NLL -8.3051  lr 1.18e-03
+[mc] epoch 360  val NLL -8.3523  lr 1.18e-03  *
+[mc] epoch 361  val NLL -8.2610  lr 1.17e-03
+[mc] epoch 362  val NLL -8.2611  lr 1.17e-03
+[mc] epoch 363  val NLL -8.3419  lr 1.17e-03
+[mc] epoch 364  val NLL -8.2901  lr 1.16e-03
+[mc] epoch 365  val NLL -8.3251  lr 1.16e-03
+[mc] epoch 366  val NLL -8.3617  lr 1.15e-03  *
+[mc] epoch 367  val NLL -8.3453  lr 1.15e-03
+[mc] epoch 368  val NLL -8.3219  lr 1.15e-03
+[mc] epoch 369  val NLL -8.3673  lr 1.14e-03  *
+[mc] epoch 370  val NLL -8.3291  lr 1.14e-03
+[mc] epoch 371  val NLL -8.3073  lr 1.14e-03
+[mc] epoch 372  val NLL -7.9686  lr 1.13e-03
+[mc] epoch 373  val NLL -8.3657  lr 1.13e-03
+[mc] epoch 374  val NLL -8.2895  lr 1.12e-03
+[mc] epoch 375  val NLL -8.3663  lr 1.12e-03
+[mc] epoch 376  val NLL -8.1992  lr 1.12e-03
+[mc] epoch 377  val NLL -8.3633  lr 1.11e-03
+[mc] epoch 378  val NLL -8.3340  lr 1.11e-03
+[mc] epoch 379  val NLL -8.3795  lr 1.10e-03  *
+[mc] epoch 380  val NLL -8.3608  lr 1.10e-03
+[mc] epoch 381  val NLL -8.0891  lr 1.10e-03
+[mc] epoch 382  val NLL -8.3491  lr 1.09e-03
+[mc] epoch 383  val NLL -8.3879  lr 1.09e-03  *
+[mc] epoch 384  val NLL -8.3567  lr 1.09e-03
+[mc] epoch 385  val NLL -8.3353  lr 1.08e-03
+[mc] epoch 386  val NLL -8.3537  lr 1.08e-03
+[mc] epoch 387  val NLL -8.2037  lr 1.07e-03
+[mc] epoch 388  val NLL -8.4433  lr 1.07e-03  *
+[mc] epoch 389  val NLL -8.3953  lr 1.07e-03
+[mc] epoch 390  val NLL -8.2070  lr 1.06e-03
+[mc] epoch 391  val NLL -8.4067  lr 1.06e-03
+[mc] epoch 392  val NLL -7.9785  lr 1.05e-03
+[mc] epoch 393  val NLL -8.4347  lr 1.05e-03
+[mc] epoch 394  val NLL -8.3111  lr 1.05e-03
+[mc] epoch 395  val NLL -8.4383  lr 1.04e-03
+[mc] epoch 396  val NLL -8.3897  lr 1.04e-03
+[mc] epoch 397  val NLL -8.3757  lr 1.04e-03
+[mc] epoch 398  val NLL -8.4219  lr 1.03e-03
+[mc] epoch 399  val NLL -8.1370  lr 1.03e-03
+[mc] epoch 400  val NLL -8.2995  lr 1.02e-03
+[mc] epoch 401  val NLL -8.3526  lr 1.02e-03
+[mc] epoch 402  val NLL -8.4628  lr 1.02e-03  *
+[mc] epoch 403  val NLL -8.4233  lr 1.01e-03
+[mc] epoch 404  val NLL -8.1999  lr 1.01e-03
+[mc] epoch 405  val NLL -8.4828  lr 1.00e-03  *
+[mc] epoch 406  val NLL -8.4562  lr 1.00e-03
+[mc] epoch 407  val NLL -8.1998  lr 9.97e-04
+[mc] epoch 408  val NLL -8.4585  lr 9.93e-04
+[mc] epoch 409  val NLL -8.4877  lr 9.89e-04  *
+[mc] epoch 410  val NLL -8.4633  lr 9.85e-04
+[mc] epoch 411  val NLL -8.3993  lr 9.81e-04
+[mc] epoch 412  val NLL -8.5277  lr 9.78e-04  *
+[mc] epoch 413  val NLL -8.5015  lr 9.74e-04
+[mc] epoch 414  val NLL -8.4862  lr 9.70e-04
+[mc] epoch 415  val NLL -8.3866  lr 9.66e-04
+[mc] epoch 416  val NLL -8.3963  lr 9.62e-04
+[mc] epoch 417  val NLL -8.5153  lr 9.58e-04
+[mc] epoch 418  val NLL -8.3515  lr 9.54e-04
+[mc] epoch 419  val NLL -8.5070  lr 9.51e-04
+[mc] epoch 420  val NLL -8.4390  lr 9.47e-04
+[mc] epoch 421  val NLL -8.2594  lr 9.43e-04
+[mc] epoch 422  val NLL -8.4296  lr 9.39e-04
+[mc] epoch 423  val NLL -8.5014  lr 9.35e-04
+[mc] epoch 424  val NLL -8.5455  lr 9.31e-04  *
+[mc] epoch 425  val NLL -8.4649  lr 9.28e-04
+[mc] epoch 426  val NLL -8.4576  lr 9.24e-04
+[mc] epoch 427  val NLL -8.5363  lr 9.20e-04
+[mc] epoch 428  val NLL -8.4866  lr 9.16e-04
+[mc] epoch 429  val NLL -8.4188  lr 9.12e-04
+[mc] epoch 430  val NLL -8.3974  lr 9.08e-04
+[mc] epoch 431  val NLL -8.5468  lr 9.05e-04  *
+[mc] epoch 432  val NLL -8.4962  lr 9.01e-04
+[mc] epoch 433  val NLL -8.4815  lr 8.97e-04
+[mc] epoch 434  val NLL -8.4886  lr 8.93e-04
+[mc] epoch 435  val NLL -8.4618  lr 8.89e-04
+[mc] epoch 436  val NLL -8.4979  lr 8.85e-04
+[mc] epoch 437  val NLL -8.5637  lr 8.82e-04  *
+[mc] epoch 438  val NLL -8.5518  lr 8.78e-04
+[mc] epoch 439  val NLL -8.5286  lr 8.74e-04
+[mc] epoch 440  val NLL -8.5453  lr 8.70e-04
+[mc] epoch 441  val NLL -8.4231  lr 8.66e-04
+[mc] epoch 442  val NLL -8.3665  lr 8.63e-04
+[mc] epoch 443  val NLL -8.5560  lr 8.59e-04
+[mc] epoch 444  val NLL -8.5358  lr 8.55e-04
+[mc] epoch 445  val NLL -8.4118  lr 8.51e-04
+[mc] epoch 446  val NLL -8.5273  lr 8.47e-04
+[mc] epoch 447  val NLL -8.5168  lr 8.43e-04
+[mc] epoch 448  val NLL -8.5675  lr 8.40e-04  *
+[mc] epoch 449  val NLL -8.5611  lr 8.36e-04
+[mc] epoch 450  val NLL -8.5492  lr 8.32e-04
+[mc] epoch 451  val NLL -8.2415  lr 8.28e-04
+[mc] epoch 452  val NLL -8.5536  lr 8.25e-04
+[mc] epoch 453  val NLL -8.5851  lr 8.21e-04  *
+[mc] epoch 454  val NLL -8.5691  lr 8.17e-04
+[mc] epoch 455  val NLL -8.5904  lr 8.13e-04  *
+[mc] epoch 456  val NLL -8.3828  lr 8.09e-04
+[mc] epoch 457  val NLL -8.5829  lr 8.06e-04
+[mc] epoch 458  val NLL -8.5913  lr 8.02e-04  *
+[mc] epoch 459  val NLL -8.5813  lr 7.98e-04
+[mc] epoch 460  val NLL -8.6160  lr 7.94e-04  *
+[mc] epoch 461  val NLL -8.5932  lr 7.91e-04
+[mc] epoch 462  val NLL -8.5562  lr 7.87e-04
+[mc] epoch 463  val NLL -8.5484  lr 7.83e-04
+[mc] epoch 464  val NLL -8.5596  lr 7.79e-04
+[mc] epoch 465  val NLL -8.6168  lr 7.76e-04  *
+[mc] epoch 466  val NLL -8.5704  lr 7.72e-04
+[mc] epoch 467  val NLL -8.5646  lr 7.68e-04
+[mc] epoch 468  val NLL -8.5721  lr 7.64e-04
+[mc] epoch 469  val NLL -8.6170  lr 7.61e-04  *
+[mc] epoch 470  val NLL -8.6050  lr 7.57e-04
+[mc] epoch 471  val NLL -8.6047  lr 7.53e-04
+[mc] epoch 472  val NLL -8.4535  lr 7.50e-04
+[mc] epoch 473  val NLL -8.4445  lr 7.46e-04
+[mc] epoch 474  val NLL -8.5987  lr 7.42e-04
+[mc] epoch 475  val NLL -8.6374  lr 7.39e-04  *
+[mc] epoch 476  val NLL -8.6053  lr 7.35e-04
+[mc] epoch 477  val NLL -8.6259  lr 7.31e-04
+[mc] epoch 478  val NLL -8.5382  lr 7.27e-04
+[mc] epoch 479  val NLL -8.6788  lr 7.24e-04  *
+[mc] epoch 480  val NLL -8.6309  lr 7.20e-04
+[mc] epoch 481  val NLL -8.6374  lr 7.16e-04
+[mc] epoch 482  val NLL -8.6294  lr 7.13e-04
+[mc] epoch 483  val NLL -8.6341  lr 7.09e-04
+[mc] epoch 484  val NLL -8.6272  lr 7.05e-04
+[mc] epoch 485  val NLL -8.2967  lr 7.02e-04
+[mc] epoch 486  val NLL -8.6106  lr 6.98e-04
+[mc] epoch 487  val NLL -8.5967  lr 6.95e-04
+[mc] epoch 488  val NLL -8.6397  lr 6.91e-04
+[mc] epoch 489  val NLL -8.6326  lr 6.87e-04
+[mc] epoch 490  val NLL -8.5918  lr 6.84e-04
+[mc] epoch 491  val NLL -8.5940  lr 6.80e-04
+[mc] epoch 492  val NLL -8.5067  lr 6.76e-04
+[mc] epoch 493  val NLL -8.6632  lr 6.73e-04
+[mc] epoch 494  val NLL -8.6566  lr 6.69e-04
+[mc] epoch 495  val NLL -8.6621  lr 6.66e-04
+[mc] epoch 496  val NLL -8.6541  lr 6.62e-04
+[mc] epoch 497  val NLL -8.6593  lr 6.58e-04
+[mc] epoch 498  val NLL -8.6457  lr 6.55e-04
+[mc] epoch 499  val NLL -8.4254  lr 6.51e-04
+[mc] epoch 500  val NLL -8.6614  lr 6.48e-04
+[mc] epoch 501  val NLL -8.6938  lr 6.44e-04  *
+[mc] epoch 502  val NLL -8.6555  lr 6.41e-04
+[mc] epoch 503  val NLL -8.6564  lr 6.37e-04
+[mc] epoch 504  val NLL -8.6556  lr 6.33e-04
+[mc] epoch 505  val NLL -8.6955  lr 6.30e-04  *
+[mc] epoch 506  val NLL -8.6299  lr 6.26e-04
+[mc] epoch 507  val NLL -8.6754  lr 6.23e-04
+[mc] epoch 508  val NLL -8.6398  lr 6.19e-04
+[mc] epoch 509  val NLL -8.5600  lr 6.16e-04
+[mc] epoch 510  val NLL -8.6622  lr 6.12e-04
+[mc] epoch 511  val NLL -8.6846  lr 6.09e-04
+[mc] epoch 512  val NLL -8.6591  lr 6.05e-04
+[mc] epoch 513  val NLL -8.7172  lr 6.02e-04  *
+[mc] epoch 514  val NLL -8.6992  lr 5.98e-04
+[mc] epoch 515  val NLL -8.6761  lr 5.95e-04
+[mc] epoch 516  val NLL -8.6934  lr 5.91e-04
+[mc] epoch 517  val NLL -8.7095  lr 5.88e-04
+[mc] epoch 518  val NLL -8.6493  lr 5.84e-04
+[mc] epoch 519  val NLL -8.6241  lr 5.81e-04
+[mc] epoch 520  val NLL -8.7229  lr 5.77e-04  *
+[mc] epoch 521  val NLL -8.6961  lr 5.74e-04
+[mc] epoch 522  val NLL -8.6897  lr 5.71e-04
+[mc] epoch 523  val NLL -8.6935  lr 5.67e-04
+[mc] epoch 524  val NLL -8.6561  lr 5.64e-04
+[mc] epoch 525  val NLL -8.6803  lr 5.60e-04
+[mc] epoch 526  val NLL -8.6529  lr 5.57e-04
+[mc] epoch 527  val NLL -8.7023  lr 5.54e-04
+[mc] epoch 528  val NLL -8.7413  lr 5.50e-04  *
+[mc] epoch 529  val NLL -8.7094  lr 5.47e-04
+[mc] epoch 530  val NLL -8.6699  lr 5.43e-04
+[mc] epoch 531  val NLL -8.6718  lr 5.40e-04
+[mc] epoch 532  val NLL -8.7114  lr 5.37e-04
+[mc] epoch 533  val NLL -8.7298  lr 5.33e-04
+[mc] epoch 534  val NLL -8.7223  lr 5.30e-04
+[mc] epoch 535  val NLL -8.7391  lr 5.27e-04
+[mc] epoch 536  val NLL -8.7188  lr 5.23e-04
+[mc] epoch 537  val NLL -8.6757  lr 5.20e-04
+[mc] epoch 538  val NLL -8.7421  lr 5.17e-04  *
+[mc] epoch 539  val NLL -8.7303  lr 5.13e-04
+[mc] epoch 540  val NLL -8.7566  lr 5.10e-04  *
+[mc] epoch 541  val NLL -8.6949  lr 5.07e-04
+[mc] epoch 542  val NLL -8.7442  lr 5.04e-04
+[mc] epoch 543  val NLL -8.7374  lr 5.00e-04
+[mc] epoch 544  val NLL -8.7227  lr 4.97e-04
+[mc] epoch 545  val NLL -8.6549  lr 4.94e-04
+[mc] epoch 546  val NLL -8.7536  lr 4.90e-04
+[mc] epoch 547  val NLL -8.7564  lr 4.87e-04
+[mc] epoch 548  val NLL -8.7425  lr 4.84e-04
+[mc] epoch 549  val NLL -8.6908  lr 4.81e-04
+[mc] epoch 550  val NLL -8.7409  lr 4.78e-04
+[mc] epoch 551  val NLL -8.7390  lr 4.74e-04
+[mc] epoch 552  val NLL -8.7399  lr 4.71e-04
+[mc] epoch 553  val NLL -8.7526  lr 4.68e-04
+[mc] epoch 554  val NLL -8.7610  lr 4.65e-04  *
+[mc] epoch 555  val NLL -8.7564  lr 4.62e-04
+[mc] epoch 556  val NLL -8.7697  lr 4.58e-04  *
+[mc] epoch 557  val NLL -8.7562  lr 4.55e-04
+[mc] epoch 558  val NLL -8.7436  lr 4.52e-04
+[mc] epoch 559  val NLL -8.7429  lr 4.49e-04
+[mc] epoch 560  val NLL -8.7332  lr 4.46e-04
+[mc] epoch 561  val NLL -8.7364  lr 4.43e-04
+[mc] epoch 562  val NLL -8.7881  lr 4.40e-04  *
+[mc] epoch 563  val NLL -8.7764  lr 4.37e-04
+[mc] epoch 564  val NLL -8.7575  lr 4.33e-04
+[mc] epoch 565  val NLL -8.7839  lr 4.30e-04
+[mc] epoch 566  val NLL -8.7691  lr 4.27e-04
+[mc] epoch 567  val NLL -8.7877  lr 4.24e-04
+[mc] epoch 568  val NLL -8.7483  lr 4.21e-04
+[mc] epoch 569  val NLL -8.7548  lr 4.18e-04
+[mc] epoch 570  val NLL -8.7057  lr 4.15e-04
+[mc] epoch 571  val NLL -8.7805  lr 4.12e-04
+[mc] epoch 572  val NLL -8.7604  lr 4.09e-04
+[mc] epoch 573  val NLL -8.7771  lr 4.06e-04
+[mc] epoch 574  val NLL -8.7837  lr 4.03e-04
+[mc] epoch 575  val NLL -8.7801  lr 4.00e-04
+[mc] epoch 576  val NLL -8.7813  lr 3.97e-04
+[mc] epoch 577  val NLL -8.6096  lr 3.94e-04
+[mc] epoch 578  val NLL -8.7790  lr 3.91e-04
+[mc] epoch 579  val NLL -8.7825  lr 3.88e-04
+[mc] epoch 580  val NLL -8.7993  lr 3.85e-04  *
+[mc] epoch 581  val NLL -8.8055  lr 3.82e-04  *
+[mc] epoch 582  val NLL -8.7688  lr 3.79e-04
+[mc] epoch 583  val NLL -8.7625  lr 3.76e-04
+[mc] epoch 584  val NLL -8.7951  lr 3.73e-04
+[mc] epoch 585  val NLL -8.7984  lr 3.71e-04
+[mc] epoch 586  val NLL -8.7715  lr 3.68e-04
+[mc] epoch 587  val NLL -8.8017  lr 3.65e-04
+[mc] epoch 588  val NLL -8.7867  lr 3.62e-04
+[mc] epoch 589  val NLL -8.7961  lr 3.59e-04
+[mc] epoch 590  val NLL -8.8042  lr 3.56e-04
+[mc] epoch 591  val NLL -8.7937  lr 3.53e-04
+[mc] epoch 592  val NLL -8.7841  lr 3.51e-04
+[mc] epoch 593  val NLL -8.8003  lr 3.48e-04
+[mc] epoch 594  val NLL -8.7867  lr 3.45e-04
+[mc] epoch 595  val NLL -8.8077  lr 3.42e-04  *
+[mc] epoch 596  val NLL -8.7967  lr 3.39e-04
+[mc] epoch 597  val NLL -8.8132  lr 3.37e-04  *
+[mc] epoch 598  val NLL -8.7980  lr 3.34e-04
+[mc] epoch 599  val NLL -8.8318  lr 3.31e-04  *
+[mc] epoch 600  val NLL -8.8107  lr 3.28e-04
+[mc] epoch 601  val NLL -8.8085  lr 3.26e-04
+[mc] epoch 602  val NLL -8.8201  lr 3.23e-04
+[mc] epoch 603  val NLL -8.8289  lr 3.20e-04
+[mc] epoch 604  val NLL -8.8065  lr 3.18e-04
+[mc] epoch 605  val NLL -8.8364  lr 3.15e-04  *
+[mc] epoch 606  val NLL -8.8092  lr 3.12e-04
+[mc] epoch 607  val NLL -8.8286  lr 3.10e-04
+[mc] epoch 608  val NLL -8.8302  lr 3.07e-04
+[mc] epoch 609  val NLL -8.7876  lr 3.04e-04
+[mc] epoch 610  val NLL -8.8461  lr 3.02e-04  *
+[mc] epoch 611  val NLL -8.7760  lr 2.99e-04
+[mc] epoch 612  val NLL -8.8255  lr 2.96e-04
+[mc] epoch 613  val NLL -8.8303  lr 2.94e-04
+[mc] epoch 614  val NLL -8.8360  lr 2.91e-04
+[mc] epoch 615  val NLL -8.8210  lr 2.89e-04
+[mc] epoch 616  val NLL -8.8300  lr 2.86e-04
+[mc] epoch 617  val NLL -8.8421  lr 2.84e-04
+[mc] epoch 618  val NLL -8.8439  lr 2.81e-04
+[mc] epoch 619  val NLL -8.8264  lr 2.78e-04
+[mc] epoch 620  val NLL -8.8248  lr 2.76e-04
+[mc] epoch 621  val NLL -8.8326  lr 2.73e-04
+[mc] epoch 622  val NLL -8.8571  lr 2.71e-04  *
+[mc] epoch 623  val NLL -8.8590  lr 2.68e-04  *
+[mc] epoch 624  val NLL -8.7813  lr 2.66e-04
+[mc] epoch 625  val NLL -8.8426  lr 2.64e-04
+[mc] epoch 626  val NLL -8.8162  lr 2.61e-04
+[mc] epoch 627  val NLL -8.8452  lr 2.59e-04
+[mc] epoch 628  val NLL -8.8550  lr 2.56e-04
+[mc] epoch 629  val NLL -8.8485  lr 2.54e-04
+[mc] epoch 630  val NLL -8.8191  lr 2.51e-04
+[mc] epoch 631  val NLL -8.8309  lr 2.49e-04
+[mc] epoch 632  val NLL -8.8411  lr 2.47e-04
+[mc] epoch 633  val NLL -8.8563  lr 2.44e-04
+[mc] epoch 634  val NLL -8.8529  lr 2.42e-04
+[mc] epoch 635  val NLL -8.8419  lr 2.40e-04
+[mc] epoch 636  val NLL -8.8526  lr 2.37e-04
+[mc] epoch 637  val NLL -8.8614  lr 2.35e-04  *
+[mc] epoch 638  val NLL -8.8656  lr 2.33e-04  *
+[mc] epoch 639  val NLL -8.5654  lr 2.30e-04
+[mc] epoch 640  val NLL -8.8664  lr 2.28e-04  *
+[mc] epoch 641  val NLL -8.8576  lr 2.26e-04
+[mc] epoch 642  val NLL -8.8593  lr 2.24e-04
+[mc] epoch 643  val NLL -8.8593  lr 2.21e-04
+[mc] epoch 644  val NLL -8.8541  lr 2.19e-04
+[mc] epoch 645  val NLL -8.7905  lr 2.17e-04
+[mc] epoch 646  val NLL -8.8620  lr 2.15e-04
+[mc] epoch 647  val NLL -8.8712  lr 2.12e-04  *
+[mc] epoch 648  val NLL -8.8587  lr 2.10e-04
+[mc] epoch 649  val NLL -8.8730  lr 2.08e-04  *
+[mc] epoch 650  val NLL -8.8759  lr 2.06e-04  *
+[mc] epoch 651  val NLL -8.8182  lr 2.04e-04
+[mc] epoch 652  val NLL -8.8590  lr 2.02e-04
+[mc] epoch 653  val NLL -8.8792  lr 2.00e-04  *
+[mc] epoch 654  val NLL -8.8764  lr 1.97e-04
+[mc] epoch 655  val NLL -8.8564  lr 1.95e-04
+[mc] epoch 656  val NLL -8.8630  lr 1.93e-04
+[mc] epoch 657  val NLL -8.8719  lr 1.91e-04
+[mc] epoch 658  val NLL -8.8639  lr 1.89e-04
+[mc] epoch 659  val NLL -8.8532  lr 1.87e-04
+[mc] epoch 660  val NLL -8.8720  lr 1.85e-04
+[mc] epoch 661  val NLL -8.8601  lr 1.83e-04
+[mc] epoch 662  val NLL -8.8756  lr 1.81e-04
+[mc] epoch 663  val NLL -8.8827  lr 1.79e-04  *
+[mc] epoch 664  val NLL -8.8769  lr 1.77e-04
+[mc] epoch 665  val NLL -8.8782  lr 1.75e-04
+[mc] epoch 666  val NLL -8.8698  lr 1.73e-04
+[mc] epoch 667  val NLL -8.8749  lr 1.71e-04
+[mc] epoch 668  val NLL -8.8782  lr 1.69e-04
+[mc] epoch 669  val NLL -8.8640  lr 1.67e-04
+[mc] epoch 670  val NLL -8.8480  lr 1.66e-04
+[mc] epoch 671  val NLL -8.8785  lr 1.64e-04
+[mc] epoch 672  val NLL -8.8739  lr 1.62e-04
+[mc] epoch 673  val NLL -8.8802  lr 1.60e-04
+[mc] epoch 674  val NLL -8.8667  lr 1.58e-04
+[mc] epoch 675  val NLL -8.8942  lr 1.56e-04  *
+[mc] epoch 676  val NLL -8.8807  lr 1.54e-04
+[mc] epoch 677  val NLL -8.8645  lr 1.53e-04
+[mc] epoch 678  val NLL -8.8799  lr 1.51e-04
+[mc] epoch 679  val NLL -8.8885  lr 1.49e-04
+[mc] epoch 680  val NLL -8.8804  lr 1.47e-04
+[mc] epoch 681  val NLL -8.8877  lr 1.46e-04
+[mc] epoch 682  val NLL -8.8754  lr 1.44e-04
+[mc] epoch 683  val NLL -8.8937  lr 1.42e-04
+[mc] epoch 684  val NLL -8.8938  lr 1.40e-04
+[mc] epoch 685  val NLL -8.8904  lr 1.39e-04
+[mc] epoch 686  val NLL -8.8952  lr 1.37e-04  *
+[mc] epoch 687  val NLL -8.8935  lr 1.35e-04
+[mc] epoch 688  val NLL -8.8923  lr 1.34e-04
+[mc] epoch 689  val NLL -8.8881  lr 1.32e-04
+[mc] epoch 690  val NLL -8.8847  lr 1.30e-04
+[mc] epoch 691  val NLL -8.9015  lr 1.29e-04  *
+[mc] epoch 692  val NLL -8.8930  lr 1.27e-04
+[mc] epoch 693  val NLL -8.8844  lr 1.26e-04
+[mc] epoch 694  val NLL -8.9033  lr 1.24e-04  *
+[mc] epoch 695  val NLL -8.8989  lr 1.23e-04
+[mc] epoch 696  val NLL -8.9021  lr 1.21e-04
+[mc] epoch 697  val NLL -8.8981  lr 1.19e-04
+[mc] epoch 698  val NLL -8.8996  lr 1.18e-04
+[mc] epoch 699  val NLL -8.8826  lr 1.16e-04
+[mc] epoch 700  val NLL -8.9019  lr 1.15e-04
+[mc] epoch 701  val NLL -8.8949  lr 1.13e-04
+[mc] epoch 702  val NLL -8.9014  lr 1.12e-04
+[mc] epoch 703  val NLL -8.9042  lr 1.11e-04  *
+[mc] epoch 704  val NLL -8.8988  lr 1.09e-04
+[mc] epoch 705  val NLL -8.9069  lr 1.08e-04  *
+[mc] epoch 706  val NLL -8.8944  lr 1.06e-04
+[mc] epoch 707  val NLL -8.8923  lr 1.05e-04
+[mc] epoch 708  val NLL -8.9064  lr 1.04e-04
+[mc] epoch 709  val NLL -8.9064  lr 1.02e-04
+[mc] epoch 710  val NLL -8.9011  lr 1.01e-04
+[mc] epoch 711  val NLL -8.9011  lr 9.95e-05
+[mc] epoch 712  val NLL -8.9084  lr 9.82e-05  *
+[mc] epoch 713  val NLL -8.9013  lr 9.69e-05
+[mc] epoch 714  val NLL -8.9058  lr 9.56e-05
+[mc] epoch 715  val NLL -8.8959  lr 9.44e-05
+[mc] epoch 716  val NLL -8.9061  lr 9.31e-05
+[mc] epoch 717  val NLL -8.9057  lr 9.19e-05
+[mc] epoch 718  val NLL -8.9112  lr 9.06e-05  *
+[mc] epoch 719  val NLL -8.9039  lr 8.94e-05
+[mc] epoch 720  val NLL -8.9078  lr 8.82e-05
+[mc] epoch 721  val NLL -8.9116  lr 8.70e-05  *
+[mc] epoch 722  val NLL -8.9014  lr 8.58e-05
+[mc] epoch 723  val NLL -8.9109  lr 8.47e-05
+[mc] epoch 724  val NLL -8.9067  lr 8.35e-05
+[mc] epoch 725  val NLL -8.9043  lr 8.24e-05
+[mc] epoch 726  val NLL -8.9091  lr 8.13e-05
+[mc] epoch 727  val NLL -8.9122  lr 8.02e-05  *
+[mc] epoch 728  val NLL -8.9130  lr 7.91e-05  *
+[mc] epoch 729  val NLL -8.9118  lr 7.80e-05
+[mc] epoch 730  val NLL -8.9085  lr 7.70e-05
+[mc] epoch 731  val NLL -8.9156  lr 7.59e-05  *
+[mc] epoch 732  val NLL -8.9169  lr 7.49e-05  *
+[mc] epoch 733  val NLL -8.9158  lr 7.39e-05
+[mc] epoch 734  val NLL -8.9105  lr 7.29e-05
+[mc] epoch 735  val NLL -8.9121  lr 7.19e-05
+[mc] epoch 736  val NLL -8.9112  lr 7.09e-05
+[mc] epoch 737  val NLL -8.9124  lr 7.00e-05
+[mc] epoch 738  val NLL -8.9154  lr 6.90e-05
+[mc] epoch 739  val NLL -8.9146  lr 6.81e-05
+[mc] epoch 740  val NLL -8.9150  lr 6.72e-05
+[mc] epoch 741  val NLL -8.9134  lr 6.63e-05
+[mc] epoch 742  val NLL -8.9192  lr 6.54e-05  *
+[mc] epoch 743  val NLL -8.9180  lr 6.46e-05
+[mc] epoch 744  val NLL -8.9172  lr 6.37e-05
+[mc] epoch 745  val NLL -8.9158  lr 6.29e-05
+[mc] epoch 746  val NLL -8.9170  lr 6.21e-05
+[mc] epoch 747  val NLL -8.9157  lr 6.13e-05
+[mc] epoch 748  val NLL -8.9189  lr 6.05e-05
+[mc] epoch 749  val NLL -8.9192  lr 5.97e-05
+[mc] epoch 750  val NLL -8.9172  lr 5.89e-05
+[mc] epoch 751  val NLL -8.9201  lr 5.82e-05  *
+[mc] epoch 752  val NLL -8.9212  lr 5.74e-05  *
+[mc] epoch 753  val NLL -8.9175  lr 5.67e-05
+[mc] epoch 754  val NLL -8.9191  lr 5.60e-05
+[mc] epoch 755  val NLL -8.9183  lr 5.53e-05
+[mc] epoch 756  val NLL -8.9192  lr 5.47e-05
+[mc] epoch 757  val NLL -8.9236  lr 5.40e-05  *
+[mc] epoch 758  val NLL -8.9182  lr 5.34e-05
+[mc] epoch 759  val NLL -8.9230  lr 5.27e-05
+[mc] epoch 760  val NLL -8.9193  lr 5.21e-05
+[mc] epoch 761  val NLL -8.9196  lr 5.15e-05
+[mc] epoch 762  val NLL -8.9235  lr 5.09e-05
+[mc] epoch 763  val NLL -8.9231  lr 5.04e-05
+[mc] epoch 764  val NLL -8.9241  lr 4.98e-05  *
+[mc] epoch 765  val NLL -8.9229  lr 4.93e-05
+[mc] epoch 766  val NLL -8.9224  lr 4.88e-05
+[mc] epoch 767  val NLL -8.9246  lr 4.83e-05  *
+[mc] epoch 768  val NLL -8.9248  lr 4.78e-05  *
+[mc] epoch 769  val NLL -8.9200  lr 4.73e-05
+[mc] epoch 770  val NLL -8.9196  lr 4.68e-05
+[mc] epoch 771  val NLL -8.9251  lr 4.64e-05  *
+[mc] epoch 772  val NLL -8.9240  lr 4.59e-05
+[mc] epoch 773  val NLL -8.9250  lr 4.55e-05
+[mc] epoch 774  val NLL -8.9247  lr 4.51e-05
+[mc] epoch 775  val NLL -8.9255  lr 4.47e-05  *
+[mc] epoch 776  val NLL -8.9242  lr 4.44e-05
+[mc] epoch 777  val NLL -8.9259  lr 4.40e-05  *
+[mc] epoch 778  val NLL -8.9252  lr 4.37e-05
+[mc] epoch 779  val NLL -8.9276  lr 4.33e-05  *
+[mc] epoch 780  val NLL -8.9271  lr 4.30e-05
+[mc] epoch 781  val NLL -8.9257  lr 4.27e-05
+[mc] epoch 782  val NLL -8.9279  lr 4.25e-05  *
+[mc] epoch 783  val NLL -8.9264  lr 4.22e-05
+[mc] epoch 784  val NLL -8.9282  lr 4.19e-05  *
+[mc] epoch 785  val NLL -8.9281  lr 4.17e-05
+[mc] epoch 786  val NLL -8.9267  lr 4.15e-05
+[mc] epoch 787  val NLL -8.9280  lr 4.13e-05
+[mc] epoch 788  val NLL -8.9237  lr 4.11e-05
+[mc] epoch 789  val NLL -8.9268  lr 4.09e-05
+[mc] epoch 790  val NLL -8.9278  lr 4.08e-05
+[mc] epoch 791  val NLL -8.9266  lr 4.06e-05
+[mc] epoch 792  val NLL -8.9260  lr 4.05e-05
+[mc] epoch 793  val NLL -8.9270  lr 4.04e-05
+[mc] epoch 794  val NLL -8.9269  lr 4.03e-05
+[mc] epoch 795  val NLL -8.9296  lr 4.02e-05  *
+[mc] epoch 796  val NLL -8.9283  lr 4.01e-05
+[mc] epoch 797  val NLL -8.9261  lr 4.01e-05
+[mc] epoch 798  val NLL -8.9267  lr 4.00e-05
+[mc] epoch 799  val NLL -8.9283  lr 4.00e-05
+[mc] best epoch 795, val NLL -8.9296 | tail noise 0.001, best is 2.02 sigma below median, trend -0.0001/epoch
+[train] data flow
+[data] Adam on cuda with {'fused': True}
+[data] epoch   0  val NLL 0.5080  lr 1.00e-03  *
+[data] epoch   1  val NLL -0.5013  lr 2.00e-03  *
+[data] epoch   2  val NLL -1.3504  lr 2.00e-03  *
+[data] epoch   3  val NLL -1.7508  lr 2.00e-03  *
+[data] epoch   4  val NLL -1.9342  lr 2.00e-03  *
+[data] epoch   5  val NLL -2.3966  lr 2.00e-03  *
+[data] epoch   6  val NLL -2.3317  lr 2.00e-03
+[data] epoch   7  val NLL -2.9160  lr 2.00e-03  *
+[data] epoch   8  val NLL -2.6404  lr 2.00e-03
+[data] epoch   9  val NLL -3.0891  lr 2.00e-03  *
+[data] epoch  10  val NLL -3.4116  lr 2.00e-03  *
+[data] epoch  11  val NLL -3.4014  lr 2.00e-03
+[data] epoch  12  val NLL -3.6500  lr 2.00e-03  *
+[data] epoch  13  val NLL -3.5145  lr 2.00e-03
+[data] epoch  14  val NLL -3.9971  lr 2.00e-03  *
+[data] epoch  15  val NLL -4.1395  lr 2.00e-03  *
+[data] epoch  16  val NLL -3.7445  lr 2.00e-03
+[data] epoch  17  val NLL -4.2026  lr 2.00e-03  *
+[data] epoch  18  val NLL -4.0267  lr 2.00e-03
+[data] epoch  19  val NLL -4.2189  lr 2.00e-03  *
+[data] epoch  20  val NLL -4.3865  lr 2.00e-03  *
+[data] epoch  21  val NLL -4.2845  lr 2.00e-03
+[data] epoch  22  val NLL -4.5589  lr 2.00e-03  *
+[data] epoch  23  val NLL -4.3418  lr 2.00e-03
+[data] epoch  24  val NLL -4.6170  lr 2.00e-03  *
+[data] epoch  25  val NLL -4.5414  lr 2.00e-03
+[data] epoch  26  val NLL -3.5929  lr 2.00e-03
+[data] epoch  27  val NLL -4.4540  lr 2.00e-03
+[data] epoch  28  val NLL -4.0052  lr 1.99e-03
+[data] epoch  29  val NLL -4.7691  lr 1.99e-03  *
+[data] epoch  30  val NLL -4.6610  lr 1.99e-03
+[data] epoch  31  val NLL -4.9244  lr 1.99e-03  *
+[data] epoch  32  val NLL -5.0392  lr 1.99e-03  *
+[data] epoch  33  val NLL -4.9443  lr 1.99e-03
+[data] epoch  34  val NLL -5.1052  lr 1.99e-03  *
+[data] epoch  35  val NLL -4.9767  lr 1.99e-03
+[data] epoch  36  val NLL -4.9986  lr 1.99e-03
+[data] epoch  37  val NLL -4.7935  lr 1.99e-03
+[data] epoch  38  val NLL -4.4454  lr 1.99e-03
+[data] epoch  39  val NLL -5.1564  lr 1.99e-03  *
+[data] epoch  40  val NLL -4.7473  lr 1.99e-03
+[data] epoch  41  val NLL -5.1240  lr 1.99e-03
+[data] epoch  42  val NLL -5.1878  lr 1.99e-03  *
+[data] epoch  43  val NLL -5.3758  lr 1.99e-03  *
+[data] epoch  44  val NLL -5.3551  lr 1.99e-03
+[data] epoch  45  val NLL -5.2583  lr 1.99e-03
+[data] epoch  46  val NLL -5.2122  lr 1.99e-03
+[data] epoch  47  val NLL -4.4759  lr 1.98e-03
+[data] epoch  48  val NLL -5.4059  lr 1.98e-03  *
+[data] epoch  49  val NLL -4.7048  lr 1.98e-03
+[data] epoch  50  val NLL -5.3945  lr 1.98e-03
+[data] epoch  51  val NLL -4.9512  lr 1.98e-03
+[data] epoch  52  val NLL -5.3519  lr 1.98e-03
+[data] epoch  53  val NLL -5.3330  lr 1.98e-03
+[data] epoch  54  val NLL -5.3942  lr 1.98e-03
+[data] epoch  55  val NLL -5.5578  lr 1.98e-03  *
+[data] epoch  56  val NLL -4.7966  lr 1.98e-03
+[data] epoch  57  val NLL -5.0490  lr 1.98e-03
+[data] epoch  58  val NLL -4.8232  lr 1.98e-03
+[data] epoch  59  val NLL -5.0964  lr 1.98e-03
+[data] epoch  60  val NLL -5.6453  lr 1.97e-03  *
+[data] epoch  61  val NLL -5.6926  lr 1.97e-03  *
+[data] epoch  62  val NLL -5.6424  lr 1.97e-03
+[data] epoch  63  val NLL -5.7070  lr 1.97e-03  *
+[data] epoch  64  val NLL -5.5457  lr 1.97e-03
+[data] epoch  65  val NLL -4.6058  lr 1.97e-03
+[data] epoch  66  val NLL -5.6741  lr 1.97e-03
+[data] epoch  67  val NLL -5.6069  lr 1.97e-03
+[data] epoch  68  val NLL -5.6393  lr 1.97e-03
+[data] epoch  69  val NLL -4.5741  lr 1.97e-03
+[data] epoch  70  val NLL -5.4859  lr 1.97e-03
+[data] epoch  71  val NLL -5.3582  lr 1.96e-03
+[data] epoch  72  val NLL -5.5180  lr 1.96e-03
+[data] epoch  73  val NLL -5.6782  lr 1.96e-03
+[data] epoch  74  val NLL -5.3390  lr 1.96e-03
+[data] epoch  75  val NLL -5.8583  lr 1.96e-03  *
+[data] epoch  76  val NLL -5.9935  lr 1.96e-03  *
+[data] epoch  77  val NLL -5.7670  lr 1.96e-03
+[data] epoch  78  val NLL -5.6508  lr 1.96e-03
+[data] epoch  79  val NLL -5.9873  lr 1.96e-03
+[data] epoch  80  val NLL -5.9225  lr 1.95e-03
+[data] epoch  81  val NLL -5.9830  lr 1.95e-03
+[data] epoch  82  val NLL -5.9857  lr 1.95e-03
+[data] epoch  83  val NLL -5.8703  lr 1.95e-03
+[data] epoch  84  val NLL -5.7444  lr 1.95e-03
+[data] epoch  85  val NLL -5.9917  lr 1.95e-03
+[data] epoch  86  val NLL -5.8512  lr 1.95e-03
+[data] epoch  87  val NLL -4.2925  lr 1.95e-03
+[data] epoch  88  val NLL -5.8636  lr 1.94e-03
+[data] epoch  89  val NLL -5.6272  lr 1.94e-03
+[data] epoch  90  val NLL -6.0597  lr 1.94e-03  *
+[data] epoch  91  val NLL -5.9590  lr 1.94e-03
+[data] epoch  92  val NLL -5.9734  lr 1.94e-03
+[data] epoch  93  val NLL -6.0049  lr 1.94e-03
+[data] epoch  94  val NLL -6.0325  lr 1.94e-03
+[data] epoch  95  val NLL -5.5727  lr 1.94e-03
+[data] epoch  96  val NLL -5.5125  lr 1.93e-03
+[data] epoch  97  val NLL -5.0765  lr 1.93e-03
+[data] epoch  98  val NLL -5.8271  lr 1.93e-03
+[data] epoch  99  val NLL -6.1477  lr 1.93e-03  *
+[data] epoch 100  val NLL -6.0815  lr 1.93e-03
+[data] epoch 101  val NLL -6.2109  lr 1.93e-03  *
+[data] epoch 102  val NLL -5.8542  lr 1.93e-03
+[data] epoch 103  val NLL -6.0466  lr 1.92e-03
+[data] epoch 104  val NLL -6.1115  lr 1.92e-03
+[data] epoch 105  val NLL -6.1577  lr 1.92e-03
+[data] epoch 106  val NLL -4.6484  lr 1.92e-03
+[data] epoch 107  val NLL -5.8244  lr 1.92e-03
+[data] epoch 108  val NLL -5.9957  lr 1.92e-03
+[data] epoch 109  val NLL -6.1895  lr 1.91e-03
+[data] epoch 110  val NLL -6.1957  lr 1.91e-03
+[data] epoch 111  val NLL -6.2125  lr 1.91e-03  *
+[data] epoch 112  val NLL -6.1350  lr 1.91e-03
+[data] epoch 113  val NLL -6.2365  lr 1.91e-03  *
+[data] epoch 114  val NLL -5.8165  lr 1.91e-03
+[data] epoch 115  val NLL -6.2444  lr 1.90e-03  *
+[data] epoch 116  val NLL -6.3043  lr 1.90e-03  *
+[data] epoch 117  val NLL -6.2866  lr 1.90e-03
+[data] epoch 118  val NLL -5.6206  lr 1.90e-03
+[data] epoch 119  val NLL -6.0539  lr 1.90e-03
+[data] epoch 120  val NLL -6.1464  lr 1.90e-03
+[data] epoch 121  val NLL -5.8361  lr 1.89e-03
+[data] epoch 122  val NLL -6.2144  lr 1.89e-03
+[data] epoch 123  val NLL -6.1328  lr 1.89e-03
+[data] epoch 124  val NLL -6.4868  lr 1.89e-03  *
+[data] epoch 125  val NLL -6.1421  lr 1.89e-03
+[data] epoch 126  val NLL -6.1009  lr 1.89e-03
+[data] epoch 127  val NLL -6.0312  lr 1.88e-03
+[data] epoch 128  val NLL -6.0279  lr 1.88e-03
+[data] epoch 129  val NLL -6.2262  lr 1.88e-03
+[data] epoch 130  val NLL -6.4575  lr 1.88e-03
+[data] epoch 131  val NLL -6.3823  lr 1.88e-03
+[data] epoch 132  val NLL -6.2015  lr 1.87e-03
+[data] epoch 133  val NLL -6.3988  lr 1.87e-03
+[data] epoch 134  val NLL -5.7304  lr 1.87e-03
+[data] epoch 135  val NLL -6.2605  lr 1.87e-03
+[data] epoch 136  val NLL -6.3261  lr 1.87e-03
+[data] epoch 137  val NLL -6.4684  lr 1.86e-03
+[data] epoch 138  val NLL -6.2393  lr 1.86e-03
+[data] epoch 139  val NLL -4.7368  lr 1.86e-03
+[data] epoch 140  val NLL -6.1110  lr 1.86e-03
+[data] epoch 141  val NLL -6.2935  lr 1.86e-03
+[data] epoch 142  val NLL -6.3956  lr 1.85e-03
+[data] epoch 143  val NLL -6.4490  lr 1.85e-03
+[data] epoch 144  val NLL -6.4710  lr 1.85e-03
+[data] epoch 145  val NLL -6.3837  lr 1.85e-03
+[data] epoch 146  val NLL -6.5199  lr 1.85e-03  *
+[data] epoch 147  val NLL -6.2675  lr 1.84e-03
+[data] epoch 148  val NLL -5.8361  lr 1.84e-03
+[data] epoch 149  val NLL -6.5200  lr 1.84e-03  *
+[data] epoch 150  val NLL -6.3505  lr 1.84e-03
+[data] epoch 151  val NLL -5.9093  lr 1.84e-03
+[data] epoch 152  val NLL -6.5115  lr 1.83e-03
+[data] epoch 153  val NLL -6.4371  lr 1.83e-03
+[data] epoch 154  val NLL -5.6982  lr 1.83e-03
+[data] epoch 155  val NLL -6.2746  lr 1.83e-03
+[data] epoch 156  val NLL -6.5164  lr 1.83e-03
+[data] epoch 157  val NLL -6.5386  lr 1.82e-03  *
+[data] epoch 158  val NLL -6.1498  lr 1.82e-03
+[data] epoch 159  val NLL -6.5439  lr 1.82e-03  *
+[data] epoch 160  val NLL -6.4074  lr 1.82e-03
+[data] epoch 161  val NLL -6.3242  lr 1.81e-03
+[data] epoch 162  val NLL -6.5091  lr 1.81e-03
+[data] epoch 163  val NLL -6.5626  lr 1.81e-03  *
+[data] epoch 164  val NLL -6.2508  lr 1.81e-03
+[data] epoch 165  val NLL -6.4035  lr 1.81e-03
+[data] epoch 166  val NLL -6.6056  lr 1.80e-03  *
+[data] epoch 167  val NLL -6.6260  lr 1.80e-03  *
+[data] epoch 168  val NLL -6.4101  lr 1.80e-03
+[data] epoch 169  val NLL -6.6223  lr 1.80e-03
+[data] epoch 170  val NLL -5.0337  lr 1.79e-03
+[data] epoch 171  val NLL -6.3224  lr 1.79e-03
+[data] epoch 172  val NLL -6.5182  lr 1.79e-03
+[data] epoch 173  val NLL -5.5988  lr 1.79e-03
+[data] epoch 174  val NLL -6.5543  lr 1.78e-03
+[data] epoch 175  val NLL -6.6827  lr 1.78e-03  *
+[data] epoch 176  val NLL -6.4202  lr 1.78e-03
+[data] epoch 177  val NLL -6.6527  lr 1.78e-03
+[data] epoch 178  val NLL -6.7447  lr 1.77e-03  *
+[data] epoch 179  val NLL -6.3910  lr 1.77e-03
+[data] epoch 180  val NLL -6.5791  lr 1.77e-03
+[data] epoch 181  val NLL -5.7119  lr 1.77e-03
+[data] epoch 182  val NLL -6.6460  lr 1.76e-03
+[data] epoch 183  val NLL -6.7797  lr 1.76e-03  *
+[data] epoch 184  val NLL -6.3412  lr 1.76e-03
+[data] epoch 185  val NLL -6.6783  lr 1.76e-03
+[data] epoch 186  val NLL -6.6307  lr 1.75e-03
+[data] epoch 187  val NLL -6.7097  lr 1.75e-03
+[data] epoch 188  val NLL -6.2627  lr 1.75e-03
+[data] epoch 189  val NLL -6.7100  lr 1.75e-03
+[data] epoch 190  val NLL -6.7688  lr 1.74e-03
+[data] epoch 191  val NLL -6.6241  lr 1.74e-03
+[data] epoch 192  val NLL -6.7758  lr 1.74e-03
+[data] epoch 193  val NLL -6.7004  lr 1.74e-03
+[data] epoch 194  val NLL -6.7337  lr 1.73e-03
+[data] epoch 195  val NLL -6.6551  lr 1.73e-03
+[data] epoch 196  val NLL -6.7660  lr 1.73e-03
+[data] epoch 197  val NLL -6.4957  lr 1.73e-03
+[data] epoch 198  val NLL -6.4843  lr 1.72e-03
+[data] epoch 199  val NLL -5.8896  lr 1.72e-03
+[data] epoch 200  val NLL -6.8062  lr 1.72e-03  *
+[data] epoch 201  val NLL -6.6201  lr 1.71e-03
+[data] epoch 202  val NLL -6.7455  lr 1.71e-03
+[data] epoch 203  val NLL -6.3928  lr 1.71e-03
+[data] epoch 204  val NLL -6.7423  lr 1.71e-03
+[data] epoch 205  val NLL -6.8031  lr 1.70e-03
+[data] epoch 206  val NLL -6.4900  lr 1.70e-03
+[data] epoch 207  val NLL -6.8118  lr 1.70e-03  *
+[data] epoch 208  val NLL -6.8138  lr 1.70e-03  *
+[data] epoch 209  val NLL -6.7553  lr 1.69e-03
+[data] epoch 210  val NLL -6.4352  lr 1.69e-03
+[data] epoch 211  val NLL -6.7889  lr 1.69e-03
+[data] epoch 212  val NLL -6.7075  lr 1.68e-03
+[data] epoch 213  val NLL -6.5923  lr 1.68e-03
+[data] epoch 214  val NLL -6.8635  lr 1.68e-03  *
+[data] epoch 215  val NLL -5.9254  lr 1.68e-03
+[data] epoch 216  val NLL -6.5471  lr 1.67e-03
+[data] epoch 217  val NLL -6.8521  lr 1.67e-03
+[data] epoch 218  val NLL -6.6190  lr 1.67e-03
+[data] epoch 219  val NLL -6.6286  lr 1.66e-03
+[data] epoch 220  val NLL -6.7836  lr 1.66e-03
+[data] epoch 221  val NLL -6.8684  lr 1.66e-03  *
+[data] epoch 222  val NLL -6.7708  lr 1.65e-03
+[data] epoch 223  val NLL -6.7273  lr 1.65e-03
+[data] epoch 224  val NLL -6.8040  lr 1.65e-03
+[data] epoch 225  val NLL -6.8230  lr 1.65e-03
+[data] epoch 226  val NLL -6.9557  lr 1.64e-03  *
+[data] epoch 227  val NLL -6.8367  lr 1.64e-03
+[data] epoch 228  val NLL -6.8685  lr 1.64e-03
+[data] epoch 229  val NLL -6.9788  lr 1.63e-03  *
+[data] epoch 230  val NLL -6.8713  lr 1.63e-03
+[data] epoch 231  val NLL -6.8222  lr 1.63e-03
+[data] epoch 232  val NLL -6.9022  lr 1.62e-03
+[data] epoch 233  val NLL -6.3649  lr 1.62e-03
+[data] epoch 234  val NLL -6.9443  lr 1.62e-03
+[data] epoch 235  val NLL -7.0302  lr 1.62e-03  *
+[data] epoch 236  val NLL -6.4882  lr 1.61e-03
+[data] epoch 237  val NLL -6.8614  lr 1.61e-03
+[data] epoch 238  val NLL -6.5591  lr 1.61e-03
+[data] epoch 239  val NLL -6.9677  lr 1.60e-03
+[data] epoch 240  val NLL -6.5806  lr 1.60e-03
+[data] epoch 241  val NLL -7.0090  lr 1.60e-03
+[data] epoch 242  val NLL -6.9462  lr 1.59e-03
+[data] epoch 243  val NLL -6.9615  lr 1.59e-03
+[data] epoch 244  val NLL -6.8305  lr 1.59e-03
+[data] epoch 245  val NLL -6.9975  lr 1.58e-03
+[data] epoch 246  val NLL -6.8673  lr 1.58e-03
+[data] epoch 247  val NLL -6.8914  lr 1.58e-03
+[data] epoch 248  val NLL -6.9813  lr 1.58e-03
+[data] epoch 249  val NLL -6.9043  lr 1.57e-03
+[data] epoch 250  val NLL -6.9105  lr 1.57e-03
+[data] epoch 251  val NLL -7.0126  lr 1.57e-03
+[data] epoch 252  val NLL -6.9902  lr 1.56e-03
+[data] epoch 253  val NLL -7.0187  lr 1.56e-03
+[data] epoch 254  val NLL -6.5185  lr 1.56e-03
+[data] epoch 255  val NLL -7.0592  lr 1.55e-03  *
+[data] epoch 256  val NLL -6.3972  lr 1.55e-03
+[data] epoch 257  val NLL -7.0490  lr 1.55e-03
+[data] epoch 258  val NLL -6.4913  lr 1.54e-03
+[data] epoch 259  val NLL -6.9614  lr 1.54e-03
+[data] epoch 260  val NLL -6.8092  lr 1.54e-03
+[data] epoch 261  val NLL -6.9886  lr 1.53e-03
+[data] epoch 262  val NLL -6.9361  lr 1.53e-03
+[data] epoch 263  val NLL -6.8564  lr 1.53e-03
+[data] epoch 264  val NLL -6.9718  lr 1.52e-03
+[data] epoch 265  val NLL -7.0533  lr 1.52e-03
+[data] epoch 266  val NLL -6.2848  lr 1.52e-03
+[data] epoch 267  val NLL -7.0412  lr 1.51e-03
+[data] epoch 268  val NLL -7.0012  lr 1.51e-03
+[data] epoch 269  val NLL -5.8274  lr 1.51e-03
+[data] epoch 270  val NLL -7.0822  lr 1.50e-03  *
+[data] epoch 271  val NLL -7.0031  lr 1.50e-03
+[data] epoch 272  val NLL -6.5435  lr 1.50e-03
+[data] epoch 273  val NLL -7.0722  lr 1.49e-03
+[data] epoch 274  val NLL -6.8393  lr 1.49e-03
+[data] epoch 275  val NLL -6.5149  lr 1.49e-03
+[data] epoch 276  val NLL -7.0267  lr 1.48e-03
+[data] epoch 277  val NLL -6.4574  lr 1.48e-03
+[data] epoch 278  val NLL -6.9541  lr 1.48e-03
+[data] epoch 279  val NLL -7.1208  lr 1.47e-03  *
+[data] epoch 280  val NLL -7.0113  lr 1.47e-03
+[data] epoch 281  val NLL -7.0462  lr 1.47e-03
+[data] epoch 282  val NLL -7.1488  lr 1.46e-03  *
+[data] epoch 283  val NLL -7.0838  lr 1.46e-03
+[data] epoch 284  val NLL -7.0634  lr 1.46e-03
+[data] epoch 285  val NLL -7.0777  lr 1.45e-03
+[data] epoch 286  val NLL -7.0992  lr 1.45e-03
+[data] epoch 287  val NLL -7.0259  lr 1.45e-03
+[data] epoch 288  val NLL -6.9095  lr 1.44e-03
+[data] epoch 289  val NLL -7.0878  lr 1.44e-03
+[data] epoch 290  val NLL -7.1234  lr 1.43e-03
+[data] epoch 291  val NLL -6.5518  lr 1.43e-03
+[data] epoch 292  val NLL -7.1279  lr 1.43e-03
+[data] epoch 293  val NLL -7.0766  lr 1.42e-03
+[data] epoch 294  val NLL -7.1065  lr 1.42e-03
+[data] epoch 295  val NLL -7.1311  lr 1.42e-03
+[data] epoch 296  val NLL -6.6241  lr 1.41e-03
+[data] epoch 297  val NLL -6.9766  lr 1.41e-03
+[data] epoch 298  val NLL -7.1478  lr 1.41e-03
+[data] epoch 299  val NLL -7.0416  lr 1.40e-03
+[data] epoch 300  val NLL -7.0978  lr 1.40e-03
+[data] epoch 301  val NLL -6.8805  lr 1.40e-03
+[data] epoch 302  val NLL -7.1974  lr 1.39e-03  *
+[data] epoch 303  val NLL -7.1265  lr 1.39e-03
+[data] epoch 304  val NLL -7.1087  lr 1.39e-03
+[data] epoch 305  val NLL -7.1673  lr 1.38e-03
+[data] epoch 306  val NLL -7.1995  lr 1.38e-03  *
+[data] epoch 307  val NLL -7.1085  lr 1.37e-03
+[data] epoch 308  val NLL -7.0106  lr 1.37e-03
+[data] epoch 309  val NLL -6.9652  lr 1.37e-03
+[data] epoch 310  val NLL -7.1448  lr 1.36e-03
+[data] epoch 311  val NLL -7.1983  lr 1.36e-03
+[data] epoch 312  val NLL -7.1055  lr 1.36e-03
+[data] epoch 313  val NLL -7.1457  lr 1.35e-03
+[data] epoch 314  val NLL -7.0886  lr 1.35e-03
+[data] epoch 315  val NLL -7.1784  lr 1.35e-03
+[data] epoch 316  val NLL -6.9544  lr 1.34e-03
+[data] epoch 317  val NLL -7.0292  lr 1.34e-03
+[data] epoch 318  val NLL -7.1674  lr 1.33e-03
+[data] epoch 319  val NLL -7.1715  lr 1.33e-03
+[data] epoch 320  val NLL -7.0227  lr 1.33e-03
+[data] epoch 321  val NLL -7.1602  lr 1.32e-03
+[data] epoch 322  val NLL -7.1075  lr 1.32e-03
+[data] epoch 323  val NLL -7.2190  lr 1.32e-03  *
+[data] epoch 324  val NLL -6.9884  lr 1.31e-03
+[data] epoch 325  val NLL -6.9994  lr 1.31e-03
+[data] epoch 326  val NLL -7.1334  lr 1.31e-03
+[data] epoch 327  val NLL -7.1320  lr 1.30e-03
+[data] epoch 328  val NLL -7.0725  lr 1.30e-03
+[data] epoch 329  val NLL -7.0837  lr 1.29e-03
+[data] epoch 330  val NLL -6.9901  lr 1.29e-03
+[data] epoch 331  val NLL -7.1805  lr 1.29e-03
+[data] epoch 332  val NLL -7.1608  lr 1.28e-03
+[data] epoch 333  val NLL -7.2146  lr 1.28e-03
+[data] epoch 334  val NLL -6.8907  lr 1.28e-03
+[data] epoch 335  val NLL -7.1546  lr 1.27e-03
+[data] epoch 336  val NLL -7.2181  lr 1.27e-03
+[data] epoch 337  val NLL -7.2152  lr 1.26e-03
+[data] epoch 338  val NLL -7.0876  lr 1.26e-03
+[data] epoch 339  val NLL -7.1636  lr 1.26e-03
+[data] epoch 340  val NLL -7.2207  lr 1.25e-03  *
+[data] epoch 341  val NLL -7.2105  lr 1.25e-03
+[data] epoch 342  val NLL -7.2194  lr 1.25e-03
+[data] epoch 343  val NLL -7.2153  lr 1.24e-03
+[data] epoch 344  val NLL -7.1787  lr 1.24e-03
+[data] epoch 345  val NLL -7.1564  lr 1.23e-03
+[data] epoch 346  val NLL -7.2453  lr 1.23e-03  *
+[data] epoch 347  val NLL -7.2836  lr 1.23e-03  *
+[data] epoch 348  val NLL -7.2600  lr 1.22e-03
+[data] epoch 349  val NLL -7.1491  lr 1.22e-03
+[data] epoch 350  val NLL -7.2269  lr 1.22e-03
+[data] epoch 351  val NLL -7.2668  lr 1.21e-03
+[data] epoch 352  val NLL -7.1016  lr 1.21e-03
+[data] epoch 353  val NLL -7.3329  lr 1.20e-03  *
+[data] epoch 354  val NLL -7.2746  lr 1.20e-03
+[data] epoch 355  val NLL -7.0856  lr 1.20e-03
+[data] epoch 356  val NLL -7.2720  lr 1.19e-03
+[data] epoch 357  val NLL -7.3329  lr 1.19e-03
+[data] epoch 358  val NLL -7.2344  lr 1.19e-03
+[data] epoch 359  val NLL -7.2786  lr 1.18e-03
+[data] epoch 360  val NLL -7.2759  lr 1.18e-03
+[data] epoch 361  val NLL -7.2485  lr 1.17e-03
+[data] epoch 362  val NLL -7.0635  lr 1.17e-03
+[data] epoch 363  val NLL -7.3227  lr 1.17e-03
+[data] epoch 364  val NLL -7.2812  lr 1.16e-03
+[data] epoch 365  val NLL -7.2640  lr 1.16e-03
+[data] epoch 366  val NLL -7.2369  lr 1.15e-03
+[data] epoch 367  val NLL -7.2707  lr 1.15e-03
+[data] epoch 368  val NLL -7.3163  lr 1.15e-03
+[data] epoch 369  val NLL -7.3217  lr 1.14e-03
+[data] epoch 370  val NLL -7.3022  lr 1.14e-03
+[data] epoch 371  val NLL -7.0462  lr 1.14e-03
+[data] epoch 372  val NLL -7.2755  lr 1.13e-03
+[data] epoch 373  val NLL -7.3331  lr 1.13e-03  *
+[data] epoch 374  val NLL -7.3576  lr 1.12e-03  *
+[data] epoch 375  val NLL -7.3439  lr 1.12e-03
+[data] epoch 376  val NLL -6.9968  lr 1.12e-03
+[data] epoch 377  val NLL -7.3229  lr 1.11e-03
+[data] epoch 378  val NLL -7.3125  lr 1.11e-03
+[data] epoch 379  val NLL -7.3090  lr 1.10e-03
+[data] epoch 380  val NLL -7.2869  lr 1.10e-03
+[data] epoch 381  val NLL -7.3175  lr 1.10e-03
+[data] epoch 382  val NLL -7.1899  lr 1.09e-03
+[data] epoch 383  val NLL -7.3379  lr 1.09e-03
+[data] epoch 384  val NLL -7.3547  lr 1.09e-03
+[data] epoch 385  val NLL -7.3366  lr 1.08e-03
+[data] epoch 386  val NLL -7.2735  lr 1.08e-03
+[data] epoch 387  val NLL -7.3668  lr 1.07e-03  *
+[data] epoch 388  val NLL -7.1865  lr 1.07e-03
+[data] epoch 389  val NLL -7.3742  lr 1.07e-03  *
+[data] epoch 390  val NLL -7.3477  lr 1.06e-03
+[data] epoch 391  val NLL -7.3887  lr 1.06e-03  *
+[data] epoch 392  val NLL -7.1951  lr 1.05e-03
+[data] epoch 393  val NLL -7.3913  lr 1.05e-03  *
+[data] epoch 394  val NLL -7.3622  lr 1.05e-03
+[data] epoch 395  val NLL -7.1258  lr 1.04e-03
+[data] epoch 396  val NLL -7.3039  lr 1.04e-03
+[data] epoch 397  val NLL -7.2971  lr 1.04e-03
+[data] epoch 398  val NLL -7.3615  lr 1.03e-03
+[data] epoch 399  val NLL -7.3971  lr 1.03e-03  *
+[data] epoch 400  val NLL -7.4058  lr 1.02e-03  *
+[data] epoch 401  val NLL -7.3768  lr 1.02e-03
+[data] epoch 402  val NLL -7.3722  lr 1.02e-03
+[data] epoch 403  val NLL -7.3237  lr 1.01e-03
+[data] epoch 404  val NLL -7.3837  lr 1.01e-03
+[data] epoch 405  val NLL -7.2905  lr 1.00e-03
+[data] epoch 406  val NLL -7.2287  lr 1.00e-03
+[data] epoch 407  val NLL -7.4169  lr 9.97e-04  *
+[data] epoch 408  val NLL -7.3946  lr 9.93e-04
+[data] epoch 409  val NLL -7.3779  lr 9.89e-04
+[data] epoch 410  val NLL -7.4208  lr 9.85e-04  *
+[data] epoch 411  val NLL -7.4289  lr 9.81e-04  *
+[data] epoch 412  val NLL -7.4104  lr 9.78e-04
+[data] epoch 413  val NLL -7.3648  lr 9.74e-04
+[data] epoch 414  val NLL -7.4154  lr 9.70e-04
+[data] epoch 415  val NLL -7.3607  lr 9.66e-04
+[data] epoch 416  val NLL -7.3924  lr 9.62e-04
+[data] epoch 417  val NLL -7.3078  lr 9.58e-04
+[data] epoch 418  val NLL -7.4041  lr 9.54e-04
+[data] epoch 419  val NLL -7.4259  lr 9.51e-04
+[data] epoch 420  val NLL -7.4195  lr 9.47e-04
+[data] epoch 421  val NLL -7.4262  lr 9.43e-04
+[data] epoch 422  val NLL -7.3497  lr 9.39e-04
+[data] epoch 423  val NLL -7.4528  lr 9.35e-04  *
+[data] epoch 424  val NLL -7.4452  lr 9.31e-04
+[data] epoch 425  val NLL -7.4220  lr 9.28e-04
+[data] epoch 426  val NLL -7.3943  lr 9.24e-04
+[data] epoch 427  val NLL -7.4225  lr 9.20e-04
+[data] epoch 428  val NLL -7.4097  lr 9.16e-04
+[data] epoch 429  val NLL -7.3505  lr 9.12e-04
+[data] epoch 430  val NLL -7.4708  lr 9.08e-04  *
+[data] epoch 431  val NLL -7.4058  lr 9.05e-04
+[data] epoch 432  val NLL -7.4745  lr 9.01e-04  *
+[data] epoch 433  val NLL -7.4635  lr 8.97e-04
+[data] epoch 434  val NLL -7.4525  lr 8.93e-04
+[data] epoch 435  val NLL -7.4750  lr 8.89e-04  *
+[data] epoch 436  val NLL -7.4516  lr 8.85e-04
+[data] epoch 437  val NLL -7.4122  lr 8.82e-04
+[data] epoch 438  val NLL -7.4015  lr 8.78e-04
+[data] epoch 439  val NLL -7.4532  lr 8.74e-04
+[data] epoch 440  val NLL -7.4546  lr 8.70e-04
+[data] epoch 441  val NLL -7.3189  lr 8.66e-04
+[data] epoch 442  val NLL -7.4440  lr 8.63e-04
+[data] epoch 443  val NLL -7.4758  lr 8.59e-04  *
+[data] epoch 444  val NLL -7.4503  lr 8.55e-04
+[data] epoch 445  val NLL -7.4038  lr 8.51e-04
+[data] epoch 446  val NLL -7.4460  lr 8.47e-04
+[data] epoch 447  val NLL -7.4316  lr 8.43e-04
+[data] epoch 448  val NLL -7.4717  lr 8.40e-04
+[data] epoch 449  val NLL -7.3734  lr 8.36e-04
+[data] epoch 450  val NLL -7.4532  lr 8.32e-04
+[data] epoch 451  val NLL -7.4616  lr 8.28e-04
+[data] epoch 452  val NLL -7.4640  lr 8.25e-04
+[data] epoch 453  val NLL -7.4821  lr 8.21e-04  *
+[data] epoch 454  val NLL -7.3809  lr 8.17e-04
+[data] epoch 455  val NLL -7.4923  lr 8.13e-04  *
+[data] epoch 456  val NLL -7.5201  lr 8.09e-04  *
+[data] epoch 457  val NLL -7.4967  lr 8.06e-04
+[data] epoch 458  val NLL -7.4934  lr 8.02e-04
+[data] epoch 459  val NLL -7.4971  lr 7.98e-04
+[data] epoch 460  val NLL -7.3461  lr 7.94e-04
+[data] epoch 461  val NLL -7.4765  lr 7.91e-04
+[data] epoch 462  val NLL -7.5111  lr 7.87e-04
+[data] epoch 463  val NLL -7.4808  lr 7.83e-04
+[data] epoch 464  val NLL -7.4861  lr 7.79e-04
+[data] epoch 465  val NLL -7.4978  lr 7.76e-04
+[data] epoch 466  val NLL -7.4822  lr 7.72e-04
+[data] epoch 467  val NLL -7.4771  lr 7.68e-04
+[data] epoch 468  val NLL -7.4639  lr 7.64e-04
+[data] epoch 469  val NLL -7.5060  lr 7.61e-04
+[data] epoch 470  val NLL -7.4681  lr 7.57e-04
+[data] epoch 471  val NLL -7.4899  lr 7.53e-04
+[data] epoch 472  val NLL -7.4923  lr 7.50e-04
+[data] epoch 473  val NLL -7.5167  lr 7.46e-04
+[data] epoch 474  val NLL -7.5376  lr 7.42e-04  *
+[data] epoch 475  val NLL -7.5068  lr 7.39e-04
+[data] epoch 476  val NLL -7.5085  lr 7.35e-04
+[data] epoch 477  val NLL -7.4818  lr 7.31e-04
+[data] epoch 478  val NLL -7.5107  lr 7.27e-04
+[data] epoch 479  val NLL -7.4723  lr 7.24e-04
+[data] epoch 480  val NLL -7.5211  lr 7.20e-04
+[data] epoch 481  val NLL -7.4565  lr 7.16e-04
+[data] epoch 482  val NLL -7.4799  lr 7.13e-04
+[data] epoch 483  val NLL -7.5106  lr 7.09e-04
+[data] epoch 484  val NLL -7.5202  lr 7.05e-04
+[data] epoch 485  val NLL -7.5509  lr 7.02e-04  *
+[data] epoch 486  val NLL -7.5428  lr 6.98e-04
+[data] epoch 487  val NLL -7.3553  lr 6.95e-04
+[data] epoch 488  val NLL -7.5682  lr 6.91e-04  *
+[data] epoch 489  val NLL -7.5386  lr 6.87e-04
+[data] epoch 490  val NLL -7.5470  lr 6.84e-04
+[data] epoch 491  val NLL -7.5443  lr 6.80e-04
+[data] epoch 492  val NLL -7.5646  lr 6.76e-04
+[data] epoch 493  val NLL -7.4259  lr 6.73e-04
+[data] epoch 494  val NLL -7.4645  lr 6.69e-04
+[data] epoch 495  val NLL -7.5513  lr 6.66e-04
+[data] epoch 496  val NLL -7.5623  lr 6.62e-04
+[data] epoch 497  val NLL -7.5766  lr 6.58e-04  *
+[data] epoch 498  val NLL -7.5758  lr 6.55e-04
+[data] epoch 499  val NLL -7.5620  lr 6.51e-04
+[data] epoch 500  val NLL -7.5538  lr 6.48e-04
+[data] epoch 501  val NLL -7.5265  lr 6.44e-04
+[data] epoch 502  val NLL -7.5565  lr 6.41e-04
+[data] epoch 503  val NLL -7.4930  lr 6.37e-04
+[data] epoch 504  val NLL -7.5373  lr 6.33e-04
+[data] epoch 505  val NLL -7.5769  lr 6.30e-04  *
+[data] epoch 506  val NLL -7.4562  lr 6.26e-04
+[data] epoch 507  val NLL -7.5800  lr 6.23e-04  *
+[data] epoch 508  val NLL -7.5597  lr 6.19e-04
+[data] epoch 509  val NLL -7.5758  lr 6.16e-04
+[data] epoch 510  val NLL -7.5370  lr 6.12e-04
+[data] epoch 511  val NLL -7.5358  lr 6.09e-04
+[data] epoch 512  val NLL -7.5698  lr 6.05e-04
+[data] epoch 513  val NLL -7.5938  lr 6.02e-04  *
+[data] epoch 514  val NLL -7.5788  lr 5.98e-04
+[data] epoch 515  val NLL -7.4657  lr 5.95e-04
+[data] epoch 516  val NLL -7.5922  lr 5.91e-04
+[data] epoch 517  val NLL -7.6028  lr 5.88e-04  *
+[data] epoch 518  val NLL -7.5735  lr 5.84e-04
+[data] epoch 519  val NLL -7.5562  lr 5.81e-04
+[data] epoch 520  val NLL -7.5947  lr 5.77e-04
+[data] epoch 521  val NLL -7.5996  lr 5.74e-04
+[data] epoch 522  val NLL -7.4925  lr 5.71e-04
+[data] epoch 523  val NLL -7.5962  lr 5.67e-04
+[data] epoch 524  val NLL -7.5981  lr 5.64e-04
+[data] epoch 525  val NLL -7.5860  lr 5.60e-04
+[data] epoch 526  val NLL -7.5906  lr 5.57e-04
+[data] epoch 527  val NLL -7.6015  lr 5.54e-04
+[data] epoch 528  val NLL -7.5798  lr 5.50e-04
+[data] epoch 529  val NLL -7.6050  lr 5.47e-04  *
+[data] epoch 530  val NLL -7.6037  lr 5.43e-04
+[data] epoch 531  val NLL -7.6121  lr 5.40e-04  *
+[data] epoch 532  val NLL -7.5903  lr 5.37e-04
+[data] epoch 533  val NLL -7.6069  lr 5.33e-04
+[data] epoch 534  val NLL -7.6198  lr 5.30e-04  *
+[data] epoch 535  val NLL -7.5986  lr 5.27e-04
+[data] epoch 536  val NLL -7.6035  lr 5.23e-04
+[data] epoch 537  val NLL -7.6073  lr 5.20e-04
+[data] epoch 538  val NLL -7.6137  lr 5.17e-04
+[data] epoch 539  val NLL -7.6328  lr 5.13e-04  *
+[data] epoch 540  val NLL -7.6061  lr 5.10e-04
+[data] epoch 541  val NLL -7.6259  lr 5.07e-04
+[data] epoch 542  val NLL -7.5468  lr 5.04e-04
+[data] epoch 543  val NLL -7.6294  lr 5.00e-04
+[data] epoch 544  val NLL -7.6375  lr 4.97e-04  *
+[data] epoch 545  val NLL -7.6277  lr 4.94e-04
+[data] epoch 546  val NLL -7.6027  lr 4.90e-04
+[data] epoch 547  val NLL -7.6063  lr 4.87e-04
+[data] epoch 548  val NLL -7.6278  lr 4.84e-04
+[data] epoch 549  val NLL -7.6248  lr 4.81e-04
+[data] epoch 550  val NLL -7.5966  lr 4.78e-04
+[data] epoch 551  val NLL -7.6394  lr 4.74e-04  *
+[data] epoch 552  val NLL -7.6458  lr 4.71e-04  *
+[data] epoch 553  val NLL -7.6390  lr 4.68e-04
+[data] epoch 554  val NLL -7.6362  lr 4.65e-04
+[data] epoch 555  val NLL -7.6484  lr 4.62e-04  *
+[data] epoch 556  val NLL -7.6466  lr 4.58e-04
+[data] epoch 557  val NLL -7.6419  lr 4.55e-04
+[data] epoch 558  val NLL -7.6306  lr 4.52e-04
+[data] epoch 559  val NLL -7.6415  lr 4.49e-04
+[data] epoch 560  val NLL -7.5839  lr 4.46e-04
+[data] epoch 561  val NLL -7.6360  lr 4.43e-04
+[data] epoch 562  val NLL -7.6304  lr 4.40e-04
+[data] epoch 563  val NLL -7.6378  lr 4.37e-04
+[data] epoch 564  val NLL -7.6480  lr 4.33e-04
+[data] epoch 565  val NLL -7.6523  lr 4.30e-04  *
+[data] epoch 566  val NLL -7.6269  lr 4.27e-04
+[data] epoch 567  val NLL -7.5978  lr 4.24e-04
+[data] epoch 568  val NLL -7.6508  lr 4.21e-04
+[data] epoch 569  val NLL -7.6440  lr 4.18e-04
+[data] epoch 570  val NLL -7.6477  lr 4.15e-04
+[data] epoch 571  val NLL -7.6633  lr 4.12e-04  *
+[data] epoch 572  val NLL -7.6389  lr 4.09e-04
+[data] epoch 573  val NLL -7.6385  lr 4.06e-04
+[data] epoch 574  val NLL -7.6573  lr 4.03e-04
+[data] epoch 575  val NLL -7.6731  lr 4.00e-04  *
+[data] epoch 576  val NLL -7.6752  lr 3.97e-04  *
+[data] epoch 577  val NLL -7.6567  lr 3.94e-04
+[data] epoch 578  val NLL -7.6696  lr 3.91e-04
+[data] epoch 579  val NLL -7.6703  lr 3.88e-04
+[data] epoch 580  val NLL -7.6642  lr 3.85e-04
+[data] epoch 581  val NLL -7.6687  lr 3.82e-04
+[data] epoch 582  val NLL -7.6553  lr 3.79e-04
+[data] epoch 583  val NLL -7.6643  lr 3.76e-04
+[data] epoch 584  val NLL -7.6810  lr 3.73e-04  *
+[data] epoch 585  val NLL -7.6712  lr 3.71e-04
+[data] epoch 586  val NLL -7.6837  lr 3.68e-04  *
+[data] epoch 587  val NLL -7.6797  lr 3.65e-04
+[data] epoch 588  val NLL -7.6623  lr 3.62e-04
+[data] epoch 589  val NLL -7.6822  lr 3.59e-04
+[data] epoch 590  val NLL -7.6885  lr 3.56e-04  *
+[data] epoch 591  val NLL -7.6629  lr 3.53e-04
+[data] epoch 592  val NLL -7.6957  lr 3.51e-04  *
+[data] epoch 593  val NLL -7.6713  lr 3.48e-04
+[data] epoch 594  val NLL -7.6835  lr 3.45e-04
+[data] epoch 595  val NLL -7.6642  lr 3.42e-04
+[data] epoch 596  val NLL -7.6871  lr 3.39e-04
+[data] epoch 597  val NLL -7.6084  lr 3.37e-04
+[data] epoch 598  val NLL -7.6700  lr 3.34e-04
+[data] epoch 599  val NLL -7.6852  lr 3.31e-04
+[data] epoch 600  val NLL -7.6826  lr 3.28e-04
+[data] epoch 601  val NLL -7.6861  lr 3.26e-04
+[data] epoch 602  val NLL -7.6764  lr 3.23e-04
+[data] epoch 603  val NLL -7.6872  lr 3.20e-04
+[data] epoch 604  val NLL -7.6961  lr 3.18e-04  *
+[data] epoch 605  val NLL -7.6867  lr 3.15e-04
+[data] epoch 606  val NLL -7.6444  lr 3.12e-04
+[data] epoch 607  val NLL -7.7078  lr 3.10e-04  *
+[data] epoch 608  val NLL -7.6829  lr 3.07e-04
+[data] epoch 609  val NLL -7.6990  lr 3.04e-04
+[data] epoch 610  val NLL -7.6597  lr 3.02e-04
+[data] epoch 611  val NLL -7.6861  lr 2.99e-04
+[data] epoch 612  val NLL -7.7046  lr 2.96e-04
+[data] epoch 613  val NLL -7.6941  lr 2.94e-04
+[data] epoch 614  val NLL -7.7059  lr 2.91e-04
+[data] epoch 615  val NLL -7.6925  lr 2.89e-04
+[data] epoch 616  val NLL -7.6956  lr 2.86e-04
+[data] epoch 617  val NLL -7.6879  lr 2.84e-04
+[data] epoch 618  val NLL -7.6976  lr 2.81e-04
+[data] epoch 619  val NLL -7.6908  lr 2.78e-04
+[data] epoch 620  val NLL -7.7040  lr 2.76e-04
+[data] epoch 621  val NLL -7.7110  lr 2.73e-04  *
+[data] epoch 622  val NLL -7.6996  lr 2.71e-04
+[data] epoch 623  val NLL -7.7163  lr 2.68e-04  *
+[data] epoch 624  val NLL -7.7169  lr 2.66e-04  *
+[data] epoch 625  val NLL -7.7152  lr 2.64e-04
+[data] epoch 626  val NLL -7.6918  lr 2.61e-04
+[data] epoch 627  val NLL -7.7071  lr 2.59e-04
+[data] epoch 628  val NLL -7.7227  lr 2.56e-04  *
+[data] epoch 629  val NLL -7.6747  lr 2.54e-04
+[data] epoch 630  val NLL -7.7106  lr 2.51e-04
+[data] epoch 631  val NLL -7.7178  lr 2.49e-04
+[data] epoch 632  val NLL -7.7152  lr 2.47e-04
+[data] epoch 633  val NLL -7.7117  lr 2.44e-04
+[data] epoch 634  val NLL -7.7169  lr 2.42e-04
+[data] epoch 635  val NLL -7.7067  lr 2.40e-04
+[data] epoch 636  val NLL -7.7077  lr 2.37e-04
+[data] epoch 637  val NLL -7.7227  lr 2.35e-04
+[data] epoch 638  val NLL -7.7166  lr 2.33e-04
+[data] epoch 639  val NLL -7.7066  lr 2.30e-04
+[data] epoch 640  val NLL -7.7159  lr 2.28e-04
+[data] epoch 641  val NLL -7.7196  lr 2.26e-04
+[data] epoch 642  val NLL -7.7125  lr 2.24e-04
+[data] epoch 643  val NLL -7.7117  lr 2.21e-04
+[data] epoch 644  val NLL -7.7233  lr 2.19e-04  *
+[data] epoch 645  val NLL -7.7173  lr 2.17e-04
+[data] epoch 646  val NLL -7.7213  lr 2.15e-04
+[data] epoch 647  val NLL -7.7277  lr 2.12e-04  *
+[data] epoch 648  val NLL -7.7286  lr 2.10e-04  *
+[data] epoch 649  val NLL -7.7312  lr 2.08e-04  *
+[data] epoch 650  val NLL -7.7225  lr 2.06e-04
+[data] epoch 651  val NLL -7.7371  lr 2.04e-04  *
+[data] epoch 652  val NLL -7.7266  lr 2.02e-04
+[data] epoch 653  val NLL -7.7231  lr 2.00e-04
+[data] epoch 654  val NLL -7.7311  lr 1.97e-04
+[data] epoch 655  val NLL -7.7092  lr 1.95e-04
+[data] epoch 656  val NLL -7.7248  lr 1.93e-04
+[data] epoch 657  val NLL -7.7242  lr 1.91e-04
+[data] epoch 658  val NLL -7.7359  lr 1.89e-04
+[data] epoch 659  val NLL -7.7274  lr 1.87e-04
+[data] epoch 660  val NLL -7.7383  lr 1.85e-04  *
+[data] epoch 661  val NLL -7.7368  lr 1.83e-04
+[data] epoch 662  val NLL -7.7233  lr 1.81e-04
+[data] epoch 663  val NLL -7.7389  lr 1.79e-04  *
+[data] epoch 664  val NLL -7.7294  lr 1.77e-04
+[data] epoch 665  val NLL -7.7318  lr 1.75e-04
+[data] epoch 666  val NLL -7.7402  lr 1.73e-04  *
+[data] epoch 667  val NLL -7.7442  lr 1.71e-04  *
+[data] epoch 668  val NLL -7.7475  lr 1.69e-04  *
+[data] epoch 669  val NLL -7.7340  lr 1.67e-04
+[data] epoch 670  val NLL -7.7217  lr 1.66e-04
+[data] epoch 671  val NLL -7.7388  lr 1.64e-04
+[data] epoch 672  val NLL -7.7388  lr 1.62e-04
+[data] epoch 673  val NLL -7.7431  lr 1.60e-04
+[data] epoch 674  val NLL -7.7418  lr 1.58e-04
+[data] epoch 675  val NLL -7.7412  lr 1.56e-04
+[data] epoch 676  val NLL -7.7493  lr 1.54e-04  *
+[data] epoch 677  val NLL -7.7437  lr 1.53e-04
+[data] epoch 678  val NLL -7.7231  lr 1.51e-04
+[data] epoch 679  val NLL -7.7396  lr 1.49e-04
+[data] epoch 680  val NLL -7.7523  lr 1.47e-04  *
+[data] epoch 681  val NLL -7.7258  lr 1.46e-04
+[data] epoch 682  val NLL -7.7457  lr 1.44e-04
+[data] epoch 683  val NLL -7.7444  lr 1.42e-04
+[data] epoch 684  val NLL -7.7455  lr 1.40e-04
+[data] epoch 685  val NLL -7.7448  lr 1.39e-04
+[data] epoch 686  val NLL -7.7495  lr 1.37e-04
+[data] epoch 687  val NLL -7.7531  lr 1.35e-04  *
+[data] epoch 688  val NLL -7.7384  lr 1.34e-04
+[data] epoch 689  val NLL -7.7562  lr 1.32e-04  *
+[data] epoch 690  val NLL -7.7481  lr 1.30e-04
+[data] epoch 691  val NLL -7.7505  lr 1.29e-04
+[data] epoch 692  val NLL -7.7503  lr 1.27e-04
+[data] epoch 693  val NLL -7.7538  lr 1.26e-04
+[data] epoch 694  val NLL -7.7502  lr 1.24e-04
+[data] epoch 695  val NLL -7.7537  lr 1.23e-04
+[data] epoch 696  val NLL -7.7401  lr 1.21e-04
+[data] epoch 697  val NLL -7.7504  lr 1.19e-04
+[data] epoch 698  val NLL -7.7543  lr 1.18e-04
+[data] epoch 699  val NLL -7.7545  lr 1.16e-04
+[data] epoch 700  val NLL -7.7534  lr 1.15e-04
+[data] epoch 701  val NLL -7.7571  lr 1.13e-04  *
+[data] epoch 702  val NLL -7.7525  lr 1.12e-04
+[data] epoch 703  val NLL -7.7546  lr 1.11e-04
+[data] epoch 704  val NLL -7.7585  lr 1.09e-04  *
+[data] epoch 705  val NLL -7.7582  lr 1.08e-04
+[data] epoch 706  val NLL -7.7537  lr 1.06e-04
+[data] epoch 707  val NLL -7.7507  lr 1.05e-04
+[data] epoch 708  val NLL -7.7577  lr 1.04e-04
+[data] epoch 709  val NLL -7.7562  lr 1.02e-04
+[data] epoch 710  val NLL -7.7626  lr 1.01e-04  *
+[data] epoch 711  val NLL -7.7652  lr 9.95e-05  *
+[data] epoch 712  val NLL -7.7654  lr 9.82e-05  *
+[data] epoch 713  val NLL -7.7667  lr 9.69e-05  *
+[data] epoch 714  val NLL -7.7590  lr 9.56e-05
+[data] epoch 715  val NLL -7.7623  lr 9.44e-05
+[data] epoch 716  val NLL -7.7630  lr 9.31e-05
+[data] epoch 717  val NLL -7.7599  lr 9.19e-05
+[data] epoch 718  val NLL -7.7595  lr 9.06e-05
+[data] epoch 719  val NLL -7.7616  lr 8.94e-05
+[data] epoch 720  val NLL -7.7606  lr 8.82e-05
+[data] epoch 721  val NLL -7.7607  lr 8.70e-05
+[data] epoch 722  val NLL -7.7589  lr 8.58e-05
+[data] epoch 723  val NLL -7.7665  lr 8.47e-05
+[data] epoch 724  val NLL -7.7620  lr 8.35e-05
+[data] epoch 725  val NLL -7.7663  lr 8.24e-05
+[data] epoch 726  val NLL -7.7682  lr 8.13e-05  *
+[data] epoch 727  val NLL -7.7659  lr 8.02e-05
+[data] epoch 728  val NLL -7.7637  lr 7.91e-05
+[data] epoch 729  val NLL -7.7664  lr 7.80e-05
+[data] epoch 730  val NLL -7.7713  lr 7.70e-05  *
+[data] epoch 731  val NLL -7.7676  lr 7.59e-05
+[data] epoch 732  val NLL -7.7670  lr 7.49e-05
+[data] epoch 733  val NLL -7.7684  lr 7.39e-05
+[data] epoch 734  val NLL -7.7694  lr 7.29e-05
+[data] epoch 735  val NLL -7.7684  lr 7.19e-05
+[data] epoch 736  val NLL -7.7659  lr 7.09e-05
+[data] epoch 737  val NLL -7.7686  lr 7.00e-05
+[data] epoch 738  val NLL -7.7716  lr 6.90e-05  *
+[data] epoch 739  val NLL -7.7721  lr 6.81e-05  *
+[data] epoch 740  val NLL -7.7717  lr 6.72e-05
+[data] epoch 741  val NLL -7.7721  lr 6.63e-05
+[data] epoch 742  val NLL -7.7690  lr 6.54e-05
+[data] epoch 743  val NLL -7.7655  lr 6.46e-05
+[data] epoch 744  val NLL -7.7726  lr 6.37e-05  *
+[data] epoch 745  val NLL -7.7691  lr 6.29e-05
+[data] epoch 746  val NLL -7.7701  lr 6.21e-05
+[data] epoch 747  val NLL -7.7693  lr 6.13e-05
+[data] epoch 748  val NLL -7.7722  lr 6.05e-05
+[data] epoch 749  val NLL -7.7710  lr 5.97e-05
+[data] epoch 750  val NLL -7.7727  lr 5.89e-05  *
+[data] epoch 751  val NLL -7.7715  lr 5.82e-05
+[data] epoch 752  val NLL -7.7713  lr 5.74e-05
+[data] epoch 753  val NLL -7.7717  lr 5.67e-05
+[data] epoch 754  val NLL -7.7734  lr 5.60e-05  *
+[data] epoch 755  val NLL -7.7766  lr 5.53e-05  *
+[data] epoch 756  val NLL -7.7750  lr 5.47e-05
+[data] epoch 757  val NLL -7.7723  lr 5.40e-05
+[data] epoch 758  val NLL -7.7753  lr 5.34e-05
+[data] epoch 759  val NLL -7.7728  lr 5.27e-05
+[data] epoch 760  val NLL -7.7737  lr 5.21e-05
+[data] epoch 761  val NLL -7.7778  lr 5.15e-05  *
+[data] epoch 762  val NLL -7.7717  lr 5.09e-05
+[data] epoch 763  val NLL -7.7716  lr 5.04e-05
+[data] epoch 764  val NLL -7.7733  lr 4.98e-05
+[data] epoch 765  val NLL -7.7796  lr 4.93e-05  *
+[data] epoch 766  val NLL -7.7761  lr 4.88e-05
+[data] epoch 767  val NLL -7.7750  lr 4.83e-05
+[data] epoch 768  val NLL -7.7782  lr 4.78e-05
+[data] epoch 769  val NLL -7.7776  lr 4.73e-05
+[data] epoch 770  val NLL -7.7775  lr 4.68e-05
+[data] epoch 771  val NLL -7.7769  lr 4.64e-05
+[data] epoch 772  val NLL -7.7757  lr 4.59e-05
+[data] epoch 773  val NLL -7.7741  lr 4.55e-05
+[data] epoch 774  val NLL -7.7770  lr 4.51e-05
+[data] epoch 775  val NLL -7.7772  lr 4.47e-05
+[data] epoch 776  val NLL -7.7789  lr 4.44e-05
+[data] epoch 777  val NLL -7.7761  lr 4.40e-05
+[data] epoch 778  val NLL -7.7782  lr 4.37e-05
+[data] epoch 779  val NLL -7.7770  lr 4.33e-05
+[data] epoch 780  val NLL -7.7802  lr 4.30e-05  *
+[data] epoch 781  val NLL -7.7799  lr 4.27e-05
+[data] epoch 782  val NLL -7.7802  lr 4.25e-05
+[data] epoch 783  val NLL -7.7804  lr 4.22e-05  *
+[data] epoch 784  val NLL -7.7803  lr 4.19e-05
+[data] epoch 785  val NLL -7.7809  lr 4.17e-05  *
+[data] epoch 786  val NLL -7.7802  lr 4.15e-05
+[data] epoch 787  val NLL -7.7806  lr 4.13e-05
+[data] epoch 788  val NLL -7.7766  lr 4.11e-05
+[data] epoch 789  val NLL -7.7785  lr 4.09e-05
+[data] epoch 790  val NLL -7.7801  lr 4.08e-05
+[data] epoch 791  val NLL -7.7765  lr 4.06e-05
+[data] epoch 792  val NLL -7.7792  lr 4.05e-05
+[data] epoch 793  val NLL -7.7811  lr 4.04e-05  *
+[data] epoch 794  val NLL -7.7779  lr 4.03e-05
+[data] epoch 795  val NLL -7.7803  lr 4.02e-05
+[data] epoch 796  val NLL -7.7779  lr 4.01e-05
+[data] epoch 797  val NLL -7.7809  lr 4.01e-05
+[data] epoch 798  val NLL -7.7801  lr 4.00e-05
+[data] epoch 799  val NLL -7.7807  lr 4.00e-05
+[data] best epoch 793, val NLL -7.7811 | tail noise 0.002, best is 0.68 sigma below median, trend -0.0000/epoch
+[data] WARNING: the retained snapshot is only 0.68 sigma better than a typical recent epoch -- model selection is dominated by noise, not convergence
+[morph] correcting MC
+[validate] running suite
+[validate] context-reweighted closure (bins [4, 4, 4, 4])
+[validate] binned closure
+[validate] binned marginal plots (360 cells)
+[warn] binned marginal plots failed: 360 context cells exceeds max_cells=64; use coarser --closure-bins for the plots
+
+================ covflow report ================
+ roundtrip_error            4.17e-11
+ PD after correction        100.0000%
+ latent MC  mean/std        +0.012 / 1.079
+ latent clip fraction       0.0024 (per component 0.0005)
+ marginal W1  mean          0.0494 -> 0.0275
+ corr max|dRho|             0.3290 -> 0.3187
+ classifier AUC             0.8217 -> 0.6580
+ coverage worst             0.0059
+ classifier AUC (subspace)  0.7002 -> 0.5698   <-- closure of the trained subspace
+
+ MARGINAL comparison (contaminated by the kinematic spectrum --
+ see the context-reweighted table below for the number that matters)
+ feature                 W1 before    W1 after   change  trained
+  log_sigma_qoverp          0.0938     0.0919      =     y
+  log_sigma_lambda          0.0286     0.0584     ++     y
+  log_sigma_phi             0.0326     0.1026     ++     y
+  log_sigma_dxy             0.1815     0.0388     --     y
+  log_sigma_dsz             0.1431     0.0220     --     y
+  pcorr_lambda_qoverp       0.0020     0.0020      =     .
+  pcorr_phi_qoverp          0.0521     0.0217     --     y
+  pcorr_phi_lambda          0.0033     0.0033      =     .
+  pcorr_dxy_qoverp          0.0393     0.0167     --     y
+  pcorr_dxy_lambda          0.0040     0.0040      =     .
+  pcorr_dxy_phi             0.0947     0.0226     --     y
+  pcorr_dsz_qoverp          0.0027     0.0027      =     .
+  pcorr_dsz_lambda          0.0511     0.0144     --     y
+  pcorr_dsz_phi             0.0046     0.0046      =     .
+  pcorr_dsz_dxy             0.0071     0.0071      =     .
+  (-- much better, - better, = unchanged, + worse, ++ much worse)
+
+ [note] 2 feature(s) look worse in the MARGINAL table above: log_sigma_lambda, log_sigma_phi
+        ...but 2 of them IMPROVE at fixed context: log_sigma_lambda, log_sigma_phi
+        The marginal is contaminated by the data/MC kinematic spectrum, which the
+        morph cannot and should not fix. Read the conditional numbers.
+
+ [ok] no feature is worse at fixed context
+
+ CONTEXT-REWEIGHTED (MC reweighted to data's context spectrum)
+  classifier AUC            0.6623 -> 0.5138
+  effective N of MC         823,490   uncovered data 0.00%
+   log_sigma_qoverp         0.0097 ->   0.0075   x0.77
+   log_sigma_lambda         0.0472 ->   0.0275   x0.58
+   log_sigma_phi            0.0755 ->   0.0183   x0.24
+   log_sigma_dxy            0.2350 ->   0.0164   x0.07
+   log_sigma_dsz            0.1687 ->   0.0341   x0.20
+   pcorr_phi_qoverp         0.0403 ->   0.0079   x0.20
+   pcorr_dxy_qoverp         0.0305 ->   0.0060   x0.20
+   pcorr_dxy_phi            0.0670 ->   0.0234   x0.35
+   pcorr_dsz_lambda         0.0678 ->   0.0184   x0.27
+
+ SIZE OF THE CORRECTION vs the discrepancy it must fix   (signal = conditional)
+  feature                 shift   scatter  scatter/signal
+  log_sigma_qoverp       -0.0005  0.0295       3.05
+  log_sigma_lambda       +0.0291  0.0784       1.66
+  log_sigma_phi          +0.0672  0.0935       1.24
+  log_sigma_dxy          +0.2130  0.2882       1.23
+  log_sigma_dsz          +0.1167  0.2491       1.48
+  pcorr_phi_qoverp       +0.0203  0.0513       1.27
+  pcorr_dxy_qoverp       -0.0164  0.0451       1.48
+  pcorr_dxy_phi          +0.0992  0.2277       2.29
+  pcorr_dsz_lambda       -0.0179  0.1958       2.89
+  DESCRIPTIVE ONLY -- do not use as a decision rule. A large spread is not
+  necessarily noise: tracks genuinely need different corrections. Measured on
+  real data, features with ratio > 2 have both improved threefold and got worse.
+
+ BLOCK SEPARABILITY OF THE FLOW (data, at fixed context)
+  cross-block feature corr: max 0.970  median 0.347
+  within-block, for scale : median 0.442
+  worst pair: pcorr_dxy_phi vs pcorr_dsz_lambda = 0.899
+  -> cross-block feature correlations are NOT negligible. The covariance MATRIX
+     factorises, but the features do not, across tracks. Keep ONE joint flow
+     (--features block); splitting it would throw this correlation away.
+
+ BINNED CLOSURE  (88 cells used, 104 skipped for <400 entries)
+  mean over cells: W1 0.1462 -> 0.0717
+                   AUC 0.7588 -> 0.5458   (worst cell after: 0.8102)
+
+  per-feature, averaged over cells:
+   log_sigma_qoverp         0.0614 ->   0.0490   x0.80
+   log_sigma_lambda         0.1093 ->   0.0997   x0.91
+   log_sigma_phi            0.1459 ->   0.0898   x0.62
+   log_sigma_dxy            0.2876 ->   0.0724   x0.25
+   log_sigma_dsz            0.3020 ->   0.1577   x0.52
+   pcorr_phi_qoverp         0.0494 ->   0.0158   x0.32
+   pcorr_dxy_qoverp         0.0453 ->   0.0183   x0.40
+   pcorr_dxy_phi            0.1767 ->   0.0653   x0.37
+   pcorr_dsz_lambda         0.1383 ->   0.0773   x0.56
+
+  worst cells by AUC after:
+   AUC 0.795 -> 0.810  n_mc=    470 n_data=  2,099  log_mu2_pt[1.7,inf) mu2_eta[-0.994,0.0166) mu2_n_pix_b_hit[-inf,2) mu2_n_pix_e_hit[0,1)
+   AUC 0.829 -> 0.778  n_mc=    516 n_data=    462  log_mu2_pt[1.49,1.7) mu2_eta[1.01,inf) mu2_n_pix_b_hit[-inf,2) mu2_n_pix_e_hit[0,1)
+   AUC 0.756 -> 0.771  n_mc=    667 n_data=  1,655  log_mu2_pt[1.49,1.7) mu2_eta[-0.994,0.0166) mu2_n_pix_b_hit[-inf,2) mu2_n_pix_e_hit[0,1)
+   AUC 0.752 -> 0.727  n_mc=    585 n_data=  1,003  log_mu2_pt[1.34,1.49) mu2_eta[-0.994,0.0166) mu2_n_pix_b_hit[-inf,2) mu2_n_pix_e_hit[0,1)
+   AUC 0.768 -> 0.698  n_mc=    463 n_data=    438  log_mu2_pt[1.7,inf) mu2_eta[1.01,inf) mu2_n_pix_b_hit[-inf,2) mu2_n_pix_e_hit[0,1)
+================================================
+
+
+============================================================
+Training finished successfully
+output : /work/manzoni/correct_track_covariance/covflow-runs/mu2_1Mevents_fourconditional_block_17sep26_v4/task_0
+date   : gio 17 set 2026, 14:21:46, CEST
+============================================================

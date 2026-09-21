@@ -48,7 +48,7 @@
   0.1024048825308368,
   0.04684841819339836
  ],
- "covariance_status": "unvalidated",
+ "covariance_status": "validated",
  "p1_convention": "P1 = sqrt(r)/(1+r) * F2",
  "sqrt_evals": [
   0.3755145040779274,
@@ -323,5 +323,6 @@
    0.00016017145499085483,
    -9.267693703898492e-05
   ]
- ]
+ ],
+ "covariance_validation": "check_ff_band.py reproduces the Harrison-2024 lattice band (in/out ratio 1.000); Hammer C++ closure on this card: R 0.2601 +/- 0.0009 vs analytic 0.2602, H_t excess/share -0.003 (nominal) and -0.002 (dvec x2). See FF_validation_Bc_to_Jpsi.md."
 }
