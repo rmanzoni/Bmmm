@@ -37,7 +37,10 @@ class JpsiMuInspector(BaseInspector):
     CAND_BRANCHES  = cand_branches
     MUON_BRANCHES  = muon_branches
     SAFE_GET       = safe_get
-    EVENT_GEN_KEYS = tuple(bc_branches.keys())
+    # the hammer_* block is filled once per event in setup_event_gen, so it MUST
+    # be an event key: otherwise it lands in _CAND_TEMPLATE as NaN and the
+    # {**event_tofill, **cand_tofill} row merge overwrites every Hammer weight.
+    EVENT_GEN_KEYS = tuple(bc_branches.keys()) + tuple(HAMMER_BRANCH_NAMES)
     MIN_MUONS      = 3
 
     # ---- build 3-muon (J/psi + bachelor mu) candidates ---------------------

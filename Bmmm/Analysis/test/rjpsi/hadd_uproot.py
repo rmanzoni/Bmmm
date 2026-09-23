@@ -193,6 +193,12 @@ def find_common_trees(files):
     with a warning instead of raising. Entry counts come from TTree metadata
     only (no branch data is read), so this is effectively free and doubles
     as the exact entry total the progress bar needs.
+
+    Keys are taken WITHOUT cycles: a TTree that ROOT autosaved is stored as
+    tree;1 (an older snapshot) and tree;2 (the final one). Listing both put the
+    file in the merge list twice -- and ``fpath:tree`` always reads the highest
+    cycle, so its events were written twice -- while the entry total also
+    summed the stale snapshot.
     """
     trees = {}
     tree_entries = {}
@@ -200,9 +206,9 @@ def find_common_trees(files):
     for fpath in files:
         try:
             with uproot.open(fpath) as f:
-                for key, classname in f.classnames().items():
+                for key, classname in f.classnames(cycle=False).items():
                     if classname.startswith("TTree"):
-                        name = key.split(";")[0]
+                        name = key
                         trees.setdefault(name, []).append(fpath)
                         try:
                             n = f[key].num_entries
@@ -625,6 +631,13 @@ def main():
     except ValueError:
         pass  # keep as a memory-target string, e.g. "50 MB"
 
+    for tree_name, file_list in trees.items():
+        dup = sorted({f for f in file_list if file_list.count(f) > 1})
+        if dup:
+            print(f"[error] tree '{tree_name}': {len(dup)} file(s) listed more "
+                  f"than once, e.g. {dup[0]}", file=sys.stderr)
+            sys.exit(1)
+
     total_entries_selected = sum(tree_entries.get(t, 0) for t in trees.keys())
     print(f"Total entries to merge: {total_entries_selected}")
 
@@ -649,6 +662,7 @@ def main():
 
     t_start = time.time()
     total_rows = 0
+    count_errors = []   # entry-count mismatches: fatal, unlike -k tree failures
     progress = None if args.no_progress else Progress(total_entries_selected, build_output_path)
     try:
         with uproot.recreate(build_output_path, compression=compression) as out_file:
@@ -691,6 +705,10 @@ def main():
                             on_chunk=None if progress is None else progress.update,
                         )
                     total_rows += n
+                    if n != tree_entries.get(tree_name, 0):
+                        count_errors.append(
+                            f"tree '{tree_name}': wrote {n} entries, inputs hold "
+                            f"{tree_entries.get(tree_name, 0)}")
                     if progress is not None and progress.is_tty:
                         print(file=sys.stderr)  # move off the live bar line before the next print
                     print(f"  -> {n} entries written")
@@ -699,6 +717,15 @@ def main():
                     print(f"[warn] -k: failed to merge tree '{tree_name}': {exc}", file=sys.stderr)
         if progress is not None:
             progress.close()
+
+        if count_errors:
+            for e in count_errors:
+                print(f"[error] {e}", file=sys.stderr)
+            out_file.close()
+            if scratch_run_dir is None:
+                os.remove(build_output_path)   # --no-stage: never leave it behind
+            print(f"[error] output NOT written to {final_output_path}", file=sys.stderr)
+            sys.exit(1)
 
         if scratch_run_dir is not None:
             os.makedirs(os.path.dirname(final_output_path) or ".", exist_ok=True)

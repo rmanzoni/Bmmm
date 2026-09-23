@@ -73,6 +73,7 @@ class BaseInspector(object):
         self._CAND_KEYS    = [b for b in self.BRANCHES
                               if b not in self._TRIGGER_KEYS and b not in self._EVENT_KEYS]
         self._CAND_TEMPLATE = dict.fromkeys(self._CAND_KEYS, np.nan)
+        self._event_keys_checked = False
 
     # ==================================================================
     #  HOOKS  (overridden by the channel subclasses)
@@ -243,6 +244,19 @@ class BaseInspector(object):
                 event_tofill[branch] = getter(event)
 
             gen_state = self.setup_event_gen(event, options, event_tofill)
+
+            # fail loud, once: anything setup_event_gen fills that is also a
+            # candidate key would be silently overwritten by the NaN template
+            # in the row merge below (this is how the hammer_* block was lost).
+            if not self._event_keys_checked:
+                clobbered = set(event_tofill) & set(self._CAND_KEYS)
+                if clobbered:
+                    raise RuntimeError(
+                        'setup_event_gen filled %s, which are candidate keys and '
+                        'would be overwritten by the NaN candidate template; add '
+                        'them to %s.EVENT_GEN_KEYS'
+                        % (sorted(clobbered), type(self).__name__))
+                self._event_keys_checked = True
 
             ##################################################################
             #####      FILL ONE ROW PER CANDIDATE  (hook)
