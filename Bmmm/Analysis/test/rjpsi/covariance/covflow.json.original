@@ -1,0 +1,10 @@
+{
+  "context"    : ["log_pt", "eta", "n_pix_hit"],
+  "features"   : "all",
+  "param"      : "logsigma_corr",
+  "transforms" : 4,
+  "hidden"     : [128, 128],
+  "bins"       : 8,
+  "seed"       : 0
+}
+

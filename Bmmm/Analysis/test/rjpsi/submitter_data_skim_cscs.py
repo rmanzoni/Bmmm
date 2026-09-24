@@ -80,34 +80,34 @@ input_redirector = 'cms03.lcg.cscs.ch:1094'      # CSCS site door (direct)  <-- 
 year = '2022' # '2024' or '2025'
 
 input_files_by_year = {
-    '2022': '../files/files_data2022_cscs_12jul26.txt',
-    '2023': '../files/files_data2023_cscs_11jul26.txt',
-    '2024': '../files/files_data2024_cscs_08jul26.txt',
-    '2025': '../files/files_data2025_cscs_08jul26.txt',
-    '2026': '../files/files_data2026_cscs_11jul26.txt',
+    '2022': '../files/files_data2022_cscs_24sep26.txt',
+    '2023': '../files/files_data2023_cscs_24sep26.txt',
+    '2024': '../files/files_data2024_cscs_24sep26.txt',
+    '2025': '../files/files_data2025_cscs_24sep26.txt',
+    '2026': '../files/files_data2026_cscs_24sep26.txt',
 }
 
 addendum_files_by_year = {
-    '2022': '../files/files_data2022_cscs_13jul26.txt',
-    '2023': '../files/files_data2023_cscs_11jul26.txt',
-    '2024': '../files/files_data2024_cscs_08jul26.txt',
-    '2025': '../files/files_data2025_cscs_08jul26.txt',
-    '2026': '../files/files_data2026_cscs_11jul26.txt',
+    '2022': '',
+    '2023': '',
+    '2024': '',
+    '2025': '',
+    '2026': '',
 }
 
 out_dir_by_year = {
-    '2022': 'RJpsi_23Jun2026_notrig_data2022_cscs_04jul26_v1',
-    '2023': 'RJpsi_23Jun2026_notrig_data2023_cscs_04jul26_v1',
-    '2024': 'RJpsi_23Jun2026_notrig_data2024_cscs_04jul26_v1',
-    '2025': 'RJpsi_23Jun2026_notrig_data2025_cscs_04jul26_v1',
-    '2026': 'RJpsi_23Jun2026_notrig_data2026_cscs_04jul26_v1',
+    '2022': 'RJpsi_23Jun2026_data2022_cscs_24sep26_v1',
+    '2023': 'RJpsi_23Jun2026_data2023_cscs_24sep26_v1',
+    '2024': 'RJpsi_23Jun2026_data2024_cscs_24sep26_v1',
+    '2025': 'RJpsi_23Jun2026_data2025_cscs_24sep26_v1',
+    '2026': 'RJpsi_23Jun2026_data2026_cscs_24sep26_v1',
 }
 
 # ---------------------------------------------------------------------------
 # diff submission config (kept for reuse; OFF for a fresh CSCS submission)
 # ---------------------------------------------------------------------------
 # When True: submit only (addendum \ base). When False: submit input_file.
-diff_mode = True
+diff_mode = False
 
 input_file    = input_files_by_year[year]         # used when diff_mode = False
 # For a real diff run, point base_file / addendum_file at the proper lists
@@ -320,6 +320,7 @@ for ijob, ichunk in enumerate(chunks):
             '--inputFiles={infiles} '
             '--logfreq=5000 '
             '--destination=/scratch/manzoni/{scratch_dir} '
+            '--skim '
             #'--savenontrig '
             '--filename={outfile}_chunk{ijob}_part{idx} \n'
             'if [ $? -ne 0 ]; then\n'
