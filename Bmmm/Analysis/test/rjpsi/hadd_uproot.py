@@ -497,8 +497,8 @@ def main():
         help="output compression algorithm (default: zstd)",
     )
     parser.add_argument(
-        "--compression-level", type=int, default=9,
-        help="compression level (default: 9; zstd max is 22, higher = smaller/slower)",
+        "--compression-level", type=int, default=5,
+        help="compression level (default: 5; zstd max is 22, higher = smaller/slower)",
     )
     parser.add_argument(
         "--step-size", default="50 MB",

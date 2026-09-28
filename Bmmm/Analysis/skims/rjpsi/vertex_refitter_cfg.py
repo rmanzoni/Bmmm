@@ -1,8 +1,29 @@
 import glob
 
+# ------------------------------------------------------------------------------------
+# MC skim pset -- ONE pset for every MC campaign, the global tag is a mandatory argument.
+#
+#   local test : cmsRun vertex_refitter_cfg.py globalTag=130X_mcRun3_2022_realistic_v5 \
+#                       inputFiles=/store/mc/...root maxEvents=1000
+#   CRAB       : crab_mc.py passes it through config.JobType.pyCfgParams, per sample.
+#
+# There is deliberately NO default GT: before this change the 2018 UL GT was hardcoded
+# here, and a Run 3 sample skimmed with it would have run without complaint.
+# ------------------------------------------------------------------------------------
+from FWCore.ParameterSet.VarParsing import VarParsing
+
+options = VarParsing('python')   # 'python' mode already provides inputFiles and maxEvents
+options.register('globalTag', '',
+                 VarParsing.multiplicity.singleton, VarParsing.varType.string,
+                 'global tag, mandatory (e.g. 130X_mcRun3_2022_realistic_v5)')
+options.parseArguments()
+
+if not options.globalTag:
+    raise RuntimeError('vertex_refitter_cfg.py: globalTag=<GT> is mandatory, no default on purpose')
+
 # allfiles = glob.glob('/pnfs/psi.ch/cms/trivcat/store/user/manzoni/data_2024_10sept24_4m_loose_id_MINIAOD/*root')
 
-allfiles = [
+allfiles = options.inputFiles if options.inputFiles else [
     'file:/work/manzoni/rjpsi_run3/CMSSW_15_1_1/src/Bmmm/Analysis/test/rjpsi/0443354B-2D3F-CF41-A1F0-0FC4F92E718E.root',
 ]
 
@@ -17,9 +38,7 @@ import FWCore.ParameterSet.Config as cms
 process = cms.Process('SKIM')
 
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-#process.GlobalTag.globaltag = "auto:run2_mc"
-# process.GlobalTag.globaltag = "130X_dataRun3_Prompt_v4"
-process.GlobalTag.globaltag = '106X_upgrade2018_realistic_v16_L1v1'
+process.GlobalTag.globaltag = options.globalTag   # Run 2 UL18 was '106X_upgrade2018_realistic_v16_L1v1'
 
 process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("Configuration.Geometry.GeometryRecoDB_cff")
@@ -28,8 +47,7 @@ process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = cms.untracked.int32(1000)
 
 process.maxEvents = cms.untracked.PSet(
-    #input = cms.untracked.int32(100000),
-    input = cms.untracked.int32(-1),
+    input = cms.untracked.int32(options.maxEvents),
     output = cms.optional.untracked.allowed(cms.int32,cms.PSet)
 )
 
