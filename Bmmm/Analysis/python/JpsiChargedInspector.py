@@ -32,6 +32,9 @@ from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow, make_cov_scaler, make_cov_corrector, resolve_input_files
 from Bmmm.Analysis.HammerFF import make_hammer_session
+from Bmmm.Analysis.PileupWeights import make_pu_session
+from Bmmm.Analysis.PileupWeights import BRANCH_NAMES as PU_BRANCH_NAMES
+from Bmmm.Analysis.PileupWeights import NAN_ROW as PU_NAN_ROW
 from Bmmm.Analysis.Handles import handles_mc
 from Bmmm.Analysis.Handles import handles      as handles_std   # full MINIAOD collections
 from Bmmm.Analysis.Handles import handles_skim                  # SKIM collections (BS-constrained vertices)
@@ -61,6 +64,7 @@ class BaseInspector(object):
     SAFE_GET        = None     # safe_get helper
     EVENT_GEN_KEYS  = ()       # event-level branches filled by setup_event_gen (e.g. bc_branches)
     HAMMER          = None     # HammerFF.HammerSession, built by main() when --hammer is given
+    PU              = None     # PileupWeights.PileupSession, built by main() when --pu is given
     MIN_MUONS       = 2        # minimum selected muons
 
     def __init__(self):
@@ -69,7 +73,15 @@ class BaseInspector(object):
         self._GEN_DR2       = cuts['gen_dr'] ** 2
 
         self._TRIGGER_KEYS = set(k for p in self.PATHS for k in (p, p + '_ps'))
-        self._EVENT_KEYS   = set(self.EVENT_BRANCHES.keys()) | set(self.EVENT_GEN_KEYS)
+        # the pu_weight_* block is filled once per event in the looper, not by an
+        # EVENT_BRANCHES getter, so it has to be declared an event key here or the
+        # NaN candidate template would overwrite it in the row merge.
+        missing_pu = [b for b in PU_BRANCH_NAMES if b not in self.BRANCHES]
+        if missing_pu:
+            raise RuntimeError('%s: the branch list lacks the pileup-weight block %s'
+                               % (type(self).__name__, missing_pu))
+        self._EVENT_KEYS   = (set(self.EVENT_BRANCHES.keys()) | set(self.EVENT_GEN_KEYS)
+                              | set(PU_BRANCH_NAMES))
         self._CAND_KEYS    = [b for b in self.BRANCHES
                               if b not in self._TRIGGER_KEYS and b not in self._EVENT_KEYS]
         self._CAND_TEMPLATE = dict.fromkeys(self._CAND_KEYS, np.nan)
@@ -243,6 +255,13 @@ class BaseInspector(object):
             for branch, getter in self.EVENT_BRANCHES.items():
                 event_tofill[branch] = getter(event)
 
+            # pileup weights: fixed pu_weight_<year>{,_up,_down} block, NaN unless
+            # --pu. Same nti as the `nti` branch and same PileupSession call as
+            # test/rjpsi/pileup/add_pu_weights.py, hence identical weights.
+            event_tofill.update(PU_NAN_ROW)
+            if self.PU is not None:
+                event_tofill.update(self.PU.weights(event.pu_at_bx0.getTrueNumInteractions()))
+
             gen_state = self.setup_event_gen(event, options, event_tofill)
 
             # fail loud, once: anything setup_event_gen fills that is also a
@@ -323,6 +342,18 @@ class BaseInspector(object):
                                  'in the schema either way -- without the flag they are NaN, '
                                  'and the same weights can be added afterwards with '
                                  'test/rjpsi/hammer/add_hammer_weights.py.')
+        parser.add_argument('--pu',          dest='pu',          default='',             type=str,
+                            help='Write PILEUP weights, MC generation profile -> official '
+                                 'data pileup profile, at production time. Takes the MC '
+                                 "campaign, e.g. 'Summer22EE' or 'Summer24', optionally as "
+                                 "'campaign:/path/to/card.json' (default card: "
+                                 'Bmmm/Analysis/data/pu_weights_run3.json, built by '
+                                 'test/rjpsi/pileup/build_pu_card.py). The campaign decides '
+                                 'which pu_weight_<year> branches are filled (Summer24: '
+                                 '2024, 2025 and 2026). MC only. The branches are in the '
+                                 'schema either way -- NaN without the flag -- and the same '
+                                 'weights can be added afterwards with '
+                                 'test/rjpsi/pileup/add_pu_weights.py.')
         args = parser.parse_args()
         return namedtuple('options', args.__dict__.keys())(*args.__dict__.values())
 
@@ -370,6 +401,14 @@ class BaseInspector(object):
                                'are a generator-truth quantity and exist only for MC.')
         self.HAMMER = make_hammer_session(hammer_spec)
 
+        # pileup weights, off by default; built here so a missing card or an
+        # unknown campaign kills the job before the first event.
+        pu_spec = getattr(options, 'pu', '')
+        if pu_spec and not options.mc:
+            raise RuntimeError('--pu without --mc: pileup weights map MC onto data '
+                               'and do not exist for data.')
+        self.PU = make_pu_session(pu_spec)
+
         files = resolve_input_files(options.inputFiles, options.redirector)
 
         if options.maxfiles > 0:
@@ -416,6 +455,9 @@ class BaseInspector(object):
 
         if self.HAMMER is not None:
             print(self.HAMMER.summary())
+
+        if self.PU is not None:
+            print(self.PU.summary())
 
         finish = time()
         print('done in %.1f hours' % ((finish - start) / 3600.))

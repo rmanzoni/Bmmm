@@ -22,6 +22,7 @@ from Bmmm.Analysis.JpsiChargedBranches import (
 )
 from Bmmm.Analysis.JpsiMuBranches import cand_branches as _mu_cand_branches
 from Bmmm.Analysis.JpsiMuBranches import vertex_cov_branches
+from Bmmm.Analysis.PileupWeights import BRANCH_NAMES as PU_BRANCH_NAMES
 
 ##########################################################################################
 #####      KAON (bachelor track) quantities  ->  k_<name>
@@ -239,6 +240,9 @@ for ibr in k_branches.keys():
 
 for ibranch in cand_branches.keys():
     branches.append(ibranch)
+
+# pileup weights: fixed 15-branch block, NaN unless --pu. See PileupWeights.
+branches += PU_BRANCH_NAMES
 
 branches += list(paths)
 branches += [path + '_ps' for path in paths]

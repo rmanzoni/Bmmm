@@ -158,6 +158,8 @@ class JpsiMuInspector(BaseInspector):
             self.fill_muon(imu, icand, event, options)
             for branch, getter in muon_branches.items():
                 cand_tofill['mu%d_%s' % (idx, branch)] = safe_get(getter, imu, verbose=options.verbose, name=branch)
+            
+#             import ipdb ; ipdb.set_trace()
 
         # ---- neutrino reconstruction + reco helicity angles -----------------
         have_dir = (getattr(icand, 'Bdirection_jpsi', None) is not None or

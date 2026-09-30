@@ -7,820 +7,858 @@ Found 30 index-0 datasets
 ================================================================================
 YEAR 2022
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 86 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 86 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 85 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 85 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 84 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 82 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 83 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022C_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 81 files
+  [1/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022C_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 86 files
+    -> using v1: 86 files
+  [2/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022C_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 86 files
+    -> using v1: 86 files
+  [3/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022C_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 85 files
+    -> using v1: 85 files
+  [4/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022C_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 85 files
+    -> using v1: 85 files
+  [5/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022C_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 84 files
+    -> using v1: 84 files
+  [6/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022C_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 82 files
+    -> using v1: 82 files
+  [7/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022C_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 83 files
+    -> using v1: 83 files
+  [8/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022C_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 81 files
+    -> using v1: 81 files
 ================================================================================
 YEAR 2022
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 15 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 15 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 15 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 15 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 16 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 15 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 14 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022D_PromptReco_v1-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 15 files
+  (versions [2] are listed separately in the input and are excluded here)
+  [9/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 15 files
+    -> using v1: 15 files
+  [10/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 15 files
+    -> using v1: 15 files
+  [11/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 15 files
+    -> using v1: 15 files
+  [12/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 15 files
+    -> using v1: 15 files
+  [13/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 16 files
+    -> using v1: 16 files
+  [14/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 15 files
+    -> using v1: 15 files
+  [15/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 14 files
+    -> using v1: 14 files
+  [16/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v1: 15 files
+    -> using v1: 15 files
 ================================================================================
 YEAR 2022
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 26 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 25 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 25 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 25 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 25 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 25 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 25 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022D_PromptReco_v2-df368293ad9cdd32a515d717c73372d6/USER instance=prod/phys03']
-    -> 25 files
+  (versions [1] are listed separately in the input and are excluded here)
+  [17/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v2: 26 files
+    -> using v2: 26 files
+  [18/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v2: 25 files
+    -> using v2: 25 files
+  [19/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v2: 25 files
+    -> using v2: 25 files
+  [20/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v2: 25 files
+    -> using v2: 25 files
+  [21/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v2: 25 files
+    -> using v2: 25 files
+  [22/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v2: 25 files
+    -> using v2: 25 files
+  [23/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v2: 25 files
+    -> using v2: 25 files
+  [24/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022D_PromptReco_v*-df368293ad9cdd32a515d717c73372d6/USER
+      v2: 25 files
+    -> using v2: 25 files
 ================================================================================
 YEAR 2022
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER instance=prod/phys03']
-    -> 75 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER instance=prod/phys03']
-    -> 75 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER instance=prod/phys03']
-    -> 75 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER instance=prod/phys03']
-    -> 75 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER instance=prod/phys03']
-    -> 75 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER instance=prod/phys03']
-    -> 72 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER instance=prod/phys03']
-    -> 74 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022E_PromptReco_v1-b43de2ab0855e01545ce35379899441b/USER instance=prod/phys03']
-    -> 74 files
+  [25/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022E_PromptReco_v*-b43de2ab0855e01545ce35379899441b/USER
+      v1: 75 files
+    -> using v1: 75 files
+  [26/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022E_PromptReco_v*-b43de2ab0855e01545ce35379899441b/USER
+      v1: 75 files
+    -> using v1: 75 files
+  [27/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022E_PromptReco_v*-b43de2ab0855e01545ce35379899441b/USER
+      v1: 75 files
+    -> using v1: 75 files
+  [28/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022E_PromptReco_v*-b43de2ab0855e01545ce35379899441b/USER
+      v1: 75 files
+    -> using v1: 75 files
+  [29/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022E_PromptReco_v*-b43de2ab0855e01545ce35379899441b/USER
+      v1: 75 files
+    -> using v1: 75 files
+  [30/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022E_PromptReco_v*-b43de2ab0855e01545ce35379899441b/USER
+      v1: 72 files
+    -> using v1: 72 files
+  [31/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022E_PromptReco_v*-b43de2ab0855e01545ce35379899441b/USER
+      v1: 74 files
+    -> using v1: 74 files
+  [32/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022E_PromptReco_v*-b43de2ab0855e01545ce35379899441b/USER
+      v1: 74 files
+    -> using v1: 74 files
 ================================================================================
 YEAR 2022
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 191 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 181 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 182 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 184 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 184 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 179 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 185 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022F_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 176 files
+  [33/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022F_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 191 files
+    -> using v1: 191 files
+  [34/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022F_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 181 files
+    -> using v1: 181 files
+  [35/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022F_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 182 files
+    -> using v1: 182 files
+  [36/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022F_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 184 files
+    -> using v1: 184 files
+  [37/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022F_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 184 files
+    -> using v1: 184 files
+  [38/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022F_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 179 files
+    -> using v1: 179 files
+  [39/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022F_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 185 files
+    -> using v1: 185 files
+  [40/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022F_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 176 files
+    -> using v1: 176 files
 ================================================================================
 YEAR 2022
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 40 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 38 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 37 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 36 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 41 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 41 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 40 files
+  [41/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022G_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 40 files
+    -> using v1: 40 files
+  [42/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2022G_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 38 files
+    -> using v1: 38 files
+  [43/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2022G_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 37 files
+    -> using v1: 37 files
+  [44/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2022G_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 36 files
+    -> using v1: 36 files
+  [45/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022G_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 35 files
+    -> using v2: 35 files
+  [46/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2022G_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 41 files
+    -> using v1: 41 files
+  [47/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2022G_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 41 files
+    -> using v1: 41 files
+  [48/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2022G_22Sep2023_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 40 files
+    -> using v1: 40 files
 ================================================================================
 YEAR 2023
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 42 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 44 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 40 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 43 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 51 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 41 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 42 files
+  [49/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 42 files
+    -> using v1: 42 files
+  [50/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v2: 41 files
+    -> using v2: 41 files
+  [51/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 44 files
+    -> using v1: 44 files
+  [52/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 40 files
+    -> using v1: 40 files
+  [53/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 43 files
+    -> using v1: 43 files
+  [54/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 51 files
+    -> using v1: 51 files
+  [55/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 41 files
+    -> using v1: 41 files
+  [56/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 42 files
+    -> using v1: 42 files
 ================================================================================
 YEAR 2023
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 14 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 13 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 13 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 15 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 15 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 14 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 13 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 13 files
+  [57/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 14 files
+    -> using v1: 14 files
+  [58/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 13 files
+    -> using v1: 13 files
+  [59/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 13 files
+    -> using v1: 13 files
+  [60/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 15 files
+    -> using v1: 15 files
+  [61/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 15 files
+    -> using v1: 15 files
+  [62/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 14 files
+    -> using v1: 14 files
+  [63/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 13 files
+    -> using v1: 13 files
+  [64/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 13 files
+    -> using v1: 13 files
 ================================================================================
 YEAR 2023
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 16 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 16 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 16 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 19 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 17 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 16 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 17 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v3_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 18 files
+  [65/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v3_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 16 files
+    -> using v1: 16 files
+  [66/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v3_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 16 files
+    -> using v1: 16 files
+  [67/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v3_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 16 files
+    -> using v1: 16 files
+  [68/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v3_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 19 files
+    -> using v1: 19 files
+  [69/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v3_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 17 files
+    -> using v1: 17 files
+  [70/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v3_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 16 files
+    -> using v1: 16 files
+  [71/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v3_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 17 files
+    -> using v1: 17 files
+  [72/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v3_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 18 files
+    -> using v1: 18 files
 ================================================================================
 YEAR 2023
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 111 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 105 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 110 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 116 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 121 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 106 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 108 files
+  [73/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v4_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 111 files
+    -> using v1: 111 files
+  [74/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v4_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 105 files
+    -> using v1: 105 files
+  [75/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023C_22Sep2023_v4_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 110 files
+    -> using v1: 110 files
+  [76/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v4_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v2: 104 files
+    -> using v2: 104 files
+  [77/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023C_22Sep2023_v4_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 116 files
+    -> using v1: 116 files
+  [78/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023C_22Sep2023_v4_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 121 files
+    -> using v1: 121 files
+  [79/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023C_22Sep2023_v4_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 106 files
+    -> using v1: 106 files
+  [80/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023C_22Sep2023_v4_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 108 files
+    -> using v1: 108 files
 ================================================================================
 YEAR 2023
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 81 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 82 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 81 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 83 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 79 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 77 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 76 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023D_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 78 files
+  [81/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023D_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 81 files
+    -> using v1: 81 files
+  [82/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023D_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 82 files
+    -> using v1: 82 files
+  [83/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023D_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 81 files
+    -> using v1: 81 files
+  [84/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023D_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 83 files
+    -> using v1: 83 files
+  [85/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023D_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 79 files
+    -> using v1: 79 files
+  [86/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023D_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 77 files
+    -> using v1: 77 files
+  [87/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023D_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 76 files
+    -> using v1: 76 files
+  [88/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023D_22Sep2023_v1_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 78 files
+    -> using v1: 78 files
 ================================================================================
 YEAR 2023
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 20 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 20 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 18 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 19 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 20 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 18 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER instance=prod/phys03']
-    -> 19 files
+  [89/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023D_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 20 files
+    -> using v1: 20 files
+  [90/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023D_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 20 files
+    -> using v1: 20 files
+  [91/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2023D_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 18 files
+    -> using v1: 18 files
+  [92/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023D_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 19 files
+    -> using v1: 19 files
+  [93/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023D_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v2: 18 files
+    -> using v2: 18 files
+  [94/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2023D_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 20 files
+    -> using v1: 20 files
+  [95/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2023D_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 18 files
+    -> using v1: 18 files
+  [96/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2023D_22Sep2023_v2_v*-0d9d2e4edce7c6587aaaedda82b153dc/USER
+      v1: 19 files
+    -> using v1: 19 files
 ================================================================================
 YEAR 2024
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 97 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 96 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 96 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 95 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 92 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 93 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 94 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024C_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 94 files
+  [97/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024C_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 97 files
+    -> using v1: 97 files
+  [98/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024C_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 96 files
+    -> using v1: 96 files
+  [99/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024C_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 96 files
+    -> using v1: 96 files
+  [100/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024C_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 95 files
+    -> using v1: 95 files
+  [101/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024C_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 92 files
+    -> using v1: 92 files
+  [102/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024C_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 93 files
+    -> using v1: 93 files
+  [103/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024C_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 94 files
+    -> using v1: 94 files
+  [104/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024C_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 94 files
+    -> using v1: 94 files
 ================================================================================
 YEAR 2024
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 100 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 101 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 103 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 100 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 103 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 104 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 104 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024D_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 103 files
+  [105/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024D_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 100 files
+    -> using v1: 100 files
+  [106/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024D_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 101 files
+    -> using v1: 101 files
+  [107/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024D_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 103 files
+    -> using v1: 103 files
+  [108/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024D_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 100 files
+    -> using v1: 100 files
+  [109/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024D_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 103 files
+    -> using v1: 103 files
+  [110/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024D_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 104 files
+    -> using v1: 104 files
+  [111/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024D_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 104 files
+    -> using v1: 104 files
+  [112/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024D_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 103 files
+    -> using v1: 103 files
 ================================================================================
 YEAR 2024
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 142 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 138 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 137 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 136 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 140 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 138 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 137 files
+  [113/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024E_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 142 files
+    -> using v1: 142 files
+  [114/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024E_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 138 files
+    -> using v1: 138 files
+  [115/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024E_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 137 files
+    -> using v1: 137 files
+  [116/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024E_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 139 files
+    -> using v2: 139 files
+  [117/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024E_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 136 files
+    -> using v1: 136 files
+  [118/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024E_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 140 files
+    -> using v1: 140 files
+  [119/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024E_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 138 files
+    -> using v1: 138 files
+  [120/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024E_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 137 files
+    -> using v1: 137 files
 ================================================================================
 YEAR 2024
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 253 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 268 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 255 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 253 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 253 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 253 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 254 files
+  [121/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024F_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 253 files
+    -> using v3: 253 files
+  [122/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024F_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 268 files
+    -> using v3: 268 files
+  [123/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024F_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 255 files
+    -> using v2: 255 files
+  [124/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024F_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 255 files
+    -> using v3: 255 files
+  [125/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024F_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 253 files
+    -> using v3: 253 files
+  [126/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024F_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 253 files
+    -> using v3: 253 files
+  [127/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024F_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 253 files
+    -> using v3: 253 files
+  [128/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024F_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 254 files
+    -> using v3: 254 files
 ================================================================================
 YEAR 2024
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 349 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 342 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 348 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 354 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 348 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 348 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 0 files
+  [129/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024G_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 349 files
+    -> using v3: 349 files
+  [130/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024G_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 400 files
+    -> using v1: 400 files
+  [131/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024G_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 342 files
+    -> using v3: 342 files
+  [132/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024G_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 348 files
+    -> using v3: 348 files
+  [133/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024G_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 354 files
+    -> using v3: 354 files
+  [134/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024G_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 348 files
+    -> using v3: 348 files
+  [135/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024G_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 348 files
+    -> using v3: 348 files
+  [136/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024G_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v4: 346 files
+    -> using v4: 346 files
 ================================================================================
 YEAR 2024
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 54 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 53 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 55 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 51 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 54 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 54 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 55 files
+  [137/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024H_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 54 files
+    -> using v3: 54 files
+  [138/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024H_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v1: 63 files
+    -> using v1: 63 files
+  [139/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024H_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 53 files
+    -> using v3: 53 files
+  [140/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024H_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 55 files
+    -> using v3: 55 files
+  [141/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024H_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 51 files
+    -> using v3: 51 files
+  [142/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024H_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 54 files
+    -> using v3: 54 files
+  [143/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024H_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 54 files
+    -> using v3: 54 files
+  [144/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024H_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 55 files
+    -> using v3: 55 files
 ================================================================================
 YEAR 2024
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 53 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 54 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 52 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 53 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 53 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 55 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 53 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024I_MINIv6NANOv15_v2_v2-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 53 files
+  [145/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v2_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 53 files
+    -> using v2: 53 files
+  [146/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024I_MINIv6NANOv15_v2_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 54 files
+    -> using v2: 54 files
+  [147/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024I_MINIv6NANOv15_v2_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 52 files
+    -> using v2: 52 files
+  [148/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024I_MINIv6NANOv15_v2_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 53 files
+    -> using v2: 53 files
+  [149/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024I_MINIv6NANOv15_v2_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 53 files
+    -> using v2: 53 files
+  [150/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024I_MINIv6NANOv15_v2_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 55 files
+    -> using v2: 55 files
+  [151/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024I_MINIv6NANOv15_v2_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 53 files
+    -> using v2: 53 files
+  [152/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024I_MINIv6NANOv15_v2_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 53 files
+    -> using v2: 53 files
 ================================================================================
 YEAR 2024
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 57 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 54 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 59 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 55 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 56 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 0 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER instance=prod/phys03']
-    -> 58 files
+  [153/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 57 files
+    -> using v3: 57 files
+  [154/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024I_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 54 files
+    -> using v3: 54 files
+  [155/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024I_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 59 files
+    -> using v3: 59 files
+  [156/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024I_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 55 files
+    -> using v3: 55 files
+  [157/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2024I_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 56 files
+    -> using v3: 56 files
+  [158/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024I_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 55 files
+    -> using v2: 55 files
+  [159/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024I_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v2: 60 files
+    -> using v2: 60 files
+  [160/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024I_MINIv6NANOv15_v*-2344730b5c341a1d09de0777eeb1fe94/USER
+      v3: 58 files
+    -> using v3: 58 files
 ================================================================================
 YEAR 2025
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 8 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 8 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 8 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 8 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 8 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 9 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 8 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025B_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 8 files
+  [161/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025B_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 8 files
+    -> using v1: 8 files
+  [162/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025B_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 8 files
+    -> using v1: 8 files
+  [163/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025B_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 8 files
+    -> using v1: 8 files
+  [164/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025B_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 8 files
+    -> using v1: 8 files
+  [165/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025B_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 8 files
+    -> using v1: 8 files
+  [166/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025B_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 9 files
+    -> using v1: 9 files
+  [167/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025B_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 8 files
+    -> using v1: 8 files
+  [168/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025B_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 8 files
+    -> using v1: 8 files
 ================================================================================
 YEAR 2025
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 172 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 175 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 172 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 173 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 175 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 174 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 171 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025C_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 173 files
+  (versions [2] are listed separately in the input and are excluded here)
+  [169/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 172 files
+    -> using v1: 172 files
+  [170/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 175 files
+    -> using v1: 175 files
+  [171/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 172 files
+    -> using v1: 172 files
+  [172/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 173 files
+    -> using v1: 173 files
+  [173/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 175 files
+    -> using v1: 175 files
+  [174/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 174 files
+    -> using v1: 174 files
+  [175/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 171 files
+    -> using v1: 171 files
+  [176/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 173 files
+    -> using v1: 173 files
 ================================================================================
 YEAR 2025
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 98 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 99 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 99 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 99 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 101 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 99 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 97 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025C_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 101 files
+  (versions [1] are listed separately in the input and are excluded here)
+  [177/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 98 files
+    -> using v2: 98 files
+  [178/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 99 files
+    -> using v2: 99 files
+  [179/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 99 files
+    -> using v2: 99 files
+  [180/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 99 files
+    -> using v2: 99 files
+  [181/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 101 files
+    -> using v2: 101 files
+  [182/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 99 files
+    -> using v2: 99 files
+  [183/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 97 files
+    -> using v2: 97 files
+  [184/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025C_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 101 files
+    -> using v2: 101 files
 ================================================================================
 YEAR 2025
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 323 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 332 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 328 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 328 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 326 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 331 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 329 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025D_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 324 files
+  [185/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025D_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 323 files
+    -> using v1: 323 files
+  [186/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025D_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 332 files
+    -> using v1: 332 files
+  [187/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025D_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 328 files
+    -> using v1: 328 files
+  [188/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025D_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 328 files
+    -> using v1: 328 files
+  [189/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025D_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 326 files
+    -> using v1: 326 files
+  [190/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025D_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 331 files
+    -> using v1: 331 files
+  [191/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025D_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 329 files
+    -> using v1: 329 files
+  [192/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025D_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 324 files
+    -> using v1: 324 files
 ================================================================================
 YEAR 2025
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 179 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 178 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 183 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 181 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 179 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 177 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 180 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025E_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 179 files
+  [193/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025E_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 179 files
+    -> using v1: 179 files
+  [194/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025E_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 178 files
+    -> using v1: 178 files
+  [195/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025E_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 183 files
+    -> using v1: 183 files
+  [196/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025E_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 181 files
+    -> using v1: 181 files
+  [197/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025E_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 179 files
+    -> using v1: 179 files
+  [198/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025E_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 177 files
+    -> using v1: 177 files
+  [199/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025E_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 180 files
+    -> using v1: 180 files
+  [200/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025E_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 179 files
+    -> using v1: 179 files
 ================================================================================
 YEAR 2025
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 255 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 251 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 249 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 252 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 252 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 249 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 255 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025F_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 252 files
+  (versions [2] are listed separately in the input and are excluded here)
+  [201/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 255 files
+    -> using v1: 255 files
+  [202/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 251 files
+    -> using v1: 251 files
+  [203/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 249 files
+    -> using v1: 249 files
+  [204/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 252 files
+    -> using v1: 252 files
+  [205/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 252 files
+    -> using v1: 252 files
+  [206/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 249 files
+    -> using v1: 249 files
+  [207/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 255 files
+    -> using v1: 255 files
+  [208/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 252 files
+    -> using v1: 252 files
 ================================================================================
 YEAR 2025
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 95 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 94 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 96 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 95 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 93 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 95 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 96 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025F_PromptReco_v2-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 95 files
+  (versions [1] are listed separately in the input and are excluded here)
+  [209/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 95 files
+    -> using v2: 95 files
+  [210/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 94 files
+    -> using v2: 94 files
+  [211/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 96 files
+    -> using v2: 96 files
+  [212/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 95 files
+    -> using v2: 95 files
+  [213/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 93 files
+    -> using v2: 93 files
+  [214/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 95 files
+    -> using v2: 95 files
+  [215/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 96 files
+    -> using v2: 96 files
+  [216/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025F_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v2: 95 files
+    -> using v2: 95 files
 ================================================================================
 YEAR 2025
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 262 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 261 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 261 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 260 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 264 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 261 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 261 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025G_PromptReco_v1-cb31c552909115217b0520f2761c9df4/USER instance=prod/phys03']
-    -> 261 files
+  [217/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2025G_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 262 files
+    -> using v1: 262 files
+  [218/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2025G_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 261 files
+    -> using v1: 261 files
+  [219/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2025G_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 261 files
+    -> using v1: 261 files
+  [220/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2025G_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 260 files
+    -> using v1: 260 files
+  [221/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2025G_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 264 files
+    -> using v1: 264 files
+  [222/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2025G_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 261 files
+    -> using v1: 261 files
+  [223/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2025G_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 261 files
+    -> using v1: 261 files
+  [224/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2025G_PromptReco_v*-cb31c552909115217b0520f2761c9df4/USER
+      v1: 261 files
+    -> using v1: 261 files
 ================================================================================
 YEAR 2026
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 169 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 169 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 171 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 170 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 170 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 170 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 170 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2026B_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 176 files
+  [225/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2026B_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 169 files
+    -> using v1: 169 files
+  [226/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2026B_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 169 files
+    -> using v1: 169 files
+  [227/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2026B_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 171 files
+    -> using v1: 171 files
+  [228/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2026B_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 170 files
+    -> using v1: 170 files
+  [229/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2026B_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 170 files
+    -> using v1: 170 files
+  [230/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2026B_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 170 files
+    -> using v1: 170 files
+  [231/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2026B_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 170 files
+    -> using v1: 170 files
+  [232/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2026B_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 176 files
+    -> using v1: 176 files
 ================================================================================
 YEAR 2026
 Base dataset: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  Querying: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 105 files
-  Querying: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 105 files
-  Querying: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 106 files
-  Querying: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 105 files
-  Querying: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 106 files
-  Querying: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 107 files
-  Querying: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 105 files
-  Querying: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER
-  ['dasgoclient', '-query=file dataset=/ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2026D_PromptReco_v1-f3700ed4128e50daca3577fc7a3f2b2f/USER instance=prod/phys03']
-    -> 105 files
+  [233/240] index 0: /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2026D_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 105 files
+    -> using v1: 105 files
+  [234/240] index 1: /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2026D_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 105 files
+    -> using v1: 105 files
+  [235/240] index 2: /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2026D_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 106 files
+    -> using v1: 106 files
+  [236/240] index 3: /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2026D_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 105 files
+    -> using v1: 105 files
+  [237/240] index 4: /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2026D_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 106 files
+    -> using v1: 106 files
+  [238/240] index 5: /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2026D_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 107 files
+    -> using v1: 107 files
+  [239/240] index 6: /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2026D_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 105 files
+    -> using v1: 105 files
+  [240/240] index 7: /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2026D_PromptReco_v*-f3700ed4128e50daca3577fc7a3f2b2f/USER
+      v1: 105 files
+    -> using v1: 105 files
+
+================================================================================
+SUMMARY
+================================================================================
+
+Datasets whose version differs from the index-0 one: 11
+  index 4 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2022G_22Sep2023_v1-2344730b5c341a1d09de0777eeb1fe94/USER
+    -> /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2022G_22Sep2023_v2-2344730b5c341a1d09de0777eeb1fe94/USER
+  index 1 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v1_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
+    -> /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2023C_22Sep2023_v1_v2-0d9d2e4edce7c6587aaaedda82b153dc/USER
+  index 3 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023C_22Sep2023_v4_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
+    -> /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2023C_22Sep2023_v4_v2-0d9d2e4edce7c6587aaaedda82b153dc/USER
+  index 4 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2023D_22Sep2023_v2_v1-0d9d2e4edce7c6587aaaedda82b153dc/USER
+    -> /ParkingDoubleMuonLowMass4/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass4_Run2023D_22Sep2023_v2_v2-0d9d2e4edce7c6587aaaedda82b153dc/USER
+  index 3 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024E_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
+    -> /ParkingDoubleMuonLowMass3/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass3_Run2024E_MINIv6NANOv15_v2-2344730b5c341a1d09de0777eeb1fe94/USER
+  index 2 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024F_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
+    -> /ParkingDoubleMuonLowMass2/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass2_Run2024F_MINIv6NANOv15_v2-2344730b5c341a1d09de0777eeb1fe94/USER
+  index 1 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
+    -> /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024G_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
+  index 7 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024G_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
+    -> /ParkingDoubleMuonLowMass7/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass7_Run2024G_MINIv6NANOv15_v4-2344730b5c341a1d09de0777eeb1fe94/USER
+  index 1 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024H_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
+    -> /ParkingDoubleMuonLowMass1/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass1_Run2024H_MINIv6NANOv15_v1-2344730b5c341a1d09de0777eeb1fe94/USER
+  index 5 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
+    -> /ParkingDoubleMuonLowMass5/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass5_Run2024I_MINIv6NANOv15_v2-2344730b5c341a1d09de0777eeb1fe94/USER
+  index 6 of /ParkingDoubleMuonLowMass0/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass0_Run2024I_MINIv6NANOv15_v3-2344730b5c341a1d09de0777eeb1fe94/USER
+    -> /ParkingDoubleMuonLowMass6/manzoni-rjpsi_run3_23jun26_v2_ParkingDoubleMuonLowMass6_Run2024I_MINIv6NANOv15_v2-2344730b5c341a1d09de0777eeb1fe94/USER
+
+Indices with more than one valid version (most recent used): 0
+
+Indices with no usable dataset: 0
 
 ================================================================================
 Writing output files
 ================================================================================
-files_data2022_cscs_24sep26.txt: 3323 unique files (from 3323 DAS entries)
-files_data2023_cscs_24sep26.txt: 2096 unique files (from 2096 DAS entries)
-files_data2024_cscs_24sep26.txt: 7562 unique files (from 7562 DAS entries)
+files_data2022_cscs_24sep26.txt: 3358 unique files (from 3358 DAS entries)
+files_data2023_cscs_24sep26.txt: 2259 unique files (from 2259 DAS entries)
+files_data2024_cscs_24sep26.txt: 8880 unique files (from 8880 DAS entries)
 files_data2025_cscs_24sep26.txt: 11165 unique files (from 11165 DAS entries)
 files_data2026_cscs_24sep26.txt: 2209 unique files (from 2209 DAS entries)
 
