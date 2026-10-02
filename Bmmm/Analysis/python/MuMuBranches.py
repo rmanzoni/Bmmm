@@ -6,6 +6,7 @@ from Bmmm.Analysis.utils import VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vert
 from Bmmm.Analysis.CommonBranches import event_branches as _common_event
 from Bmmm.Analysis.CommonBranches import muon_branches as _common_muon
 from Bmmm.Analysis.CommonBranches import track_cov_branches as _track_cov
+from Bmmm.Analysis.PileupWeights import BRANCH_NAMES as PU_BRANCH_NAMES
 
 ##########################################################################################
 #####      EVENT-LEVEL
@@ -138,6 +139,12 @@ branches += ['vtx_cov_%s'   % iname for iname in VTX_COV_ELEMENT_NAMES]
 for idx in [1,2]:
     for ibr in muon_branches:
         branches.append('mu%d_%s' %(idx, ibr))
+
+# Pileup weights, pu_weight_<year>[_up|_down]: the same 15 event-level branches,
+# computed by the same PileupWeights code, as the J/psi + charged ntuples.
+# Filled by the inspector with --pu <campaign>; NaN otherwise (data, or MC
+# without --pu), so 'no weight' is never mistaken for 'weight = 1'.
+branches += PU_BRANCH_NAMES
 
 # paths and filters
 # check online confDB https://hlt-config-editor-confdbv3.app.cern.ch/
