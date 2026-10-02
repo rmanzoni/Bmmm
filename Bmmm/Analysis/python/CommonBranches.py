@@ -17,6 +17,7 @@ import ROOT
 import numpy as np
 
 from Bmmm.Analysis.utils import COV_ELEMENT_NAMES, COV_INDEX_PAIRS, COV_NAN_5X5
+from Bmmm.Analysis.TrackHitContent import hit_content_branches
 
 ##########################################################################################
 #####      EVENT-LEVEL QUANTITIES, COMMON TO ALL CHANNELS
@@ -121,9 +122,18 @@ muon_branches = {
     'dxy_e_raw'      :  lambda imu : imu.bestTrack().dxyError(imu.pv.position(), imu.pv.error()),
     'dz_e_raw'       :  lambda imu : imu.bestTrack().dzError(),
     'bs_dxy_e_raw'   :  lambda imu : imu.bestTrack().dxyError(imu.bs.position(), imu.bs.error()),
-    'n_pix_hit'      :  lambda imu : imu.bestTrack().hitPattern().numberOfValidPixelHits(),
-    'n_pix_b_hit'    :  lambda imu : imu.bestTrack().hitPattern().numberOfValidPixelBarrelHits(),
-    'n_pix_e_hit'    :  lambda imu : imu.bestTrack().hitPattern().numberOfValidPixelEndcapHits(),
+    # Hit content of bestTrack(): n_pix_hit, n_pix_b_hit, n_pix_e_hit (as
+    # before, same place) followed by the pixel-layer, innermost-layer and
+    # missing/inactive-inner quantities. Defined ONCE, in TrackHitContent, and
+    # shared with utils.COVFLOW_CONTEXT_GETTERS, so a flow is conditioned at
+    # application time on exactly the quantity it was trained on.
+    **hit_content_branches,
+    # which track bestTrack() is (reco::Muon::MuonTrackType: 1 = InnerTrack,
+    # 2 = OuterTrack, 3 = CombinedTrack, 4 = TPFMS, 5 = Picky, 6 = DYT).
+    # Expected to be 1 for every muon below 200 GeV; recorded so the covariance,
+    # the hit content and the covflow context can be checked to all describe
+    # the tracker track.
+    'best_trk_type'  :  lambda imu : int(imu.muonBestTrackType())        ,
 #    'rf_dxy'         :  lambda imu : imu.rf_track.dxy(imu.pv.position()),
 #    'rf_dxy_e'       :  lambda imu : imu.rf_track.dxyError(imu.pv.position(), imu.pv.error()),
 #    'rf_dxy_sig'     :  lambda imu : imu.rf_track.dxy(imu.pv.position()) / imu.rf_track.dxyError(imu.pv.position(), imu.pv.error()),

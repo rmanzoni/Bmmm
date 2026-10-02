@@ -20,6 +20,8 @@ import ROOT
 ROOT.gSystem.Load('libBmmmAnalysis')
 from ROOT import KVFitter # VertexDistance3D is contained here, dirt trick!!
 
+from Bmmm.Analysis.TrackHitContent import hit_content, COVFLOW_HIT_CONTEXT
+
 ##########################################################################################
 ##########################################################################################
 
@@ -644,21 +646,16 @@ class CorrectionlibCovScaler(CovScaler):
 # where the covariance itself comes from. Do not switch to innerTrack() here
 # without switching the training branches too.
 #
-# The hit-content getters are spelled EXACTLY as the <obj>_n_pix_*_hit branches
-# in CommonBranches, so the context the flow sees at ntuplization time is the
-# same quantity it was trained on. If one of the two moves, the other must.
+# The hit-content getters are not written here: they are added below from
+# TrackHitContent, the module the <obj>_n_pix_* / pix_first_* branches in
+# CommonBranches are built from, so training and application cannot drift.
 COVFLOW_CONTEXT_GETTERS = {
     'pt'            : lambda obj, trk, ev : trk.pt(),
     'log_pt'        : lambda obj, trk, ev : np.log(max(trk.pt(), 1e-6)),
     'eta'           : lambda obj, trk, ev : trk.eta(),
     'abs_eta'       : lambda obj, trk, ev : abs(trk.eta()),
     'phi'           : lambda obj, trk, ev : trk.phi(),
-    'n_pix_hit'     : lambda obj, trk, ev : trk.hitPattern().numberOfValidPixelHits(),
-    'n_pix_b_hit'   : lambda obj, trk, ev : trk.hitPattern().numberOfValidPixelBarrelHits(),
-    'n_pix_e_hit'   : lambda obj, trk, ev : trk.hitPattern().numberOfValidPixelEndcapHits(),
-    'n_pix_layer'   : lambda obj, trk, ev : trk.hitPattern().pixelLayersWithMeasurement(),
     'n_valid_hit'   : lambda obj, trk, ev : trk.numberOfValidHits(),
-    'n_trk_layer'   : lambda obj, trk, ev : trk.hitPattern().trackerLayersWithMeasurement(),
     'chi2_norm'     : lambda obj, trk, ev : trk.normalizedChi2(),
     # EVENT-level. Spelled exactly as the matching branch in CommonBranches --
     # npv must mean len(event.vtx) here as it does everywhere else, or the flow
@@ -666,6 +663,15 @@ COVFLOW_CONTEXT_GETTERS = {
     # trained on. These need the event handed in: see prime().
     'npv'           : lambda obj, trk, ev : len(ev.vtx),
 }
+
+# Hit content (n_pix_*, n_*_layer, pix_first_*): the SAME getters that fill the
+# <obj>_<name> branches, taken from TrackHitContent rather than restated here.
+# They read obj.bestTrack() -- the `trk` every caller passes (prime() and
+# fit_track() both use obj.bestTrack()) -- through a per-object cache shared
+# with the branch filling. Only the names in COVFLOW_HIT_CONTEXT are admissible;
+# the missing/inactive-inner counts are branches, not context.
+for _name in COVFLOW_HIT_CONTEXT:
+    COVFLOW_CONTEXT_GETTERS[_name] = (lambda obj, trk, ev, name=_name : hit_content(obj)[name])
 
 # Which of the above cannot be evaluated from the track alone. A corrector
 # conditioned on any of these refuses to run without an event rather than
