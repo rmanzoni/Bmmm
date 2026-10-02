@@ -76,9 +76,8 @@ from http.client import HTTPException
 # ----------------------------------------------------------------------------
 # user knobs
 # ----------------------------------------------------------------------------
-work_area     = 'crab_dimuon_run3_one_every_twenty'
-# out_dir       = 'dimuon_ntuples_run3_09sep2026'      # under /store/user/manzoni/
-out_dir       = 'dimuon_ntuples_run3_one_every_twenty_16sep2026'      # under /store/user/manzoni/
+work_area     = 'crab_dimuon_run3_one_every_twenty_02oct2026'
+out_dir       = 'dimuon_ntuples_run3_one_every_twenty_02oct2026'      # under /store/user/manzoni/
 files_per_job = 25
 storage_site  = 'T3_CH_PSI'
 
