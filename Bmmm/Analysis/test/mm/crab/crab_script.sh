@@ -94,12 +94,16 @@ OUTNAME="dimuon_ntuple"
 # the MC submitter sets MC=1 SAVENONTRIG=1.
 EXTRA_FLAGS=""
 LUMIMASK=""
+PU=""
+PUCARD=""
 for arg in "$@"; do
     case "${arg}" in
         OUTNAME=*)     OUTNAME="${arg#*=}" ;;
         MC=1)          EXTRA_FLAGS="${EXTRA_FLAGS} --mc" ;;
         SAVENONTRIG=1) EXTRA_FLAGS="${EXTRA_FLAGS} --savenontrig" ;;
         LUMIMASK=*)    LUMIMASK="${arg#*=}" ;;
+        PU=*)          PU="${arg#*=}" ;;
+        PUCARD=*)      PUCARD="${arg#*=}" ;;
     esac
 done
 echo ">>> output basename: ${OUTNAME}"
@@ -118,6 +122,19 @@ if [ -n "${LUMIMASK}" ]; then
     EXTRA_FLAGS="${EXTRA_FLAGS} --lumi-mask=${PWD}/${LUMIMASK}"
     echo ">>> lumi mask      : ${PWD}/${LUMIMASK}"
     ls -la "${LUMIMASK}"
+fi
+# Pileup weights (MC). PU=<campaign>[:allow-unconfirmed] and PUCARD=<card file>
+# shipped in the sandbox; the inspector gets --pu=<campaign>[:flags]:<abs card>.
+# The card is mandatory here: the inspector's default card lives under
+# $CMSSW_BASE/src/Bmmm/Analysis/data, which a CRAB job does not carry.
+if [ -n "${PU}" ]; then
+    if [ -z "${PUCARD}" ] || [ ! -f "${PUCARD}" ]; then
+        echo ">>> FATAL: PU=${PU} needs PUCARD=<file> present in the job directory (got '${PUCARD}'). Aborting job $1."
+        ls -la
+        exit 1
+    fi
+    EXTRA_FLAGS="${EXTRA_FLAGS} --pu=${PU}:${PWD}/${PUCARD}"
+    echo ">>> pileup weights : ${PU} with card ${PWD}/${PUCARD}"
 fi
 echo ">>> extra flags    : ${EXTRA_FLAGS:-<none>}"
 

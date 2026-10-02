@@ -8,7 +8,17 @@ SimGeneral/MixingModule/python/ in CMSSW for the MC profiles.
 Every entry marked  # CONFIRM  is a choice to check before production.
 '''
 
+import os
+
+from Bmmm.Analysis.LumiMask import golden_json_for_year
+
 EOS_CERT = '/eos/user/c/cmsdqm/www/CAF/certification'
+
+# Golden JSONs for pileupCalc: the SAME files the ntuple production applies as
+# its lumi mask (Bmmm/Analysis/data/golden_jsons, one per year), so the data
+# pileup profile is computed on exactly the lumisections the ntuples keep.
+GOLDEN_DIR = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                           '..', '..', '..', 'data', 'golden_jsons'))
 
 # Minimum-bias cross sections [ub]. TWiki: 69.2 mb recommended for Run 3,
 # uncertainty 4.6%; the central histograms are made at exactly these values.
@@ -31,9 +41,9 @@ NBINS = 100
 #                       TWiki lists no central histogram (2024) or nothing at all
 #                       (2025, 2026).
 #
-# Golden JSONs: fill in the official Cert_Collisions20XX_..._Golden.json of the
-# year. The pileup JSON only needs to CONTAIN the golden lumisections, so the
-# widest one of the year is the right choice (e.g. 2024 BCDEFGHI).
+# Golden JSONs: taken from GOLDEN_DIR (see above). The pileup JSON only needs to
+# CONTAIN the golden lumisections, so the widest one of the year is the right
+# choice (e.g. 2024 BCDEFGHI).
 PERIODS = {
     '2022BCD': dict(year='2022', kind='central',
                     dir=EOS_CERT + '/Collisions22/PileUp/BCD/'),
@@ -45,13 +55,13 @@ PERIODS = {
                     dir=EOS_CERT + '/Collisions23/PileUp/D/'),
     '2024'   : dict(year='2024', kind='pileupCalc',
                     pileup_json=EOS_CERT + '/Collisions24/PileUp/pileup_JSON-2024BCDEFGHI.txt',
-                    golden_json=None),                                       # CONFIRM: fill in
+                    golden_json=golden_json_for_year('2024', GOLDEN_DIR)),
     '2025'   : dict(year='2025', kind='pileupCalc',
                     pileup_json=None,                                        # CONFIRM: not on the TWiki
-                    golden_json=None),                                       # CONFIRM: fill in
+                    golden_json=golden_json_for_year('2025', GOLDEN_DIR)),
     '2026'   : dict(year='2026', kind='pileupCalc',
                     pileup_json=None,                                        # CONFIRM: not on the TWiki
-                    golden_json=None),                                       # CONFIRM: fill in
+                    golden_json=golden_json_for_year('2026', GOLDEN_DIR)),
 }
 
 ##########################################################################################

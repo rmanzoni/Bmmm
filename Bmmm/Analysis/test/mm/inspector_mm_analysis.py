@@ -72,6 +72,7 @@ from Bmmm.Analysis.CommonBranches import safe_get
 from Bmmm.Analysis.NtupleWriter import WRITE_EVERY, build_branch_types, flush
 from Bmmm.Analysis.MuMuCandidate import Candidate
 from Bmmm.Analysis.LumiMask import make_lumi_mask
+from Bmmm.Analysis.PileupWeights import make_pu_session
 from Bmmm.Analysis.utils import (
     COV_ELEMENT_NAMES, COV_INDEX_PAIRS,
     VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element,
@@ -107,6 +108,13 @@ parser.add_argument('--lumi-mask'    , dest='lumi_mask'  , default=''    , type=
                          "directory, a JSON file (comma-separated for several), or "
                          "'none'. MANDATORY for data -- without it the job refuses to "
                          "start -- and refused with --mc. See Bmmm.Analysis.LumiMask.")
+parser.add_argument('--pu'           , dest='pu'         , default=''    , type=str,
+                    help="Write PILEUP weights (pu_weight_<year>[_up|_down]) at production "
+                         "time, MC generation profile -> official data profile. Takes the "
+                         "MC campaign, e.g. 'Summer22EE', optionally as "
+                         "'campaign:/path/to/card.json' and/or ':allow-unconfirmed'. MC only. "
+                         "Same code and card as the J/psi inspectors: see "
+                         "Bmmm.Analysis.PileupWeights.")
 args = parser.parse_args()
 
 inputFiles  = args.inputFiles
@@ -129,6 +137,13 @@ if readevery < 1:
 # built before any file is opened: a missing or ambiguous golden JSON kills the
 # job now, not after the first hour of reading
 lumi_mask   = make_lumi_mask(args.lumi_mask, mc)
+
+# pileup weights, MC only; built here so a missing card or an unknown or
+# unconfirmed campaign kills the job before the first file is opened
+if args.pu and not mc:
+    raise RuntimeError('--pu without --mc: pileup weights map MC onto data '
+                       'and do not exist for data.')
+pu_session  = make_pu_session(args.pu)
     
 # run -> lumi -> events read. Filled for EVERY event the loop touches.
 processed_lumis = defaultdict(lambda : defaultdict(int))
@@ -545,6 +560,12 @@ for i, event in enumerate(events):
         for ibranch, igetter in event_branches.items():
             tofill[ibranch] = safe_get(igetter, event, verbose=verbose, name=ibranch)
 
+        # pileup weights from the true pileup of bunch crossing 0 (the nti
+        # branch). Not through safe_get: a failure here is a broken card or
+        # input, and must not turn silently into NaN weights.
+        if pu_session is not None:
+            tofill.update(pu_session.weights(event.pu_at_bx0.getTrueNumInteractions()))
+
         for ibranch, igetter in cand_branches.items():
             tofill[ibranch] = safe_get(igetter, final_cand, verbose=verbose, name=ibranch)
 
@@ -715,6 +736,9 @@ fout.close()
 
 if lumi_mask is not None:
     print(lumi_mask.summary())
+
+if pu_session is not None:
+    print(pu_session.summary())
 
 # Grid bookkeeping, written whether or not any candidate survived: an empty
 # ntuple is still a job that legitimately read its share of the dataset.

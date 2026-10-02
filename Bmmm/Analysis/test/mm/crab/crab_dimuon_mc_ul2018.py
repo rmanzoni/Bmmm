@@ -192,6 +192,15 @@ def submit(cfg):
 
 
 if __name__ == '__main__':
+    # Guard against running the wrong submitter: this file is for Run 2 2018 UL MC ONLY.
+    # Every dataset must be a RunIISummer20UL18 MINIAODSIM, or nothing is submitted.
+    not_ul18 = [d for d in productions
+                if not (d.endswith('/MINIAODSIM') and
+                        d.split('/')[2].startswith('RunIISummer20UL18'))]
+    if not_ul18:
+        raise RuntimeError('crab_dimuon_mc_ul2018.py is for Run 2 2018 UL MC '
+                           '(RunIISummer20UL18 MINIAODSIM) only; these are not: %s' % not_ul18)
+
     for dataset in productions:
         cfg = create_config(dataset)
 

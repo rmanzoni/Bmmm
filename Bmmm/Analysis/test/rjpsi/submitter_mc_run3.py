@@ -10,12 +10,18 @@ stored at T3_CH_PSI. One output directory per dataset:
 
 What each job runs:
 
-    inspector_rjpsi.py --mc --skim --savenontrig [--hammer <card>]
+    inspector_rjpsi.py --mc --skim --savenontrig [--hammer <card>] --pu <campaign>:<card>
 
   * --skim         the skim writes the muons as selectedMuons (process SKIM)
   * --savenontrig  the MC skim has no HLT filter; trigger decision kept as branch
   * --hammer       Bc samples ONLY: Kiselev -> Harrison-2024 FF weights
                    (hammer_weight, hammer_ff_ev00..14_{up,dn}, hammer_status)
+  * --pu           EVERY sample: pileup weights pu_weight_<year>[_up|_down] for
+                   the sample's MC campaign (era Run3Summer22EE -> Summer22EE).
+                   The card data/pu_weights_run3.json is validated at submission
+                   with the same PileupSession the jobs build, and snapshotted
+                   into the out_dir like the FF card. Unconfirmed MC profiles are
+                   refused unless --pu-allow-unconfirmed.
   * no --covflow   the flow was trained on 2018 UL MC -> Run 3 data; applying
                    it to Run 3 MC would be an unvalidated correction.
   * Bc lifetime weights gen_bc_ctau_weight* are always on for MC.
@@ -90,6 +96,7 @@ def out_dir_of(kind, era):
 REQUIRED_RELEASE = 'CMSSW_16_0_8'           # Hammer is built against its Python 3.9
 HAMMER_ENV       = '/work/manzoni/hammer/hammer_env.sh'
 CARD_NAME        = 'harrison_bglvar.json'
+PU_CARD_NAME     = 'pu_weights_run3.json'
 CFG              = 'inspector_rjpsi.py'
 OUT_FILE_NAME    = 'rjpsi'
 
@@ -133,7 +140,20 @@ ap.add_argument('--resubmit', default='', metavar='I,J,...',
                 help='re-sbatch existing chunk scripts of ONE already-submitted sample')
 ap.add_argument('--skip-pnfs-check', action='store_true',
                 help='do not stat every input LFN on the /pnfs mount (DAS source)')
+ap.add_argument('--pu-allow-unconfirmed', action='store_true',
+                help='accept MC campaigns whose generation pileup profile is not yet '
+                     'confirmed in pu_config_run3.py (jobs run with :allow-unconfirmed)')
 args = ap.parse_args()
+
+
+def pu_campaign(era):
+    '''Sample era -> pileup-card campaign: Run3Summer22EE -> Summer22EE,
+    RunIII2024Summer24 -> Summer24 (the keys of pu_config_run3.CAMPAIGNS).'''
+    import re
+    campaign = re.sub(r'^(RunIII\d{4}|Run3)', '', era)
+    if not campaign or campaign == era:
+        raise ValueError('cannot map era %r onto a pileup campaign' % era)
+    return campaign
 
 ##########################################################################################
 # HELPERS
@@ -284,7 +304,8 @@ if len(set(out_dir_of(k, e) for k, e, _ in selected)) != len(selected):
 
 if args.list:
     for k, e, d in selected:
-        print('%-60s hammer=%-5s %s' % (out_dir_of(k, e), HAMMER_BY_KIND[k], d))
+        print('%-60s hammer=%-5s pu=%-12s %s' % (out_dir_of(k, e), HAMMER_BY_KIND[k],
+                                                 pu_campaign(e), d))
     sys.exit(0)
 
 ##########################################################################################
@@ -358,6 +379,23 @@ if need_hammer:
         die('FF card %s has covariance_status=%r: the jobs would refuse to write the '
             'eigenvariations. Set it to "validated" once the covariance is validated.'
             % (card_src, card.get('covariance_status')))
+
+# pileup card: every sample gets weights. Validated with the SAME session the
+# jobs build (schema, campaign present, MC profile confirmed), for every
+# selected sample, before anything is written or submitted.
+from Bmmm.Analysis.PileupWeights import PileupSession
+pu_card_src = os.path.join(cmssw_base, 'src', 'Bmmm', 'Analysis', 'data', PU_CARD_NAME)
+if not os.path.isfile(pu_card_src):
+    die('pileup card %s not found: build it with test/rjpsi/pileup/build_pu_card.py.'
+        % pu_card_src)
+for _kind, _era, _ in selected:
+    try:
+        PileupSession(pu_campaign(_era), card_path=pu_card_src,
+                      allow_unconfirmed=args.pu_allow_unconfirmed, verbose=True)
+    except Exception as exc:
+        die('pileup weights for %s %s: %s' % (_kind, _era, exc))
+with open(pu_card_src, 'rb') as fcard:
+    pu_card_sha = hashlib.sha256(fcard.read()).hexdigest()
 
 repo      = os.path.join(cmssw_base, 'src', 'Bmmm')
 bmmm_head = sh('git -C %s rev-parse HEAD' % repo)
@@ -449,7 +487,8 @@ python3 {dir}/{cfg} \\
     --savenontrig \\
     --mc \\
     --skim \\
-{hammer_opt}    --filename={outfile}_chunk{jobid}
+{hammer_opt}    --pu={pu_spec} \\
+    --filename={outfile}_chunk{jobid}
 if [ $? -ne 0 ]; then
     echo ">>>> FAILED: inspector for chunk {jobid}, no transfer"
     rm -f $OUT
@@ -487,6 +526,13 @@ for kind, era, dataset, out_dir, files, chunks, n_ev in plan:
         with open(card_used, 'rb') as fcard:
             card_sha = hashlib.sha256(fcard.read()).hexdigest()
 
+    # pileup card snapshot, same reason as the FF card
+    pu_card_used = os.path.join(job_dir, PU_CARD_NAME)
+    shutil.copy2(pu_card_src, pu_card_used)
+    pu_spec = '%s%s:%s' % (pu_campaign(era),
+                           ':allow-unconfirmed' if args.pu_allow_unconfirmed else '',
+                           pu_card_used)
+
     with open(os.path.join(out_dir, 'files.txt'), 'w') as flist:
         for lfn, nev in files:
             flist.write('%s %s\n' % (lfn, nev if nev is not None else ''))
@@ -511,7 +557,11 @@ for kind, era, dataset, out_dir, files, chunks, n_ev in plan:
         'files_per_job'    : args.files_per_job if args.source == 'pnfs' else None,
         'test'             : args.test,
 #         'inspector_flags'  : '--mc --skim --savenontrig' + (' --hammer <card>' if use_hammer else ''),
-        'inspector_flags'  : '--mc --skim ' + (' --hammer <card>' if use_hammer else ''),
+        'inspector_flags'  : '--mc --skim ' + (' --hammer <card>' if use_hammer else '')
+                             + ' --pu <campaign>:<card>',
+        'pileup'           : {'campaign': pu_campaign(era), 'card': pu_card_used,
+                              'sha256': pu_card_sha,
+                              'allow_unconfirmed': args.pu_allow_unconfirmed},
         'covflow'          : None,
         'cmssw_base'       : cmssw_base,
         'scram_arch'       : scram_arch,
@@ -547,6 +597,7 @@ for kind, era, dataset, out_dir, files, chunks, n_ev in plan:
             infiles    = ','.join(lfn_to_url(f) for f, _ in chunk),
             outfile    = OUT_FILE_NAME,
             hammer_opt = ('    --hammer %s \\\n' % card_used) if use_hammer else '',
+            pu_spec    = pu_spec,
             se_host    = SE_HOST,
             pnfs_user  = PNFS_USER,
         )
