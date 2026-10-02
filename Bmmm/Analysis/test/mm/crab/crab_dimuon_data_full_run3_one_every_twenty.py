@@ -72,6 +72,10 @@ from CRABAPI.RawCommand import crabCommand
 from CRABClient.ClientExceptions import ClientException
 from http.client import HTTPException
 
+# the SAME golden-JSON lookup the inspector uses (pure python, no ROOT); needs
+# `scram b` once so $CMSSW_BASE/python carries it
+from Bmmm.Analysis.LumiMask import golden_jsons_by_year
+
 
 # ----------------------------------------------------------------------------
 # user knobs
@@ -162,6 +166,17 @@ def create_config(dataset):
     if not os.path.isdir(l1menus_dir):
         raise RuntimeError('%s not found' % l1menus_dir)
 
+    # Certification. Two layers, because the first alone is not enough:
+    #  - Data.lumiMask (set below, per year): CRAB drops the files -- and the
+    #    jobs -- holding no certified lumi. It does NOT filter events: the job
+    #    script reads the PSet fileNames only, never its lumisToProcess.
+    #  - the whole golden_jsons/ directory travels in the sandbox and
+    #    LUMIMASK=golden_jsons makes crab_script pass --lumi-mask to the
+    #    inspector, which rejects every uncertified event. The inspector refuses
+    #    to run on data without it, so forgetting this cannot go unnoticed.
+    golden_dir = os.path.join(cmssw_base, 'src', 'Bmmm', 'Analysis', 'data', 'golden_jsons')
+    golden     = golden_jsons_by_year(golden_dir)   # one JSON per year, or it raises
+
     # third-party python packages that are NOT in CMSSW (particle, uproot) and
     # are normally picked up from ~/.local -- which the WN does not have. Install
     # them into this directory's pylibs/ with:
@@ -187,6 +202,10 @@ def create_config(dataset):
     era       = processed.split('-')[0].replace('Run', '')           # 2022C
     ver_clean = '_'.join(processed.split('-')[1:]).replace('-', '')  # PromptReco_v1
     request   = 'dimuon_LowMass%s_Run%s_%s' % (part, era, ver_clean)
+    year      = era[:4]                                              # 2022
+    if year not in golden:
+        raise RuntimeError('no golden JSON for %s (dataset %s) in %s'
+                           % (year, dataset, golden_dir))
 
     cfg = config()
 
@@ -201,8 +220,9 @@ def create_config(dataset):
     cfg.JobType.scriptExe  = 'crab_script_one_in_twenty.sh'
     # inspector + all mm siblings + the package python + l1menus + pylibs +
     # the static report
-    cfg.JobType.inputFiles = helpers + [package_dir, l1menus_dir, pylibs_dir,
-                                        'FrameworkJobReport.xml']
+    cfg.JobType.inputFiles = helpers + [package_dir, l1menus_dir, golden_dir,
+                                        pylibs_dir, 'FrameworkJobReport.xml']
+    cfg.JobType.scriptArgs = ['LUMIMASK=golden_jsons']
     cfg.JobType.outputFiles = ['dimuon_ntuple.root']
     # the inspector produces a plain ROOT file, not an EDM output: tell CRAB
     # not to try to harvest outputs from the (non-existent) cmsRun report
@@ -216,6 +236,7 @@ def create_config(dataset):
 
     cfg.Data.inputDataset   = dataset
     cfg.Data.inputDBS       = 'global'
+    cfg.Data.lumiMask       = golden[year]
     cfg.Data.splitting      = 'FileBased'
     cfg.Data.unitsPerJob    = files_per_job
     cfg.Data.outLFNDirBase  = '/store/user/manzoni/' + out_dir + '/Run' + era
@@ -250,7 +271,8 @@ if __name__ == '__main__':
             print('skipping (already submitted): %s' % cfg.General.requestName)
             continue
 
-        print('%s  ->  %s' % (dataset, cfg.General.requestName))
+        print('%s  ->  %s   (lumiMask %s)' % (dataset, cfg.General.requestName,
+                                              os.path.basename(cfg.Data.lumiMask)))
 
         p = Process(target=submit, args=(cfg,))
         p.start()

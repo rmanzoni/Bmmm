@@ -89,12 +89,35 @@ print('    all imports OK')
 " || { echo ">>> FATAL: imports failed, aborting job $1"; ls -la; exit 1; }
 
 OUTNAME="dimuon_ntuple"
+# Extra inspector flags, passed by the submitter through JobType.scriptArgs,
+# same KEY=value convention as crab_script.sh.
+EXTRA_FLAGS=""
+LUMIMASK=""
 for arg in "$@"; do
     case "${arg}" in
-        OUTNAME=*) OUTNAME="${arg#*=}" ;;
+        OUTNAME=*)  OUTNAME="${arg#*=}" ;;
+        LUMIMASK=*) LUMIMASK="${arg#*=}" ;;
     esac
 done
 echo ">>> output basename: ${OUTNAME}"
+
+# Certification mask, applied EVENT BY EVENT by the inspector. The CRAB-side
+# Data.lumiMask only selects which FILES this job gets: the inspector reads
+# PSet fileNames, never PSet lumisToProcess, so without --lumi-mask a file with
+# one certified lumi would be ntuplized whole. The submitter ships the JSONs
+# (data/golden_jsons) and passes LUMIMASK=<dir or file> relative to this
+# directory. A data job without it fails in the inspector by design.
+if [ -n "${LUMIMASK}" ]; then
+    if [ ! -e "${LUMIMASK}" ]; then
+        echo ">>> FATAL: LUMIMASK=${LUMIMASK} not found in the job directory. Aborting job $1."
+        ls -la
+        exit 1
+    fi
+    EXTRA_FLAGS="${EXTRA_FLAGS} --lumi-mask=${PWD}/${LUMIMASK}"
+    echo ">>> lumi mask      : ${PWD}/${LUMIMASK}"
+    ls -la "${LUMIMASK}"
+fi
+echo ">>> extra flags    : ${EXTRA_FLAGS:-<none>}"
 
 # --- pull this job's input LFNs out of the CRAB-tweaked PSet ---
 python3 - > inputfiles.txt <<'PYEOF'
@@ -141,7 +164,8 @@ python3 -u inspector_mm_analysis.py \
     --destination=. \
     --readevery=20 \
     --logfreq=5000 \
-    --maxevents=-1
+    --maxevents=-1 \
+    ${EXTRA_FLAGS}
 RC=$?
 
 if [ ${RC} -ne 0 ]; then

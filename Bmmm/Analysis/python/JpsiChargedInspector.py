@@ -33,6 +33,7 @@ from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 from Bmmm.Analysis.utils import drop_hlt_version, cutflow, make_cov_scaler, make_cov_corrector, resolve_input_files
 from Bmmm.Analysis.HammerFF import make_hammer_session
 from Bmmm.Analysis.PileupWeights import make_pu_session
+from Bmmm.Analysis.LumiMask import make_lumi_mask
 from Bmmm.Analysis.PileupWeights import BRANCH_NAMES as PU_BRANCH_NAMES
 from Bmmm.Analysis.PileupWeights import NAN_ROW as PU_NAN_ROW
 from Bmmm.Analysis.Handles import handles_mc
@@ -65,6 +66,7 @@ class BaseInspector(object):
     EVENT_GEN_KEYS  = ()       # event-level branches filled by setup_event_gen (e.g. bc_branches)
     HAMMER          = None     # HammerFF.HammerSession, built by main() when --hammer is given
     PU              = None     # PileupWeights.PileupSession, built by main() when --pu is given
+    LUMI_MASK       = None     # LumiMask.LumiMask, built by main() from --lumi-mask (data only)
     MIN_MUONS       = 2        # minimum selected muons
 
     def __init__(self):
@@ -147,6 +149,16 @@ class BaseInspector(object):
                 eta        = datetime.now() + timedelta(seconds=(options.maxevents - i) / max(0.1, speed))
                 print('\t===> processing %d / %d event \t completed %.1f%s \t %.1f ev/s \t ETA %s'
                       % (i, options.maxevents, percentage, '%', speed, eta.strftime('%Y-%m-%d %H:%M:%S')))
+
+            # ---- certification mask ---------------------------------------------
+            # on (run, lumi), BEFORE any product is read: eventAuxiliary() is
+            # free, getByLabel is what costs. A rejected event is counted in its
+            # own cutflow line and never reaches 'all processed events'.
+            if self.LUMI_MASK is not None:
+                aux = event.eventAuxiliary()
+                if not self.LUMI_MASK.contains(aux.run(), aux.luminosityBlock()):
+                    cutflow['rejected by lumi mask'] += 1
+                    continue
 
             # ---- load handles ---------------------------------------------------
             for k, v in handles.items():
@@ -354,6 +366,13 @@ class BaseInspector(object):
                                  'schema either way -- NaN without the flag -- and the same '
                                  'weights can be added afterwards with '
                                  'test/rjpsi/pileup/add_pu_weights.py.')
+        parser.add_argument('--lumi-mask',   dest='lumi_mask',   default='',             type=str,
+                            help="Certification mask applied event by event on (run, lumi): "
+                                 "'golden' (every JSON in data/golden_jsons, one per year), "
+                                 "a directory, a JSON file (comma-separated for several), or "
+                                 "'none'. MANDATORY for data -- without it the job refuses "
+                                 "to start -- and refused with --mc. See "
+                                 "Bmmm.Analysis.LumiMask.")
         args = parser.parse_args()
         return namedtuple('options', args.__dict__.keys())(*args.__dict__.values())
 
@@ -409,6 +428,10 @@ class BaseInspector(object):
                                'and do not exist for data.')
         self.PU = make_pu_session(pu_spec)
 
+        # certification mask, data only; built before any file is opened so a
+        # missing or ambiguous golden JSON kills the job immediately
+        self.LUMI_MASK = make_lumi_mask(getattr(options, 'lumi_mask', ''), options.mc)
+
         files = resolve_input_files(options.inputFiles, options.redirector)
 
         if options.maxfiles > 0:
@@ -458,6 +481,9 @@ class BaseInspector(object):
 
         if self.PU is not None:
             print(self.PU.summary())
+
+        if self.LUMI_MASK is not None:
+            print(self.LUMI_MASK.summary())
 
         finish = time()
         print('done in %.1f hours' % ((finish - start) / 3600.))

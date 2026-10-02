@@ -17,7 +17,7 @@ import ROOT
 import numpy as np
 
 from Bmmm.Analysis.utils import COV_ELEMENT_NAMES, COV_INDEX_PAIRS, COV_NAN_5X5
-from Bmmm.Analysis.TrackHitContent import hit_content_branches
+from Bmmm.Analysis.TrackHitContent import hit_content_branches, best_track_kinematics_branches
 
 ##########################################################################################
 #####      EVENT-LEVEL QUANTITIES, COMMON TO ALL CHANNELS
@@ -134,6 +134,9 @@ muon_branches = {
     # the hit content and the covflow context can be checked to all describe
     # the tracker track.
     'best_trk_type'  :  lambda imu : int(imu.muonBestTrackType())        ,
+    # pt / eta of bestTrack(): what the covflow context is evaluated on at
+    # application time, hence what it must be trained on (TrackHitContent).
+    **best_track_kinematics_branches,
 #    'rf_dxy'         :  lambda imu : imu.rf_track.dxy(imu.pv.position()),
 #    'rf_dxy_e'       :  lambda imu : imu.rf_track.dxyError(imu.pv.position(), imu.pv.error()),
 #    'rf_dxy_sig'     :  lambda imu : imu.rf_track.dxy(imu.pv.position()) / imu.rf_track.dxyError(imu.pv.position(), imu.pv.error()),

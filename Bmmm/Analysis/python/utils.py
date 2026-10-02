@@ -21,6 +21,7 @@ ROOT.gSystem.Load('libBmmmAnalysis')
 from ROOT import KVFitter # VertexDistance3D is contained here, dirt trick!!
 
 from Bmmm.Analysis.TrackHitContent import hit_content, COVFLOW_HIT_CONTEXT
+from Bmmm.Analysis.TrackHitContent import best_track_kinematics_branches as _BEST_TRK
 
 ##########################################################################################
 ##########################################################################################
@@ -650,10 +651,12 @@ class CorrectionlibCovScaler(CovScaler):
 # TrackHitContent, the module the <obj>_n_pix_* / pix_first_* branches in
 # CommonBranches are built from, so training and application cannot drift.
 COVFLOW_CONTEXT_GETTERS = {
-    'pt'            : lambda obj, trk, ev : trk.pt(),
-    'log_pt'        : lambda obj, trk, ev : np.log(max(trk.pt(), 1e-6)),
-    'eta'           : lambda obj, trk, ev : trk.eta(),
-    'abs_eta'       : lambda obj, trk, ev : abs(trk.eta()),
+    # pt / eta of bestTrack(), through the same getters that fill the
+    # <obj>_best_trk_pt / <obj>_best_trk_eta branches the flow is trained on
+    'pt'            : lambda obj, trk, ev : _BEST_TRK['best_trk_pt'](obj),
+    'log_pt'        : lambda obj, trk, ev : np.log(max(_BEST_TRK['best_trk_pt'](obj), 1e-6)),
+    'eta'           : lambda obj, trk, ev : _BEST_TRK['best_trk_eta'](obj),
+    'abs_eta'       : lambda obj, trk, ev : abs(_BEST_TRK['best_trk_eta'](obj)),
     'phi'           : lambda obj, trk, ev : trk.phi(),
     'n_valid_hit'   : lambda obj, trk, ev : trk.numberOfValidHits(),
     'chi2_norm'     : lambda obj, trk, ev : trk.normalizedChi2(),

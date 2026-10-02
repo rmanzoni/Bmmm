@@ -71,6 +71,7 @@ from Bmmm.Analysis.MuMuBranches import (
 from Bmmm.Analysis.CommonBranches import safe_get
 from Bmmm.Analysis.NtupleWriter import WRITE_EVERY, build_branch_types, flush
 from Bmmm.Analysis.MuMuCandidate import Candidate
+from Bmmm.Analysis.LumiMask import make_lumi_mask
 from Bmmm.Analysis.utils import (
     COV_ELEMENT_NAMES, COV_INDEX_PAIRS,
     VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element,
@@ -100,6 +101,12 @@ parser.add_argument('--readevery'    , dest='readevery'  , default=1     , type=
                          'Subsampling is by POSITION in the scan, not by event number: '
                          'event numbers are sparse in a skimmed dataset, so iev%%N would '
                          'keep an unknown, run-dependent fraction.')
+parser.add_argument('--lumi-mask'    , dest='lumi_mask'  , default=''    , type=str,
+                    help="certification mask applied event by event on (run, lumi): "
+                         "'golden' (every JSON in data/golden_jsons, one per year), a "
+                         "directory, a JSON file (comma-separated for several), or "
+                         "'none'. MANDATORY for data -- without it the job refuses to "
+                         "start -- and refused with --mc. See Bmmm.Analysis.LumiMask.")
 args = parser.parse_args()
 
 inputFiles  = args.inputFiles
@@ -118,6 +125,10 @@ mc = False; mc = args.mc
 readevery   = args.readevery
 if readevery < 1:
     raise ValueError('--readevery must be >= 1, got %d' % readevery)
+
+# built before any file is opened: a missing or ambiguous golden JSON kills the
+# job now, not after the first hour of reading
+lumi_mask   = make_lumi_mask(args.lumi_mask, mc)
     
 # run -> lumi -> events read. Filled for EVERY event the loop touches.
 processed_lumis = defaultdict(lambda : defaultdict(int))
@@ -306,7 +317,16 @@ for i, event in enumerate(events):
     # exactly 1/readevery in every run and lumi and yields scale by readevery.
     if readevery > 1 and (i % readevery) != 0:
         continue
-        
+
+    # Certification mask, on the events the subsampling kept. Same reason to sit
+    # above the getByLabel block: eventAuxiliary() is free, products are not.
+    # A rejected event never reaches processed_lumis, so --lumi-json lists the
+    # certified lumis actually read -- the check that the mask did its job.
+    if lumi_mask is not None:
+        _aux = event.eventAuxiliary()
+        if not lumi_mask.contains(_aux.run(), _aux.luminosityBlock()):
+            continue
+
     # reset trees
     for k, v in tofill.items():
        tofill[k] = np.nan
@@ -693,6 +713,9 @@ flush(fout, row_list, branches)
 print('\nnumber of selected candidates', fout['tree'].num_entries)
 fout.close()
 
+if lumi_mask is not None:
+    print(lumi_mask.summary())
+
 # Grid bookkeeping, written whether or not any candidate survived: an empty
 # ntuple is still a job that legitimately read its share of the dataset.
 if lumi_json:
@@ -700,6 +723,10 @@ if lumi_json:
     payload = {'events_read'    : sum(sum(l.values()) for l in processed_lumis.values()),
                'processed_lumis': {str(r) : {str(l) : n for l, n in sorted(ls.items())}
                                    for r, ls in sorted(processed_lumis.items())}}
+    # which mask (if any) the job applied, and what it rejected
+    if lumi_mask is not None:
+        payload['lumi_mask']         = lumi_mask.describe()
+        payload['events_masked_out'] = lumi_mask.n_fail
     with open(lumi_json, 'w') as _f:
         json.dump(payload, _f)
     print('wrote %s: %d events read over %d run(s)'

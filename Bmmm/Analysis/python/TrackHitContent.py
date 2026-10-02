@@ -192,3 +192,19 @@ def hit_content(obj):
 hit_content_branches = {}
 for _name in HIT_CONTENT_NAMES:
     hit_content_branches[_name] = (lambda obj, name=_name : hit_content(obj)[name])
+
+
+##########################################################################################
+#####      BEST-TRACK KINEMATICS (covflow context pt / eta)
+##########################################################################################
+# The covflow context pt and eta must be the SAME quantity in training and in
+# application. Application has always read them from bestTrack() (the track
+# whose covariance is corrected); training used <obj>_pt / <obj>_eta, i.e. the
+# pat::Muon p4 -- equal for tracker-fit muons, but two definitions of one
+# variable. These branches give training the bestTrack() values, and
+# utils.COVFLOW_CONTEXT_GETTERS builds 'pt', 'log_pt', 'eta' and 'abs_eta' from
+# these very getters. Train on <obj>_best_trk_pt / <obj>_best_trk_eta.
+best_track_kinematics_branches = {
+    'best_trk_pt'  : lambda obj : obj.bestTrack().pt() ,
+    'best_trk_eta' : lambda obj : obj.bestTrack().eta(),
+}

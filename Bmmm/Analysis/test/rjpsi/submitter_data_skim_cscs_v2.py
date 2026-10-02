@@ -148,6 +148,7 @@ dry_run = False
 allow_dropped_base_files = False  # base files missing from the new list
 allow_cfg_change         = False  # inspector differs from the base copy
 allow_release_change     = False  # $CMSSW_BASE differs from the base jobs
+allow_lumi_mask_change   = False  # base jobs ran with a different (or no) --lumi-mask
 
 input_file    = input_files_by_year[year]         # used when diff_mode = False
 # For a real diff run, point base_file / addendum_file at the proper lists
@@ -220,12 +221,14 @@ def existing_chunk_indices(se_host, se_path, out_file_name):
 def local_submitter_info(out_dir):
     '''
     Scan <out_dir>/submitter_chunk<N>.sh.
-    Returns (indices, submitted input LFNs, set of CMSSW src dirs used).
+    Returns (indices, submitted input LFNs, set of CMSSW src dirs used,
+             set of --lumi-mask values used, '' for a job without one).
     '''
     pat_sh  = re.compile(r'submitter_chunk(\d+)\.sh$')
     pat_in  = re.compile(r'--inputFiles=(\S+)')
     pat_rel = re.compile(r'^cd (\S+/src)\s*$', re.M)
-    indices, submitted, releases = [], set(), set()
+    pat_lm  = re.compile(r'--lumi-mask=(\S+)')
+    indices, submitted, releases, masks = [], set(), set(), set()
     for path in glob(os.path.join(out_dir, 'submitter_chunk*.sh')):
         m = pat_sh.search(os.path.basename(path))
         if not m:
@@ -237,7 +240,8 @@ def local_submitter_info(out_dir):
             # root://<door>//store/... -> /store/...
             submitted.add('/' + url.split('//', 2)[-1].lstrip('/'))
         releases.update(pat_rel.findall(content))
-    return sorted(indices), submitted, releases
+        masks.update(pat_lm.findall(content) or [''])
+    return sorted(indices), submitted, releases, masks
 
 
 def dataset_dir(lfn):
@@ -254,6 +258,25 @@ def abort(msg):
 out_dir = out_dir_by_year[year]
 cmssw_base = os.environ.get('CMSSW_BASE', '')
 cfg = 'inspector_rjpsi.py'
+
+# ---------------------------------------------------------------------------
+# Certification mask, applied event by event by the inspector (--lumi-mask).
+# The jobs read the golden JSONs straight from this release, which the worker
+# nodes see: the whole golden_jsons/ directory is passed (union of the per-year
+# JSONs, run numbers being unique), and the year's own JSON is checked HERE so
+# a missing one stops the submission instead of 2000 jobs. The inspector
+# refuses data without --lumi-mask, so dropping this line fails loudly too.
+# ---------------------------------------------------------------------------
+if not cmssw_base:
+    abort('CMSSW_BASE not set: run cmsenv in the release the jobs should use')
+sys.path.insert(0, os.path.join(cmssw_base, 'python'))
+from Bmmm.Analysis.LumiMask import golden_jsons_by_year
+golden_dir = os.path.join(cmssw_base, 'src', 'Bmmm', 'Analysis', 'data', 'golden_jsons')
+golden     = golden_jsons_by_year(golden_dir)          # one JSON per year, or it raises
+if year not in golden:
+    abort('no golden JSON for %s in %s (have %s)' % (year, golden_dir, sorted(golden)))
+lumi_mask_arg = '--lumi-mask=%s' % golden_dir
+print('>>>> lumi mask: %s (year %s -> %s)' % (golden_dir, year, os.path.basename(golden[year])))
 
 if diff_mode:
     if not addendum_file or not os.path.exists(addendum_file):
@@ -299,7 +322,16 @@ if diff_mode:
             abort('inspector changed since the base submission. '
                   'Set allow_cfg_change = True to override.')
 
-    local_idx, already_submitted, base_releases = local_submitter_info(out_dir)
+    local_idx, already_submitted, base_releases, base_masks = local_submitter_info(out_dir)
+    # a diff submission must not mix certified-only chunks with chunks of a base
+    # production that kept every lumi (or used another mask) in one out_dir
+    if base_masks and base_masks != {golden_dir}:
+        print('>>>>   base jobs used --lumi-mask %s, this submission uses %s'
+              % (sorted(m or '<none>' for m in base_masks), golden_dir))
+        if not allow_lumi_mask_change:
+            abort('lumi mask differs from the base submission: the out_dir would mix '
+                  'masked and unmasked chunks. Start a new out_dir, or set '
+                  'allow_lumi_mask_change = True if you really mean it.')
     cur_release = os.path.join(cmssw_base, 'src') if cmssw_base else ''
     if base_releases and base_releases != {cur_release}:
         print('>>>>   base jobs used %s, current is %s'
@@ -484,6 +516,7 @@ for ijob, ichunk in enumerate(chunks):
             '--logfreq=5000 '
             '--destination=/scratch/manzoni/{scratch_dir} '
             '--skim '
+            '{lumi_mask} '
             #'--savenontrig '
             '--filename={outfile}_chunk{ijob}_part{idx} \n'
             'if [ $? -ne 0 ]; then\n'
@@ -498,6 +531,7 @@ for ijob, ichunk in enumerate(chunks):
             ijob        = jobid,
             infiles     = ifile,
             idx         = idx,
+            lumi_mask   = lumi_mask_arg,
         )
 
     to_write += '\n'.join([
