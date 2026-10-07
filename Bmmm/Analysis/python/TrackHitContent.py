@@ -55,10 +55,41 @@ The quantities (Phase-1 pixel detector: 4 BPix layers, 3 FPix disks per side)
         that do not know a data-taking dead module can only ever say MISSING or
         nothing -- which is exactly the kind of mismatch they are here to show.
 
+Per-layer hit masks (for the hit-loss emulation of covflow, HITEMU.md)
+  The quantities above say where the FIRST pixel hit is. The emulation that
+  gives the MC the data hit pattern needs every layer: whether L2 is there
+  after L1 is removed, and one kill map per layer and disk, which needs to know
+  for every track and every layer whether it has a valid hit. Bit b of each
+  mask is one pixel layer or disk:
+
+        bit 0-3   BPix layer 1-4          (value 1, 2, 4, 8)
+        bit 4-6   FPix disk 1-3           (value 16, 32, 64)
+                  (either side: a track crosses the disks of one side only;
+                   the side is the sign of its eta)
+
+  pix_valid_mask   layers with at least one VALID hit
+  pix_miss_mask    layers the track was expected to cross (MISSING hit in
+                   TRACK_HITS, MISSING_INNER_HITS or MISSING_OUTER_HITS) on an
+                   ACTIVE module, with no valid hit on that layer: inefficiency
+  pix_inact_mask   same, module INACTIVE or BAD in the conditions, no valid hit
+                   on that layer: dead module
+  pix_hit_count    valid hits per layer, 2 bits per layer (0-3, overlaps make
+                   2), packed: count of layer bit b = (pix_hit_count >> 2b) & 3
+
+  A layer can be in pix_miss_mask and pix_inact_mask at once (two overlapping
+  modules, one missing and one inactive), never in either and pix_valid_mask.
+  A layer in none of the three was not crossed, or crossed outside what the
+  pattern recorder considered (the emulation then uses the helix crossing).
+  Masks are stored in the float32 ntuple branches: exact up to 2^24, i.e.
+  every value here. Decode in numpy with  (mask.astype(int) >> b) & 1.
+  Python helpers: pix_layer_bit(), PIX_MASK_LAYERS.
+
 Which of these may condition a flow is decided in COVFLOW_HIT_CONTEXT below, not
 by their presence in the ntuple: the missing/inactive counts describe WHY the
 first hit is where it is, the covariance depends on WHERE it is, so they are
-saved as diagnostics and deliberately kept out of the context set.
+saved as diagnostics and deliberately kept out of the context set. The same
+holds for the per-layer masks below: they are inputs to the hit-loss emulation,
+not covflow context.
 
 pat::PackedCandidate caveat
 ---------------------------
@@ -82,6 +113,24 @@ N_BPIX_LAYERS = 4
 N_FPIX_DISKS  = 3
 FPIX_CODE_OFFSET = N_BPIX_LAYERS   # disk d -> code 4 + d in pix_first_layer
 
+# bit of each pixel layer / disk in the pix_*_mask branches, in bit order
+PIX_MASK_LAYERS = tuple(['L%d' % l for l in range(1, N_BPIX_LAYERS + 1)] +
+                        ['D%d' % d for d in range(1, N_FPIX_DISKS + 1)])
+PIX_COUNT_BITS  = 2   # bits per layer in pix_hit_count
+PIX_COUNT_MAX   = (1 << PIX_COUNT_BITS) - 1
+
+
+def pix_layer_bit(barrel, layer):
+    '''Bit of a pixel layer in the pix_*_mask branches: BPix layer l -> l-1,
+    FPix disk d -> N_BPIX_LAYERS + d - 1. Raises ValueError outside Phase-1.'''
+    if barrel:
+        if not 1 <= layer <= N_BPIX_LAYERS:
+            raise ValueError('BPix layer %d outside 1-%d' % (layer, N_BPIX_LAYERS))
+        return layer - 1
+    if not 1 <= layer <= N_FPIX_DISKS:
+        raise ValueError('FPix disk %d outside 1-%d' % (layer, N_FPIX_DISKS))
+    return N_BPIX_LAYERS + layer - 1
+
 # The order is the branch order in the ntuple. The first three are the branches
 # that existed before this module and keep their position.
 HIT_CONTENT_NAMES = (
@@ -95,6 +144,10 @@ HIT_CONTENT_NAMES = (
     'pix_first_layer'  ,
     'n_pix_miss_inner' ,
     'n_pix_inact_inner',
+    'pix_valid_mask'   ,
+    'pix_miss_mask'    ,
+    'pix_inact_mask'   ,
+    'pix_hit_count'    ,
 )
 
 # The subset a covflow context may use. Geometric and upstream of the hit
@@ -131,25 +184,49 @@ def compute_hit_content(trk):
     HP = ROOT.reco.HitPattern
     hp = trk.hitPattern()
 
-    # innermost valid BPix layer / FPix disk. The minimum is taken rather than
-    # the first hit met: nothing below relies on the storage order of the hits.
+    # innermost valid BPix layer / FPix disk, and the per-layer masks. The
+    # minimum is taken rather than the first hit met: nothing below relies on
+    # the storage order of the hits.
     first_b = 0
     first_e = 0
-    for i in range(hp.numberOfAllHits(HP.TRACK_HITS)):
-        pattern = hp.getHitPattern(HP.TRACK_HITS, i)
-        if not (HP.validHitFilter(pattern) and HP.pixelHitFilter(pattern)):
-            continue
-        layer = int(HP.getLayer(pattern))
-        if HP.pixelBarrelHitFilter(pattern):
-            if not 1 <= layer <= N_BPIX_LAYERS:
-                raise ValueError('valid BPix hit on layer %d, outside 1-%d'
-                                 % (layer, N_BPIX_LAYERS))
-            first_b = layer if first_b == 0 else min(first_b, layer)
-        else:
-            if not 1 <= layer <= N_FPIX_DISKS:
-                raise ValueError('valid FPix hit on disk %d, outside 1-%d'
-                                 % (layer, N_FPIX_DISKS))
-            first_e = layer if first_e == 0 else min(first_e, layer)
+    valid_mask = 0
+    miss_mask  = 0
+    inact_mask = 0
+    counts = [0] * len(PIX_MASK_LAYERS)
+    for category in (HP.TRACK_HITS, HP.MISSING_INNER_HITS, HP.MISSING_OUTER_HITS):
+        for i in range(hp.numberOfAllHits(category)):
+            pattern = hp.getHitPattern(category, i)
+            if not HP.pixelHitFilter(pattern):
+                continue
+            barrel = bool(HP.pixelBarrelHitFilter(pattern))
+            layer = int(HP.getLayer(pattern))
+            if HP.validHitFilter(pattern):
+                if category != HP.TRACK_HITS:
+                    continue          # cannot happen; never trust it if it does
+                if barrel:
+                    if not 1 <= layer <= N_BPIX_LAYERS:
+                        raise ValueError('valid BPix hit on layer %d, outside 1-%d'
+                                         % (layer, N_BPIX_LAYERS))
+                    first_b = layer if first_b == 0 else min(first_b, layer)
+                else:
+                    if not 1 <= layer <= N_FPIX_DISKS:
+                        raise ValueError('valid FPix hit on disk %d, outside 1-%d'
+                                         % (layer, N_FPIX_DISKS))
+                    first_e = layer if first_e == 0 else min(first_e, layer)
+                bit = pix_layer_bit(barrel, layer)
+                valid_mask |= 1 << bit
+                counts[bit] = min(counts[bit] + 1, PIX_COUNT_MAX)
+            elif HP.inactiveHitFilter(pattern) or HP.badHitFilter(pattern):
+                inact_mask |= 1 << pix_layer_bit(barrel, layer)
+            elif HP.missingHitFilter(pattern):
+                miss_mask |= 1 << pix_layer_bit(barrel, layer)
+    # a layer with a valid hit is not "missing" because an overlapping module
+    # on it was missed
+    miss_mask  &= ~valid_mask
+    inact_mask &= ~valid_mask
+    hit_count = 0
+    for bit, n in enumerate(counts):
+        hit_count |= n << (PIX_COUNT_BITS * bit)
 
     # inactive pixel modules the track was expected to cross before its first
     # valid hit. HitPattern has a counter for the MISSING ones in this category
@@ -171,6 +248,10 @@ def compute_hit_content(trk):
         'pix_first_layer'   : pix_first_layer_code(first_b, first_e)              ,
         'n_pix_miss_inner'  : hp.numberOfLostPixelHits(HP.MISSING_INNER_HITS)     ,
         'n_pix_inact_inner' : n_inact_inner                                       ,
+        'pix_valid_mask'    : valid_mask                                          ,
+        'pix_miss_mask'     : miss_mask                                           ,
+        'pix_inact_mask'    : inact_mask                                          ,
+        'pix_hit_count'     : hit_count                                           ,
     }
 
 
