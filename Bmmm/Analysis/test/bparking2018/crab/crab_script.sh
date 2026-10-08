@@ -13,10 +13,12 @@
 # Differences from the dimuon wrapper, all forced by this inspector:
 #   - runs inspector_jpsi_tk_bparking2018.py (shipped flat in the sandbox);
 #   - the import check covers the J/psi + track modules;
-#   - data only: no MC / PU / SAVENONTRIG switches, no L1 menus (this inspector
-#     does not read them);
-#   - the certification mask is MANDATORY: without LUMIMASK the job stops here
-#     instead of the inspector stopping later.
+#   - MC=1 / SAVENONTRIG=1 (MC submitter) add --mc / --savenontrig; no PU
+#     switch (the pileup card has no UL2018 campaign), no L1 menus (this
+#     inspector does not read them);
+#   - for DATA the certification mask is MANDATORY: without LUMIMASK the job
+#     stops here instead of the inspector stopping later. For MC it must NOT be
+#     given (the inspector refuses a mask with --mc).
 #
 # Locality scheduling is ON (Data.ignoreLocality not set), so the global
 # redirector below resolves to the local xrootd door -> LAN read.
@@ -78,25 +80,40 @@ print('    all imports OK')
 # --- KEY=value arguments from JobType.scriptArgs -----------------------------
 OUTNAME="jpsi_tk_ntuple"
 LUMIMASK=""
+IS_MC=0
+EXTRA_FLAGS=""
 for arg in "$@"; do
     case "${arg}" in
-        OUTNAME=*)  OUTNAME="${arg#*=}" ;;
-        LUMIMASK=*) LUMIMASK="${arg#*=}" ;;
+        OUTNAME=*)     OUTNAME="${arg#*=}" ;;
+        LUMIMASK=*)    LUMIMASK="${arg#*=}" ;;
+        MC=1)          IS_MC=1 ; EXTRA_FLAGS="${EXTRA_FLAGS} --mc" ;;
+        SAVENONTRIG=1) EXTRA_FLAGS="${EXTRA_FLAGS} --savenontrig" ;;
     esac
 done
 echo ">>> output basename: ${OUTNAME}"
 
-# Certification mask, applied EVENT BY EVENT by the inspector. The CRAB-side
-# Data.lumiMask only decides which FILES this job gets: the inspector reads the
-# PSet fileNames, never lumisToProcess, so without --lumi-mask a file with one
-# certified lumi would be ntuplized whole.
-if [ -z "${LUMIMASK}" ] || [ ! -e "${LUMIMASK}" ]; then
-    echo ">>> FATAL: LUMIMASK='${LUMIMASK}' missing or not in the job directory. Aborting job $1."
-    ls -la
-    exit 1
+if [ "${IS_MC}" -eq 1 ]; then
+    # simulation: no certification. A mask here is a submitter bug.
+    if [ -n "${LUMIMASK}" ]; then
+        echo ">>> FATAL: LUMIMASK given together with MC=1. Aborting job $1."
+        exit 1
+    fi
+    echo ">>> MC job: no lumi mask"
+else
+    # Certification mask, applied EVENT BY EVENT by the inspector. The CRAB-side
+    # Data.lumiMask only decides which FILES this job gets: the inspector reads
+    # the PSet fileNames, never lumisToProcess, so without --lumi-mask a file
+    # with one certified lumi would be ntuplized whole.
+    if [ -z "${LUMIMASK}" ] || [ ! -e "${LUMIMASK}" ]; then
+        echo ">>> FATAL: LUMIMASK='${LUMIMASK}' missing or not in the job directory. Aborting job $1."
+        ls -la
+        exit 1
+    fi
+    EXTRA_FLAGS="${EXTRA_FLAGS} --lumi-mask=${PWD}/${LUMIMASK}"
+    echo ">>> lumi mask      : ${PWD}/${LUMIMASK}"
+    ls -la "${LUMIMASK}"
 fi
-echo ">>> lumi mask      : ${PWD}/${LUMIMASK}"
-ls -la "${LUMIMASK}"
+echo ">>> extra flags    : ${EXTRA_FLAGS}"
 
 # --- this job's input LFNs, from the CRAB-tweaked PSet ------------------------
 python3 - > inputfiles.txt <<'PYEOF'
@@ -141,7 +158,7 @@ python3 -u inspector_jpsi_tk_bparking2018.py \
     --destination=. \
     --logfreq=5000 \
     --maxevents=-1 \
-    --lumi-mask="${PWD}/${LUMIMASK}"
+    ${EXTRA_FLAGS}
 RC=$?
 
 if [ ${RC} -ne 0 ]; then

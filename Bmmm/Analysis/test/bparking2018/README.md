@@ -27,6 +27,7 @@ the two J/ψ muons (tag-side trigger). Those candidates are kept; select
 |---|---|
 | `inspector_jpsi_tk_bparking2018.py` | entry point; the logic is in `Bmmm/Analysis/python/JpsiTkBParking2018Inspector.py` |
 | `crab/crab_jpsi_tk_bparking2018.py` | CRAB submitter for the 22 datasets |
+| `crab/crab_jpsi_tk_bparking2018_mc.py` | CRAB submitter for the UL2018 MC (B⁺ → J/ψ K⁺) |
 | `crab/crab_script.sh` | job wrapper (runs the inspector instead of cmsRun) |
 | `crab/PSet.py`, `crab/FrameworkJobReport.xml` | dummy PSet / job report CRAB needs for a scriptExe job |
 | `crab/make_pylibs.sh` | builds `crab/pylibs/` (the `particle` package, missing from CMSSW) |
@@ -66,6 +67,28 @@ Once the 2018 JSON is in `data/golden_jsons`, use `--lumi-mask=golden`; a random
 file may then contain no certified lumi and give an empty tree, which is
 correct. The cutflow is written to `logger_<timestamp>.txt`.
 
+Same test on the B⁺ → J/ψ K⁺ MC (no mask; `--savenontrig` as in the grid jobs):
+
+```tcsh
+set f = `dasgoclient -query "file dataset=/BuToJpsiK_BMuonFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/RunIISummer20UL18MiniAODv2-BPH_106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM" -limit 1`
+python3 inspector_jpsi_tk_bparking2018.py --inputFiles=$f --filename=test_jpsitk_mc_bu_ul18 \
+    --maxevents=2000 --logfreq=200 --mc --savenontrig
+```
+
+## MC
+
+`crab/crab_jpsi_tk_bparking2018_mc.py` runs the same inspector with `--mc
+--savenontrig`:
+
+- every event is kept, whether or not a parking path fired. The path decisions,
+  prescales and `mu{1,2}_<path>_tag` are filled, so the data selection is
+  reproduced offline by requiring the OR of the paths.
+- no certification mask.
+- no pileup weights: the card has only Run 3 campaigns, so `pu_weight_*` are
+  NaN. `nti` (true number of interactions) is stored for an offline reweighting.
+- the gen matching is the provisional ΔR match of `JpsiTkInspector`, written for
+  the B⁺ → J/ψ K⁺ topology, which is this sample.
+
 ## Submitting (tcsh)
 
 ```tcsh
@@ -73,8 +96,11 @@ cd $CMSSW_BASE/src/Bmmm/Analysis/test/bparking2018/crab
 source /cvmfs/cms.cern.ch/crab3/crab.csh
 voms-proxy-init -rfc -voms cms -valid 192:00
 ./make_pylibs.sh            # once
-python3 crab_jpsi_tk_bparking2018.py
+python3 crab_jpsi_tk_bparking2018.py       # data
+python3 crab_jpsi_tk_bparking2018_mc.py    # MC
 ```
 
-Output: `/store/user/manzoni/jpsi_tk_ntuples_bparking2018_08oct2026/Run2018<era>/ParkingBPH<N>/...`
-at `T3_CH_PSI`, one `jpsi_tk_ntuple_<job>.root` per job.
+Output at `T3_CH_PSI`, one `jpsi_tk_ntuple_<job>.root` per job:
+
+- data: `/store/user/manzoni/jpsi_tk_ntuples_bparking2018_08oct2026/Run2018<era>/ParkingBPH<N>/...`
+- MC: `/store/user/manzoni/jpsi_tk_ntuples_mc_ul2018_08oct2026/BuToJpsiK_BMuonFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/...`
