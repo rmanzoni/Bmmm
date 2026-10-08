@@ -79,8 +79,8 @@ from Bmmm.Analysis.PileupWeights import PileupSession
 # '_pu' in the names: tasks submitted earlier from the mixed-up file used
 # crab_dimuon_mc_run3 / dimuon_ntuples_mc_run3_02oct2026 and carry no pileup
 # weights; this production must not mix with them.
-work_area     = 'crab_dimuon_mc_run3_pu'
-out_dir       = 'dimuon_ntuples_mc_run3_pu_02oct2026'   # under /store/user/manzoni/
+work_area     = 'crab_dimuon_mc_run3_pu_08oct2026'
+out_dir       = 'dimuon_ntuples_mc_run3_pu_08oct2026'   # under /store/user/manzoni/
 files_per_job = 2
 storage_site  = 'T3_CH_PSI'
 

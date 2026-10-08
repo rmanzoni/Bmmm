@@ -80,9 +80,9 @@ from Bmmm.Analysis.LumiMask import golden_jsons_by_year
 # ----------------------------------------------------------------------------
 # user knobs
 # ----------------------------------------------------------------------------
-work_area     = 'crab_dimuon_run3_one_every_twenty_02oct2026'
-out_dir       = 'dimuon_ntuples_run3_one_every_twenty_02oct2026'      # under /store/user/manzoni/
-files_per_job = 25
+work_area     = 'crab_dimuon_run3_one_every_twenty_08oct2026'
+out_dir       = 'dimuon_ntuples_run3_one_every_twenty_08oct2026'      # under /store/user/manzoni/
+files_per_job = 4
 storage_site  = 'T3_CH_PSI'
 
 # requestNames listed here are skipped (already submitted / done)

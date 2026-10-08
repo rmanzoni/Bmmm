@@ -73,6 +73,7 @@ from Bmmm.Analysis.NtupleWriter import WRITE_EVERY, build_branch_types, flush
 from Bmmm.Analysis.MuMuCandidate import Candidate
 from Bmmm.Analysis.LumiMask import make_lumi_mask
 from Bmmm.Analysis.PileupWeights import make_pu_session
+from Bmmm.Analysis.PileupWeights import BRANCH_NAMES as PU_BRANCH_NAMES
 from Bmmm.Analysis.utils import (
     COV_ELEMENT_NAMES, COV_INDEX_PAIRS,
     VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element,
@@ -300,6 +301,16 @@ else:
     fout.mktree('tree', build_branch_types(branches))
 row_list = []
 tofill = OrderedDict(zip(branches, [np.nan]*len(branches)))
+
+# The writer stores ONLY the columns in `branches` (NtupleWriter.rows_to_columns):
+# a weight put into tofill under a name missing from the schema is computed and
+# then silently dropped. So the pileup block must be in the schema -- always,
+# NaN without --pu, exactly as in the J/psi ntuples.
+_missing_pu = [b for b in PU_BRANCH_NAMES if b not in branches]
+if _missing_pu:
+    raise RuntimeError('the dimuon branch list lacks the pileup-weight block %s: '
+                       'MuMuBranches must append PileupWeights.BRANCH_NAMES'
+                       % _missing_pu)
 
 # start the stopwatch
 start = time()

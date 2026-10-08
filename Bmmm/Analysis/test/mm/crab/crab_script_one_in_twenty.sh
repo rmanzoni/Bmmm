@@ -162,7 +162,7 @@ python3 -u inspector_mm_analysis.py \
     --inputFiles="${INFILES}" \
     --filename="${OUTNAME}" \
     --destination=. \
-    --readevery=20 \
+    --readevery=1 \
     --logfreq=5000 \
     --maxevents=-1 \
     ${EXTRA_FLAGS}
