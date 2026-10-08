@@ -2,11 +2,23 @@
 '''
 Build the pileup card read by Bmmm.Analysis.PileupWeights.
 
-Run on lxplus (or anywhere /eos/user/c/cmsdqm is mounted) after `cmsenv`, since
-it needs the central files on /eos, pileupCalc.py, and the MixingModule cfis:
+Run after `cmsenv` (pileupCalc.py and the MixingModule cfis come from the
+release). The central certification files -- the 2022/2023 pileup histograms
+and the pileup JSONs pileupCalc needs -- are read from
+/eos/user/c/cmsdqm/www/CAF/certification when that is mounted (lxplus), and
+otherwise downloaded from its web mirror
+https://cms-service-dqmdc.web.cern.ch/CAF/certification (same tree) with wget,
+into a cache under --workdir. So this runs on the PSI T3 as well:
 
     python3 build_pu_card.py -o $CMSSW_BASE/src/Bmmm/Analysis/data/pu_weights_run3.json \
                              --plots pu_card_plots
+
+    --cert-source eos|web|auto   force one source (default auto: eos if mounted)
+    --cert-url URL               another mirror of the same tree
+
+Downloaded files are kept and reused (delete the cache to refetch); the card
+records, for every input, the URL it came from and the sha256 of the bytes
+actually read.
 
     # only some campaigns, e.g. while the 2025/2026 inputs are not there yet
     python3 build_pu_card.py -o card.json --campaigns Summer22 Summer22EE Summer23 Summer23BPix
@@ -23,10 +35,12 @@ import importlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import threading
 import time
+from urllib.parse import unquote, urljoin, urlparse
 
 import numpy as np
 import uproot
@@ -75,6 +89,95 @@ class Heartbeat(object):
         self._stop.set()
         self._th.join()
         print('        done in %.0f s' % (time.time() - self._t0), flush=True)
+
+
+# ---------------------------------------------------------------------------
+# where the central certification files come from: /eos, or its web mirror
+# ---------------------------------------------------------------------------
+class CertSource(object):
+    '''Resolves the certification paths of pu_config_run3.py, all written as
+    EOS_CERT + '/<relative path>', to files that can be opened here.
+
+      eos : the paths as they are (lxplus, or wherever /eos/user/c/cmsdqm is
+            mounted)
+      web : CERT_URL + '/<relative path>', downloaded with wget into
+            <cache>/<relative path> and reused on the next run
+
+    A path that does not start with EOS_CERT (the golden JSONs, which live in
+    the repo) is returned untouched in both modes. wget rather than urllib: it
+    is what is known to reach the mirror from the T3, with the system CA store,
+    which the CMSSW python is not guaranteed to see.
+    '''
+
+    def __init__(self, mode, url, cache):
+        self.url   = url.rstrip('/')
+        self.cache = cache
+        eos_ok     = os.path.isdir(cfg.EOS_CERT)
+        if mode == 'auto':
+            mode = 'eos' if eos_ok else 'web'
+        if mode == 'eos' and not eos_ok:
+            fatal('--cert-source eos, but %s is not mounted here. Use --cert-source web.'
+                  % cfg.EOS_CERT)
+        if mode == 'web' and shutil.which('wget') is None:
+            fatal('--cert-source web needs wget, which is not on the PATH')
+        self.mode = mode
+        print('==> certification files from %s'
+              % (cfg.EOS_CERT if mode == 'eos' else '%s (cache %s)' % (self.url, self.cache)))
+
+    def _relative(self, path):
+        root = cfg.EOS_CERT.rstrip('/') + '/'
+        return path[len(root):] if path.startswith(root) else None
+
+    def origin(self, path):
+        '''Where the bytes of `path` really come from: the URL in web mode.'''
+        rel = self._relative(path)
+        return path if (self.mode == 'eos' or rel is None) else self.url + '/' + rel
+
+    def list_root(self, directory):
+        '''The .root files directly inside a certification directory, as
+        EOS-style paths (so the config, the matching and the card keep one
+        spelling whatever the source).'''
+        if self.mode == 'eos' or self._relative(directory.rstrip('/') + '/x') is None:
+            return sorted(glob.glob(os.path.join(directory, '*.root')))
+        dir_url = self.origin(directory.rstrip('/') + '/x')[:-1]     # .../BCD/
+        ret = subprocess.run(['wget', '-q', '-O', '-', dir_url],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if ret.returncode != 0:
+            fatal('cannot list %s (wget exit %d): %s'
+                  % (dir_url, ret.returncode, ret.stderr.decode(errors='replace').strip()))
+        html  = ret.stdout.decode(errors='replace')
+        names = set()
+        for href in re.findall(r'href\s*=\s*["\']([^"\'?#]+)', html, flags=re.I):
+            target = urlparse(urljoin(dir_url, href)).path
+            parent, name = target.rsplit('/', 1)
+            # only files of THIS directory: no parent links, no subdirectories
+            if name.endswith('.root') and parent + '/' == urlparse(dir_url).path:
+                names.add(unquote(name))
+        if not names and '.root' in html:
+            fatal('%s lists .root files but none could be parsed out of the page; '
+                  'first 500 characters:\n%s' % (dir_url, html[:500]))
+        return sorted(directory.rstrip('/') + '/' + n for n in names)
+
+    def file(self, path):
+        '''A local, readable copy of `path` (downloaded once in web mode).'''
+        rel = self._relative(path)
+        if self.mode == 'eos' or rel is None:
+            return path
+        local = os.path.join(self.cache, rel)
+        if os.path.isfile(local) and os.path.getsize(local) > 0:
+            print('        cached  %s' % local)
+            return local
+        os.makedirs(os.path.dirname(local), exist_ok=True)
+        url = self.url + '/' + rel
+        print('        wget    %s' % url, flush=True)
+        part = local + '.part'
+        ret  = subprocess.run(['wget', '--progress=bar:force:noscroll', '-O', part, url])
+        if ret.returncode != 0 or not os.path.isfile(part) or os.path.getsize(part) == 0:
+            if os.path.exists(part):
+                os.remove(part)
+            fatal('download failed (wget exit %d): %s' % (ret.returncode, url))
+        os.replace(part, local)          # never leave a truncated file under the final name
+        return local
 
 
 # ---------------------------------------------------------------------------
@@ -139,10 +242,10 @@ def to_unit_grid(path, hname='pileup'):
     return grid, outside, (float(edges[0]), float(edges[-1]), len(edges) - 1)
 
 
-def find_central(directory, xsec):
-    files = sorted(glob.glob(os.path.join(directory, '*.root')))
+def find_central(directory, xsec, source):
+    files = source.list_root(directory)
     if not files:
-        fatal('no ROOT files in %s' % directory)
+        fatal('no ROOT files in %s' % source.origin(directory.rstrip('/') + '/'))
     match = [f for f in files if re.search(r'(?<!\d)%dub' % xsec, os.path.basename(f))]
     if len(match) != 1:
         fatal('%s: %d files match %d ub: %s\n        set files={...} for this period '
@@ -178,42 +281,49 @@ def run_pileupcalc(golden, pileup_json, xsec, out, logfile):
     }
 
 
-def build_period(name, per, workdir, max_warn_frac):
+def build_period(name, per, workdir, max_warn_frac, source):
     print('\n==> data period %s (year %s, %s)' % (name, per['year'], per['kind']))
     out = {'year': per['year'], 'hist': {}, 'outside': {}, 'inputs': {},
            'source': {'kind': per['kind']}}
 
     if per['kind'] == 'central':
-        files = per.get('files') or {v: find_central(per['dir'], cfg.XSEC_UB[v]) for v in VARIATIONS}
+        files = per.get('files') or {v: find_central(per['dir'], cfg.XSEC_UB[v], source)
+                                     for v in VARIATIONS}
         out['source']['dir'] = per.get('dir')
         for var in VARIATIONS:
-            path = files[var]
+            print('    %-8s %s' % (var, files[var]))
+            path = source.file(files[var])
             grid, outside, binning = to_unit_grid(path)
             out['hist'][var], out['outside'][var] = grid.tolist(), outside
-            out['inputs'][var] = {'path': path, 'sha256': sha256(path),
+            out['inputs'][var] = {'path': files[var], 'origin': source.origin(files[var]),
+                                  'local': path, 'sha256': sha256(path),
                                   'xsec_ub': cfg.XSEC_UB[var], 'binning': binning}
-            print('    %-8s %s' % (var, path))
 
     elif per['kind'] == 'pileupCalc':
         for key in ('golden_json', 'pileup_json'):
             if not per.get(key):
                 fatal('period %s: %s is not set in pu_config_run3.py' % (name, key))
-            if not os.path.isfile(per[key]):
-                fatal('period %s: %s %s does not exist' % (name, key, per[key]))
-        n_ls = count_lumisections(per['golden_json'])
+        print('    pileup JSON %s' % per['pileup_json'])
+        pileup_json = source.file(per['pileup_json'])     # large: downloaded once, then cached
+        golden_json = source.file(per['golden_json'])     # in the repo: as is
+        for key, path in (('golden_json', golden_json), ('pileup_json', pileup_json)):
+            if not os.path.isfile(path):
+                fatal('period %s: %s %s does not exist' % (name, key, path))
+        n_ls = count_lumisections(golden_json)
         out['source'].update(golden_json=per['golden_json'], pileup_json=per['pileup_json'],
-                             golden_sha256=sha256(per['golden_json']),
-                             pileup_sha256=sha256(per['pileup_json']),
+                             golden_origin=source.origin(per['golden_json']),
+                             pileup_origin=source.origin(per['pileup_json']),
+                             golden_sha256=sha256(golden_json),
+                             pileup_sha256=sha256(pileup_json),
                              n_lumisections=n_ls)
         print('    golden JSON %s (%d lumisections)' % (per['golden_json'], n_ls))
-        print('    pileup JSON %s' % per['pileup_json'])
         for i, var in enumerate(VARIATIONS, 1):
             xsec = cfg.XSEC_UB[var]
             root = os.path.join(workdir, 'pileup_%s_%dub.root' % (name, xsec))
             log  = root.replace('.root', '.log')
             print('    [%d/%d] pileupCalc at %d ub -> %s' % (i, len(VARIATIONS), xsec, root),
                   flush=True)
-            cmd, warn = run_pileupcalc(per['golden_json'], per['pileup_json'], xsec, root, log)
+            cmd, warn = run_pileupcalc(golden_json, pileup_json, xsec, root, log)
             # TWiki: a few of these are harmless, many mean a wrong JSON pairing
             # or a histogram range that is too short.
             for kind, n in warn.items():
@@ -323,6 +433,12 @@ def main():
     p.add_argument('--max-uncovered', type=float, default=1e-3,
                    help='largest tolerated fraction of data outside the MC range')
     p.add_argument('--allow-uncovered', action='store_true')
+    p.add_argument('--cert-source', choices=('auto', 'eos', 'web'), default='auto',
+                   help='where the central certification files are read from: /eos '
+                        '(lxplus), the web mirror via wget, or auto = eos if mounted')
+    p.add_argument('--cert-url', default=getattr(cfg, 'CERT_URL', ''),
+                   help='web mirror of %s (default: CERT_URL of pu_config_run3.py)'
+                        % cfg.EOS_CERT)
     p.add_argument('--max-warn-frac', type=float, default=1e-3,
                    help='largest tolerated fraction of lumisections with pileupCalc '
                         'warnings (at least %d are always tolerated)' % MAX_WARN_ABS)
@@ -334,6 +450,10 @@ def main():
     campaigns = {c: cfg.CAMPAIGNS[c] for c in args.campaigns}
     periods   = sorted(set(p for c in campaigns.values() for p in c['periods'].values()))
     os.makedirs(args.workdir, exist_ok=True)
+    if args.cert_source != 'eos' and not args.cert_url:
+        fatal('no web mirror configured: set CERT_URL in pu_config_run3.py or pass --cert-url')
+    source = CertSource(args.cert_source, args.cert_url,
+                        os.path.join(args.workdir, 'cert_cache'))
 
     card = {
         'schema'  : SCHEMA_VERSION,
@@ -342,6 +462,8 @@ def main():
         'nbins'   : cfg.NBINS,
         'binning' : 'unit bins [k, k+1), k = 0..nbins-1; bin of an event = floor(nti)',
         'xsec_ub' : cfg.XSEC_UB,
+        'cert_source': {'mode': source.mode,
+                        'root': cfg.EOS_CERT if source.mode == 'eos' else source.url},
         'mc_profiles': {}, 'data': {}, 'campaigns': {},
     }
 
@@ -353,7 +475,7 @@ def main():
 
     for name in periods:
         card['data'][name] = build_period(name, cfg.PERIODS[name], args.workdir,
-                                          args.max_warn_frac)
+                                          args.max_warn_frac, source)
 
     for cname, c in campaigns.items():
         card['campaigns'][cname] = {'mc_profile': c['mc_cfi'], 'periods': dict(c['periods']),
