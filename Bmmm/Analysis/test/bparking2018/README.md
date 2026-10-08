@@ -14,6 +14,7 @@ HLT paths                HLT_DoubleMu4_3_LowMass          HLT_Mu7_IP4 ... HLT_Mu
 event kept if            that path fired                  ANY of the 10 fired (OR)
 trig_match (no cut)      >= 2 objects matched             >= 1 J/psi muon matched, any fired path
 per-muon trigger tags    -                                mu{1,2}_<path>_tag  (1/0, NaN if path not fired)
+K/pi mass window        4.5 - 7.5 GeV                    4.5 - 7.0 GeV  (either hypothesis)
 everything else          identical                        identical
 ```
 

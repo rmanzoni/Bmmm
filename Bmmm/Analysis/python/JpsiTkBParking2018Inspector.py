@@ -41,14 +41,19 @@ What is different, and why
 
    hlt_dr is the J/psi-channel value (cuts['jpsi_tk']['hlt_dr'] = 0.1), not the
    0.15 the dimuon ntuple used for its _tag branches.
+
+4. Candidate mass window: max_mass = 7.0 GeV (jpsi_tk: 7.5), through its own
+   cuts key 'jpsi_tk_bparking2018'; every other cut is the jpsi_tk one.
 '''
 
 import numpy as np
+from copy import copy
 from collections import OrderedDict
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 
 from Bmmm.Analysis.utils import drop_hlt_version
 from Bmmm.Analysis.JpsiTkInspector import JpsiTkInspector
+from Bmmm.Analysis.JpsiTkCuts import cuts as _jpsi_tk_cuts
 from Bmmm.Analysis.JpsiTkBranches import branches as _run3_branches
 from Bmmm.Analysis.JpsiTkBranches import paths as _run3_paths
 from Bmmm.Analysis.MuMuBranches import paths as _mm_paths
@@ -96,11 +101,26 @@ branches += [p + '_ps' for p in paths]
 if len(branches) != len(set(branches)):
     raise RuntimeError('JpsiTkBParking2018Inspector: duplicated branch names')
 
+##########################################################################################
+#####      CUTS: the jpsi_tk selection, with a tighter upper mass edge
+##########################################################################################
+# A copy under its own key, so the shared cuts dict -- and with it the Run 3
+# jpsi_tk selection (max_mass = 7.5, JpsiTkCuts) -- is left untouched.
+# max_mass is used only by the J/psi + track mass window in
+# JpsiTkInspector.build_candidates: a candidate is kept if EITHER the kaon- or
+# the pion-hypothesis mass lies in (min_mass, max_mass) = (4.5, 7.0) GeV.
+CHANNEL = 'jpsi_tk_bparking2018'
+cuts = dict(_jpsi_tk_cuts)
+cuts[CHANNEL] = copy(_jpsi_tk_cuts['jpsi_tk'])
+cuts[CHANNEL]['max_mass'] = 7.0   # [GeV]   (jpsi_tk: 7.5, baseline: 10)
+
 
 class JpsiTkBParking2018Inspector(JpsiTkInspector):
 
     DESCRIPTION = ('J/psi + track (B+ -> J/psi K+ / Bc+ -> J/psi pi+) ntuplizer, '
                    '2018 B-parking (HLT_Mu*_IP*)')
+    CHANNEL     = CHANNEL
+    CUTS        = cuts
     PATHS       = paths
     BRANCHES    = branches
 
