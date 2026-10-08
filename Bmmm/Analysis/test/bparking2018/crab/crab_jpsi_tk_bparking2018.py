@@ -11,9 +11,10 @@ way it is. What is specific to this one:
     Bmmm.Analysis.JpsiTkBParking2018Inspector);
   * every dataset must be /ParkingBPH<N>/Run2018<era>-UL2018_MiniAODv2-v1/MINIAOD,
     or nothing is submitted;
-  * the 2018 certification JSON must be in data/golden_jsons, named
-    Cert_Collisions2018_*.json (LumiMask reads the year from 'Collisions20YY');
-    the submitter stops with instructions if it is not there.
+  * the 2018 certification JSON must be in data/golden_jsons; the official
+    name Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt is fine
+    (LumiMask reads 'Collisions18' as 2018). The submitter stops with
+    instructions if it is not there.
 
 Certification, two layers (as in the Run 3 data submitter):
   - Data.lumiMask = the 2018 JSON: CRAB drops the files -- and jobs -- that hold
@@ -146,9 +147,8 @@ def create_config(dataset):
     if '2018' not in golden:
         raise RuntimeError(
             'no 2018 certification JSON in %s (have: %s).\n'
-            'Copy the legacy 2018 golden JSON there under a name LumiMask can date:\n'
-            '  cp Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt \\\n'
-            '     %s/Cert_Collisions2018_314472_325175_Golden.json'
+            'Copy the legacy 2018 golden JSON there (official name is fine):\n'
+            '  cp Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt %s/'
             % (golden_dir, ', '.join(sorted(golden)), golden_dir))
 
     # non-CMSSW python packages (particle), built by make_pylibs.sh

@@ -35,12 +35,12 @@ the two J/ψ muons (tag-side trigger). Those candidates are kept; select
 
 ## Before the first submission
 
-1. The 2018 certification JSON must be in `Bmmm/Analysis/data/golden_jsons`, with
-   `Collisions2018` in its name (that is how `LumiMask` assigns a year):
+1. The 2018 certification JSON must be in `Bmmm/Analysis/data/golden_jsons`. Its
+   official name works as it is (`LumiMask` reads `Collisions18` as 2018):
 
    ```
    cp Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt \
-      $CMSSW_BASE/src/Bmmm/Analysis/data/golden_jsons/Cert_Collisions2018_314472_325175_Golden.json
+      $CMSSW_BASE/src/Bmmm/Analysis/data/golden_jsons/
    ```
 
    Without it the submitter stops and says so.

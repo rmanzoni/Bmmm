@@ -27,8 +27,11 @@ imports it too, and must not pay for -- or depend on -- ROOT.
 The golden directory
 --------------------
 Bmmm/Analysis/data/golden_jsons holds exactly ONE certification JSON per year.
-The year is read from 'Collisions20YY' in the file name (the official
-Cert_Collisions20YY_<firstrun>_<lastrun>_Golden.json convention). Two files for
+The year is read from the file name, in either official convention:
+  Run 3   Cert_Collisions20YY_<firstrun>_<lastrun>_Golden.json   'Collisions20YY'
+  Run 2   Cert_<first>-<last>_13TeV_Legacy20YY_CollisionsYY_JSON.txt
+                                                     'CollisionsYY' -> 20YY
+so the Run 2 legacy files can be dropped in under their original name. Two files for
 one year -- a Golden and a Muon JSON, say -- is a hard error rather than a
 silent union of the two: which one applies is a decision, not a default.
 
@@ -57,7 +60,15 @@ from bisect import bisect_right
 from glob import glob
 
 GOLDEN_SUBDIR = 'golden_jsons'
-_YEAR_IN_NAME = re.compile(r'Collisions(20\d\d)', re.IGNORECASE)
+# 'Collisions2024...' (Run 3) or 'Collisions18_...' (Run 2, two-digit year,
+# e.g. Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON.txt). The
+# lookahead stops a two-digit match inside a longer number.
+_YEAR_IN_NAME = re.compile(r'Collisions(20\d\d|\d\d)(?!\d)', re.IGNORECASE)
+
+
+def _year_from_match(match):
+    year = match.group(1)
+    return year if len(year) == 4 else '20' + year
 _EXTENSIONS   = ('.json', '.txt')
 
 
@@ -86,7 +97,7 @@ def golden_jsons_by_year(directory=None):
     '''{year: path} for the certification JSONs in `directory`.
 
     Fails loudly on: a missing or empty directory, a file whose name carries no
-    'Collisions20YY', and two files for the same year.
+    'Collisions20YY' or 'CollisionsYY', and two files for the same year.
     '''
     directory = directory or golden_json_dir()
     if not os.path.isdir(directory):
@@ -100,9 +111,9 @@ def golden_jsons_by_year(directory=None):
     for path in files:
         match = _YEAR_IN_NAME.search(os.path.basename(path))
         if not match:
-            raise ValueError('cannot tell the year of %s: expected "Collisions20YY" '
+            raise ValueError('cannot tell the year of %s: expected "Collisions20YY" or "CollisionsYY" '
                              'in the file name' % path)
-        year = match.group(1)
+        year = _year_from_match(match)
         if year in by_year:
             raise ValueError('two certification JSONs for %s in %s:\n  %s\n  %s\n'
                              'keep exactly one per year (which one applies is a '
