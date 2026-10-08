@@ -26,7 +26,7 @@ the two J/ψ muons (tag-side trigger). Those candidates are kept; select
 
 | file | what it is |
 |---|---|
-| `inspector_jpsi_tk_bparking2018.py` | entry point; the logic is in `Bmmm/Analysis/python/JpsiTkBParking2018Inspector.py` |
+| `inspector_jpsi_tk_bparking2018.py` | entry point; sets `max_mass = 7.0 GeV` for this ntuple. The rest of the logic is in `Bmmm/Analysis/python/JpsiTkBParking2018Inspector.py` |
 | `crab/crab_jpsi_tk_bparking2018.py` | CRAB submitter for the 22 datasets |
 | `crab/crab_jpsi_tk_bparking2018_mc.py` | CRAB submitter for the UL2018 MC (B⁺ → J/ψ K⁺) |
 | `crab/crab_script.sh` | job wrapper (runs the inspector instead of cmsRun) |
