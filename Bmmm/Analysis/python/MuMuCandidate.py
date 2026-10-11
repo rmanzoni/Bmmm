@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats
 from PhysicsTools.HeppyCore.utils.deltar import deltaR, deltaPhi, bestMatch
 from itertools import product, combinations
-from Bmmm.Analysis.utils import convert_cov, is_pos_def
+from Bmmm.Analysis.utils import convert_cov, is_pos_def, track_with_cov, make_cov_corrector
 from Bmmm.Analysis.PrimaryVertex import (
     PrimaryVertexRefitMixin, build_beamspot_vertex, build_hybrid_pv,
 )
@@ -22,11 +22,87 @@ tofit = ROOT.std.vector('reco::Track')()
 Vector3D = ROOT.Math.DisplacementVector3D(
     'ROOT::Math::Cartesian3D<double>,ROOT::Math::DefaultCoordinateSystemTag')
 
+ROLES = ('mu1', 'mu2')
+
+
 class Candidate(PrimaryVertexRefitMixin):
     '''
-    3-muon candidate.
+    Dimuon candidate. mu1 / mu2 = the higher / lower pT muon.
     MISSING: use the post fit muon momenta
     '''
+
+    # covflow, one utils.CovFlowCorrector per ROLE: the Run 3 flows are trained
+    # separately on mu1 and on mu2 of this very ntuple (covflow.json cov_prefix
+    # mu1_cov_ / mu2_cov_), so the leading muon of a pair is corrected with the
+    # mu1 flow and the trailing one with the mu2 flow. A muon can be leading in
+    # one pair and trailing in another: the two corrections are memoized apart
+    # (cov_corr_mu1 / cov_corr_mu2, see attr_suffix). Empty = no correction, and
+    # the candidate is bit-for-bit the one without this feature.
+    # Installed once per job with set_cov_correctors (--covflow-mu1/-mu2).
+    cov_correctors = {}
+
+    @classmethod
+    def set_cov_correctors(cls, specs):
+        '''specs: {'mu1': run directory, 'mu2': run directory}; empty strings or
+        a missing role leave that role uncorrected (refused: half a correction
+        is not a validation of anything).'''
+        given = {r: s for r, s in specs.items() if s}
+        if not given:
+            cls.cov_correctors = {}
+            return cls.cov_correctors
+        if set(given) != set(ROLES):
+            raise RuntimeError('covflow needs a flow for both roles, got %s' % sorted(given))
+        cls.cov_correctors = {r: make_cov_corrector(given[r], attr_suffix='_' + r, role=r)
+                              for r in ROLES}
+        return cls.cov_correctors
+
+    @classmethod
+    def prime_cov_correctors(cls, muons, event=None):
+        '''Batched covflow for the event, one torch call per role, BEFORE any
+        candidate is built. `muons` sorted by decreasing pT, as the inspector
+        pairs them with combinations(): muons[i] leads every pair with j > i,
+        so muons[:-1] can be a mu1 and muons[1:] a mu2.'''
+        if not cls.cov_correctors or len(muons) < 2:
+            return
+        for imu in muons:
+            if not hasattr(imu, 'cov'):
+                imu.cov = convert_cov(imu.bestTrack().covariance())
+                imu.is_cov_pos_def = is_pos_def(imu.cov)
+        cls.cov_correctors['mu1'].prime(muons[:-1], event=event)
+        cls.cov_correctors['mu2'].prime(muons[1:],  event=event)
+
+    def fit_track(self, obj, role):
+        '''The reco::Track handed to the vertex fit for muon `obj` in `role`:
+        bestTrack() without covflow, or the same track rebuilt around the
+        covflow-corrected covariance (utils.track_with_cov: momentum, charge and
+        reference point untouched). A track covflow cannot correct (non positive
+        definite, morph failure) is used raw and flagged <role>_covflow_ok = 0.
+        Memoized per object and role.'''
+        corrector = self.cov_correctors.get(role)
+        if corrector is None:
+            return obj.bestTrack()
+        key = '_cov_fit_track_' + role
+        cached = getattr(obj, key, None)
+        if cached is not None:
+            return cached
+        raw = obj.bestTrack()
+        corrected = corrector(obj, raw, obj.cov)
+        fitted = raw if corrected is None else track_with_cov(raw, corrected)
+        setattr(obj, key, fitted)
+        return fitted
+
+    def expose_cov(self, imu, role):
+        '''Before filling the per-muon branches: put the role's correction where
+        the shared getters read it (CommonBranches.cov_track -> _cov_fit_track,
+        track_cov_corr_branches -> cov_corr / covflow_ok / covflow_zmax), so
+        mu<i>_dxy_e and friends come from the covariance the fit used.'''
+        if not self.cov_correctors:
+            return
+        imu._cov_fit_track = self.fit_track(imu, role)
+        imu.cov_corr     = getattr(imu, 'cov_corr_'     + role)
+        imu.covflow_ok   = getattr(imu, 'covflow_ok_'   + role)
+        imu.covflow_zmax = getattr(imu, 'covflow_zmax_' + role)
+
     def __init__(self, muons, vertices, beamspot, pf=None, lost=None):
         # sort by pt
         self.muons = sorted([mu for mu in muons], key = lambda x : x.pt(), reverse = True)
@@ -66,8 +142,8 @@ class Candidate(PrimaryVertexRefitMixin):
         # ideally this can be triggered on demand, and just build a skinny candidate to 
         # check simple things, such as mass etc
         tofit.clear()
-        for imu in self.muons:
-            tofit.push_back(imu.bestTrack())
+        for imu, role in zip(self.muons, ROLES):
+            tofit.push_back(self.fit_track(imu, role))
         self.vtx = vtxfit.Fit(tofit)
         self.vtx.chi2 = self.vtx.normalisedChiSquared()
         self.vtx.prob = (1. - stats.chi2.cdf(self.vtx.chi2, 1)) if self.vtx.isValid() else np.nan 
@@ -97,6 +173,28 @@ class Candidate(PrimaryVertexRefitMixin):
         self.mmm_p4_perp = np.sqrt(self.p4().Vect().Mag2() - self.mmm_p4_par*self.mmm_p4_par) if self.vtx.isValid() else np.nan
         self.mcorr       = np.sqrt(self.p4().mass()*self.p4().mass() + self.mmm_p4_perp*self.mmm_p4_perp) + self.mmm_p4_perp if self.vtx.isValid() else np.nan
             
+    def compute_raw_vertex(self):
+        '''With covflow installed: the same dimuon fit with the RAW covariances,
+        for the candidate that is written. vtx_chi2_raw / vtx_prob_raw /
+        lxy_sig_raw / lxyz_sig_raw then sit next to the corrected ones in one
+        file, the vertex-level analogue of cov_* / cov_corr_*. Without covflow
+        they equal the nominal branches (no second fit is run).'''
+        if not self.cov_correctors:
+            self.vtx_raw, self.lxy_raw, self.lxyz_raw = self.vtx, self.lxy, self.lxyz
+            return
+        tofit.clear()
+        for imu in self.muons:
+            tofit.push_back(imu.bestTrack())
+        vtx = vtxfit.Fit(tofit)
+        vtx.chi2 = vtx.normalisedChiSquared()
+        vtx.prob = (1. - stats.chi2.cdf(vtx.chi2, 1)) if vtx.isValid() else np.nan
+        self.vtx_raw = vtx
+        self.lxy_raw = self.lxyz_raw = None
+        if vtx.isValid():
+            state = vtx.vertexState()
+            self.lxy_raw  = ROOT.VertexDistanceXY().distance(self.pv_bs, state)
+            self.lxyz_raw = ROOT.VertexDistance3D().distance(self.pv_bs, state)
+
     def compute_displacement(self):
         '''
         Distance and pointing angle between the refit PV (self.pv_bs) and the

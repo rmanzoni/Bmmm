@@ -6,6 +6,7 @@ from Bmmm.Analysis.utils import VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vert
 from Bmmm.Analysis.CommonBranches import event_branches as _common_event
 from Bmmm.Analysis.CommonBranches import muon_branches as _common_muon
 from Bmmm.Analysis.CommonBranches import track_cov_branches as _track_cov
+from Bmmm.Analysis.CommonBranches import track_cov_corr_branches as _track_cov_corr
 from Bmmm.Analysis.PileupWeights import BRANCH_NAMES as PU_BRANCH_NAMES
 
 ##########################################################################################
@@ -59,6 +60,11 @@ cand_branches = {
     'vz'       : lambda cand : cand.vtx.position().z() ,
     'vtx_chi2' : lambda cand : cand.vtx.chi2           ,
     'vtx_prob' : lambda cand : cand.vtx.prob           ,
+    # the same fit with the RAW track covariances: equal to the two above without
+    # covflow; with it, the corrected and uncorrected fit of the same candidate
+    # (MuMuCandidate.compute_raw_vertex)
+    'vtx_chi2_raw' : lambda cand : cand.vtx_raw.chi2   ,
+    'vtx_prob_raw' : lambda cand : cand.vtx_raw.prob   ,
 
     # Displacement wrt the refit PV (cand.pv_bs): beamspot constrained, signal
     # muons removed. Same reference and same names as the RJpsi channel.
@@ -70,6 +76,8 @@ cand_branches = {
     'lxyz'      : lambda cand : cand.lxyz.value()       ,
     'lxyz_err'  : lambda cand : cand.lxyz.error()       ,
     'lxyz_sig'  : lambda cand : cand.lxyz.significance(),
+    'lxy_sig_raw'  : lambda cand : cand.lxy_raw.significance() ,
+    'lxyz_sig_raw' : lambda cand : cand.lxyz_raw.significance(),
 
     # the pre-refit convention (bare beamspot), kept as a fixed comparator:
     # lxy - lxy_bs is the size of the change
@@ -106,6 +114,12 @@ muon_branches = dict(_common_muon)
 # removed, so the muon under study is itself in the PV fit and dxy_e is
 # correlated with it.
 muon_branches.update(_track_cov)
+
+# The covflow-corrected covariance actually handed to the dimuon fit (--covflow-mu1
+# / --covflow-mu2, MC only), mu<i>_cov_corr_*, and mu<i>_covflow_ok / _zmax. All
+# NaN / 0 without covflow. mu<i>_cov_* above stay RAW: they are the training
+# input, and the pair says what the correction did to each track.
+muon_branches.update(_track_cov_corr)
 
 # The per-candidate refit PV: position, provenance and the track count that fed
 # it. pv_refit_valid==0 means the refit was not available and every pv_bs_*

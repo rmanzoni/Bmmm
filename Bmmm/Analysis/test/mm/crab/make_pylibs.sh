@@ -18,6 +18,10 @@
 #
 #   ./make_pylibs.sh            # build (or rebuild) pylibs/
 #   ./make_pylibs.sh --check    # only report what CMSSW provides, change nothing
+#   ./make_pylibs.sh --covflow /path/to/covflow-repo
+#                               # also zuko (no dependencies: torch must come from
+#                               # CMSSW) and the covflow package, for
+#                               # crab_dimuon_mc_run3_covflow.py
 
 set -o pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -33,6 +37,15 @@ cd "$HERE" || exit 1
 # release stops shipping it the gap is filled automatically.
 WANT="particle uproot"
 
+COVFLOW_REPO=""
+if [ "$1" = "--covflow" ]; then
+    COVFLOW_REPO="$2"
+    if [ ! -f "${COVFLOW_REPO}/correct.py" ] || [ ! -f "${COVFLOW_REPO}/flows.py" ]; then
+        echo "--covflow needs the covflow repository (correct.py, flows.py, ...); got '${COVFLOW_REPO}'" >&2
+        exit 1
+    fi
+fi
+
 if [ -z "$CMSSW_BASE" ]; then
     echo "CMSSW_BASE is not set -- run cmsenv first" >&2
     exit 1
@@ -44,7 +57,7 @@ echo "=== what CMSSW provides (with ~/.local shut out) ==="
 PYTHONNOUSERSITE=1 PYTHONPATH= python3 - <<'PYEOF'
 mods = ['numpy', 'scipy', 'uproot', 'awkward', 'awkward_cpp', 'particle',
         'hepunits', 'fsspec', 'packaging', 'attr', 'typing_extensions',
-        'importlib_metadata', 'zipp', 'xxhash', 'cramjam']
+        'importlib_metadata', 'zipp', 'xxhash', 'cramjam', 'torch', 'zuko']
 for m in mods:
     try:
         mod = __import__(m)
@@ -90,13 +103,34 @@ done
 mv pylibs_staging pylibs
 echo "  -> kept $KEPT, dropped $DROPPED"
 
+if [ -n "${COVFLOW_REPO}" ]; then
+    echo
+    echo "=== covflow: zuko (no deps) and the covflow package from ${COVFLOW_REPO} ==="
+    # --no-deps: zuko's dependency is torch, which must be CMSSW's (a pip torch
+    # is hundreds of MB and would bring its own numpy)
+    # pin with ZUKO_VERSION=x.y.z to the zuko_version of the covflow.json you
+    # ship; crab_dimuon_mc_run3_covflow.py compares the two at submission
+    ZUKO_VERSION="${ZUKO_VERSION:-}"
+    PYTHONNOUSERSITE=1 python3 -m pip install --no-cache-dir --quiet --no-deps \
+        --target=pylibs "zuko${ZUKO_VERSION:+==${ZUKO_VERSION}}" || exit 1
+    mkdir -p pylibs/covflow
+    cp "${COVFLOW_REPO}"/*.py pylibs/covflow/
+    ( cd "${COVFLOW_REPO}" && git rev-parse HEAD 2>/dev/null ) > pylibs/covflow/COMMIT || true
+    echo "  zuko $(ls -d pylibs/zuko-*.dist-info 2>/dev/null | sed 's/.*zuko-//;s/.dist-info//')," \
+         "covflow $(cut -c1-10 pylibs/covflow/COMMIT 2>/dev/null)"
+fi
+
 echo
 echo "=== does the job's import set work now? ==="
 # same conditions as crab_script.sh: no ~/.local, pylibs first
 if PYTHONNOUSERSITE=1 PYTHONPATH="$HERE/pylibs" python3 - <<'PYEOF'
 import sys
 bad = []
-for m in ['numpy', 'scipy', 'particle', 'uproot', 'ROOT']:
+import os
+mods = ['numpy', 'scipy', 'particle', 'uproot', 'ROOT']
+if os.path.isdir('pylibs/covflow'):
+    mods += ['torch', 'zuko', 'covflow.correct', 'covflow.flows']
+for m in mods:
     try:
         mod = __import__(m)
         print('  [ ok ] %-12s %s' % (m, getattr(mod, '__version__', 'present')))

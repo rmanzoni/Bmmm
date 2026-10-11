@@ -116,6 +116,21 @@ parser.add_argument('--pu'           , dest='pu'         , default=''    , type=
                          "'campaign:/path/to/card.json' and/or ':allow-unconfirmed'. MC only. "
                          "Same code and card as the J/psi inspectors: see "
                          "Bmmm.Analysis.PileupWeights.")
+parser.add_argument('--covflow'      , dest='covflow'    , default=''    , type=str,
+                    help="CORRECT the muon track covariances with trained covflow flows "
+                         "BEFORE the dimuon vertex fit (and every uncertainty derived from "
+                         "it: vtx_prob, lxy_sig, dxy_e, ...). A covflow run directory per "
+                         "role, as a template with @mu@ for mu1 / mu2, e.g. "
+                         "'/work/.../run3_epochs_05oct26_trgmatch_e1200/2024/@mu@/task_0'. "
+                         "Reads the covflow.json train_covflow.py writes (schema covflow/1) "
+                         "and checks that each flow was trained on that role. MC only. The "
+                         "raw covariances stay in mu<i>_cov_*, the corrected ones go to "
+                         "mu<i>_cov_corr_*, and vtx_prob_raw / lxy_sig_raw keep the "
+                         "uncorrected fit of the same candidate.")
+parser.add_argument('--covflow-mu1'  , dest='covflow_mu1', default=''    , type=str,
+                    help='covflow run directory for mu1 (overrides --covflow for mu1)')
+parser.add_argument('--covflow-mu2'  , dest='covflow_mu2', default=''    , type=str,
+                    help='covflow run directory for mu2 (overrides --covflow for mu2)')
 args = parser.parse_args()
 
 inputFiles  = args.inputFiles
@@ -145,6 +160,20 @@ if args.pu and not mc:
     raise RuntimeError('--pu without --mc: pileup weights map MC onto data '
                        'and do not exist for data.')
 pu_session  = make_pu_session(args.pu)
+
+# covflow, MC only; built here so a missing directory, a wrong manifest or a
+# flow trained on the other role kills the job before the first file is opened
+covflow_specs = {r: (getattr(args, 'covflow_' + r) or args.covflow.replace('@mu@', r))
+                 for r in ('mu1', 'mu2')}
+if any(covflow_specs.values()) and not mc:
+    raise RuntimeError('--covflow without --mc: the covflow morph maps MC track '
+                       'covariances onto data and does not exist for data.')
+cov_correctors = Candidate.set_cov_correctors(covflow_specs)
+for _role, _corr in sorted(cov_correctors.items()):
+    print('#### covflow %s : %s' % (_role, _corr.directory))
+    print('####   manifest   %s, trained on %s' % (_corr.schema, _corr.role))
+    print('####   context    %s' % _corr.context_names)
+    print('####   features   %s (%s)' % (_corr.idx, _corr.param))
     
 # run -> lumi -> events read. Filled for EVERY event the loop touches.
 processed_lumis = defaultdict(lambda : defaultdict(int))
@@ -508,6 +537,10 @@ for i, event in enumerate(events):
     if len(muons)<2:
         continue
 
+    # covflow: correct the event's muons in one torch call per role BEFORE any
+    # candidate (and its vertex fit) is built. No-op without --covflow.
+    Candidate.prime_cov_correctors(muons, event)
+
     # build analysis candidates
     cands = []
     
@@ -577,6 +610,9 @@ for i, event in enumerate(events):
         if pu_session is not None:
             tofill.update(pu_session.weights(event.pu_at_bx0.getTrueNumInteractions()))
 
+        # the uncorrected fit of the written candidate (a second fit only with covflow)
+        final_cand.compute_raw_vertex()
+
         for ibranch, igetter in cand_branches.items():
             tofill[ibranch] = safe_get(igetter, final_cand, verbose=verbose, name=ibranch)
 
@@ -593,6 +629,9 @@ for i, event in enumerate(events):
             jet, dr2 = bestMatch(imu, event.jets)
             if dr2 < 0.3**2:
                 imu.jet = jet
+
+            # the covariance the fit used for this muon in this role
+            final_cand.expose_cov(imu, 'mu%d' % idx)
 
             if mc:
                 genp, dr2 = bestMatch(imu, event.genpr)
@@ -750,6 +789,9 @@ if lumi_mask is not None:
 
 if pu_session is not None:
     print(pu_session.summary())
+
+for _role, _corr in sorted(cov_correctors.items()):
+    print(_corr.summary())
 
 # Grid bookkeeping, written whether or not any candidate survived: an empty
 # ntuple is still a job that legitimately read its share of the dataset.

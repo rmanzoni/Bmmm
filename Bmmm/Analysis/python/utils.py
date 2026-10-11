@@ -738,11 +738,25 @@ class CovFlowCorrector(CovCorrector):
     Optional keys: "active_features" (indices of the full 15 to actually apply),
     "latent_bounds" {"lo": [...], "hi": [...]} from the training run, "device",
     "batch".
+
+    The manifest train_covflow.py writes itself (Run 3 productions, "schema":
+    "covflow/1") is read as well, with no hand-written file: there the context is
+    given as the BRANCHES it was trained on ({"branches": ["mu1_best_trk_pt",
+    ...], "log_pt_branch": ...}), the hyperparameters sit under "flow", the
+    feature subspace under "feature_indices", and "cov_prefix" says which muon
+    ROLE (mu1 / mu2 of the dimuon ntuple) the flows were trained on. See
+    _from_manifest_v1.
+
+    attr_suffix: where the result is memoized on the object, cov_corr<suffix>,
+    covflow_ok<suffix>, covflow_zmax<suffix>. Empty (the default) for the J/psi +
+    track channel, where a muon has one correction. The dimuon channel runs one
+    corrector per role and a muon can be mu1 in one pair and mu2 in another,
+    so it uses '_mu1' / '_mu2' to keep the two apart.
     '''
 
     REQUIRED_FILES = ('flow_mc.pt', 'flow_data.pt', 'scalers.json', 'covflow.json')
 
-    def __init__(self, directory, overrides=None):
+    def __init__(self, directory, overrides=None, attr_suffix='', role=None):
         # lazy: torch/zuko/covflow are not dependencies of the rest of Bmmm, and
         # a job running without --covflow must not pay for them
         import torch
@@ -770,7 +784,26 @@ class CovFlowCorrector(CovCorrector):
 
         with open(os.path.join(directory, 'covflow.json')) as fin:
             cfg = json.load(fin)
+        self.schema = cfg.get('schema', 'handwritten')
+        self.role   = None
+        if self.schema == 'covflow/1':
+            cfg = self._from_manifest_v1(cfg, directory, CFEAT)
+        elif 'schema' in cfg:
+            raise ValueError('%s/covflow.json: unknown schema %r (known: covflow/1, '
+                             'or the hand-written layout without a schema key)'
+                             % (directory, cfg['schema']))
         cfg.update(overrides or {})
+        if role is not None and self.role is not None and role != self.role:
+            raise ValueError('%s was trained on %s tracks (cov_prefix %s_cov_) but is '
+                             'installed for %s: a mu1 flow on mu2 tracks is a silent, '
+                             'plausible-looking error' % (directory, self.role,
+                                                          self.role, role))
+        if role is not None and self.role is None:
+            self.role = role
+        self.attr_suffix = attr_suffix
+        self._a_corr = 'cov_corr' + attr_suffix
+        self._a_ok   = 'covflow_ok' + attr_suffix
+        self._a_zmax = 'covflow_zmax' + attr_suffix
 
         self.context_names = list(cfg['context'])
         unknown = [n for n in self.context_names if n not in COVFLOW_CONTEXT_GETTERS]
@@ -784,7 +817,8 @@ class CovFlowCorrector(CovCorrector):
         self.param    = cfg.get('param', 'logsigma_corr')
         self.device   = cfg.get('device', 'cpu')
         self.batch    = int(cfg.get('batch', 200000))
-        self.idx      = CFEAT.subset_indices(cfg.get('features', 'all'))
+        self.idx      = (list(cfg['feature_indices']) if 'feature_indices' in cfg
+                         else CFEAT.subset_indices(cfg.get('features', 'all')))
         active        = cfg.get('active_features', None)
         self.active_features = None if active is None else list(active)
 
@@ -819,6 +853,72 @@ class CovFlowCorrector(CovCorrector):
         self.n_not_pos_def = 0
         self.n_failed      = 0
         self.n_out_of_latent_range = 0
+
+    # ---------------------------------------------------------------------
+    def _from_manifest_v1(self, man, directory, CFEAT):
+        '''Translate a train_covflow.py manifest (schema covflow/1) into the
+        flat layout the rest of __init__ reads.
+
+        Context: each trained branch, e.g. mu1_best_trk_pt, is stripped of its
+        role prefix and mapped onto the getter that FILLS that branch:
+          best_trk_pt   -> log_pt if it is the manifest's log_pt_branch, else pt
+          best_trk_eta  -> eta
+          n_pix_hit, pix_first_b_layer, ... -> the TrackHitContent getter of the
+                           same name (COVFLOW_HIT_CONTEXT)
+        Anything else is refused: an unmapped branch would be a guess.'''
+        prefix = man.get('cov_prefix', '')
+        m = re.match(r'^(\w+?)_cov_$', prefix)
+        if not m:
+            raise ValueError('%s/covflow.json: cov_prefix %r is not <role>_cov_'
+                             % (directory, prefix))
+        self.role = m.group(1)
+        packed = list(man.get('packed_names', []))
+        if packed and packed != list(COV_ELEMENT_NAMES):
+            raise RuntimeError('%s/covflow.json was trained on the packed order %s, '
+                               'Bmmm writes %s' % (directory, packed, list(COV_ELEMENT_NAMES)))
+        ctx = man['context']
+        log_pt = ctx.get('log_pt_branch')
+        names = []
+        for b in ctx['branches']:
+            if not b.startswith(self.role + '_'):
+                raise ValueError('%s/covflow.json: context branch %s does not belong to '
+                                 'the %s tracks it corrects' % (directory, b, self.role))
+            stem = b[len(self.role) + 1:]
+            if stem == 'best_trk_pt':
+                names.append('log_pt' if b == log_pt else 'pt')
+            elif stem == 'best_trk_eta':
+                names.append('eta')
+            elif stem in COVFLOW_HIT_CONTEXT:
+                names.append(stem)
+            else:
+                raise KeyError('%s/covflow.json: no Bmmm getter for the context branch %s '
+                               '(known: best_trk_pt, best_trk_eta, %s)'
+                               % (directory, b, ', '.join(COVFLOW_HIT_CONTEXT)))
+        if log_pt and log_pt not in ctx['branches']:
+            raise ValueError('%s/covflow.json: log_pt_branch %s is not a context branch'
+                             % (directory, log_pt))
+        idx = [int(i) for i in man['feature_indices']]
+        expect = list(CFEAT.subset_indices(man.get('features', 'all')))
+        if idx != [int(i) for i in expect]:
+            raise ValueError('%s/covflow.json: feature_indices %s disagree with features '
+                             '%r -> %s' % (directory, idx, man.get('features'), expect))
+        f = man['flow']
+        if f.get('n_context') not in (None, len(names)) or f.get('n_features') not in (None, len(idx)):
+            raise ValueError('%s/covflow.json: flow dimensions %s do not match %d context '
+                             'variables and %d features' % (directory, f, len(names), len(idx)))
+        files = man.get('files', {})
+        for key, default in (('flow_mc', 'flow_mc.pt'), ('flow_data', 'flow_data.pt'),
+                             ('scalers', 'scalers.json')):
+            if files.get(key, default) != default:
+                raise ValueError('%s/covflow.json names %s = %s; this loader reads %s'
+                                 % (directory, key, files[key], default))
+        out = dict(context=names, param=man['param'], feature_indices=idx,
+                   transforms=f['transforms'], hidden=f['hidden'], bins=f['bins'],
+                   seed=man.get('seed', 0))
+        for k in ('active_features', 'latent_bounds', 'device', 'batch'):
+            if k in man:
+                out[k] = man[k]
+        return out
 
     # ---------------------------------------------------------------------
     def context(self, obj, trk, event):
@@ -883,7 +983,7 @@ class CovFlowCorrector(CovCorrector):
 
         todo = []
         for obj in objs:
-            if hasattr(obj, 'cov_corr'):
+            if hasattr(obj, self._a_corr):
                 continue
             trk = obj.bestTrack()
             if not hasattr(obj, 'cov'):
@@ -899,6 +999,7 @@ class CovFlowCorrector(CovCorrector):
         if not todo:
             return
 
+        # the whole batch is one torch call, so pay it once per event and role
         packed = np.array([cov_upper_triangle(obj.cov) for obj, _ in todo])
         ctx    = np.array([self.context(obj, trk, self._event) for obj, trk in todo])
 
@@ -915,35 +1016,34 @@ class CovFlowCorrector(CovCorrector):
             return
 
         for k, (obj, _) in enumerate(todo):
-            obj.cov_corr     = self.CFEAT.packed_to_matrix(packed_corr[k])
-            obj.covflow_ok   = True
-            obj.covflow_zmax = float(zmax[k])
+            setattr(obj, self._a_corr, self.CFEAT.packed_to_matrix(packed_corr[k]))
+            setattr(obj, self._a_ok,   True)
+            setattr(obj, self._a_zmax, float(zmax[k]))
             self.n_corrected += 1
 
-    @staticmethod
-    def _mark_uncorrected(obj):
-        obj.cov_corr     = COV_NAN_5X5
-        obj.covflow_ok   = False
-        obj.covflow_zmax = np.nan
+    def _mark_uncorrected(self, obj):
+        setattr(obj, self._a_corr, COV_NAN_5X5)
+        setattr(obj, self._a_ok,   False)
+        setattr(obj, self._a_zmax, np.nan)
 
     # ---------------------------------------------------------------------
     def correct(self, obj, trk, cov):
         '''Single-track entry point, for anything prime() did not cover (the
         J/psi + track channel's bachelor, say). Returns None when the track
         cannot be corrected, which fit_track reads as "use the raw track".'''
-        if not hasattr(obj, 'cov_corr'):
+        if not hasattr(obj, self._a_corr):
             self.prime([obj])
-        return obj.cov_corr if obj.covflow_ok else None
+        return getattr(obj, self._a_corr) if getattr(obj, self._a_ok) else None
 
     def summary(self):
-        return ('[covflow] %d track(s) seen, %d corrected, %d skipped (not '
+        return ('[covflow%s] %d track(s) seen, %d corrected, %d skipped (not '
                 'positive definite), %d skipped (morph failure), %d outside the '
                 'training latent range'
-                % (self.n_seen, self.n_corrected, self.n_not_pos_def,
+                % (' ' + self.role if self.role else '', self.n_seen, self.n_corrected, self.n_not_pos_def,
                    self.n_failed, self.n_out_of_latent_range))
 
 
-def make_cov_corrector(spec):
+def make_cov_corrector(spec, attr_suffix='', role=None):
     '''Build a CovCorrector from a command-line string (see --covflow):
 
         ''                          -> None, no correction (the default)
@@ -975,7 +1075,7 @@ def make_cov_corrector(spec):
         raise IOError('--covflow expects the directory a covflow training run '
                       'wrote (flow_mc.pt, flow_data.pt, scalers.json, '
                       'covflow.json); %r is not a directory' % path)
-    return CovFlowCorrector(path, overrides)
+    return CovFlowCorrector(path, overrides, attr_suffix=attr_suffix, role=role)
 
 
 def make_cov_scaler(spec):
