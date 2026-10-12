@@ -159,4 +159,73 @@ except RuntimeError:
 MMC.Candidate.set_cov_correctors({})
 assert cand.fit_track(mus[0], 'mu1') is mus[0].bestTrack()
 print('MuMuCandidate hooks   ok: per-role fit tracks, expose_cov, both roles required, off = bestTrack()')
+
+# --- raw refit: the *_raw quantities come from the fit with the RAW covariances,
+#     through the same displacement / flight code as the nominal ones
+class P3:
+    def __init__(self, x, y, z): self._v = np.array([x, y, z], float)
+    def x(self): return self._v[0]
+    def y(self): return self._v[1]
+    def z(self): return self._v[2]
+class Vec(P3):
+    def Dot(self, o): return float(self._v @ o._v)
+    def R(self): return float(np.linalg.norm(self._v))
+    def Mag2(self): return float(self._v @ self._v)
+    def eta(self): return float(np.arcsinh(self._v[2] / np.hypot(*self._v[:2])))
+    def phi(self): return float(np.arctan2(self._v[1], self._v[0]))
+    def __truediv__(self, a): return Vec(*(self._v / a))
+class Meas:
+    def __init__(self, v, e): self.v, self.e = v, e
+    def value(self): return self.v
+    def error(self): return self.e
+    def significance(self): return self.v / self.e
+class Vtx:
+    def __init__(self, x, y, z, chi2):
+        self.p = P3(x, y, z); self.c = chi2
+    def isValid(self): return True
+    def position(self): return self.p
+    def vertexState(self): return self.p
+    def normalisedChiSquared(self): return self.c
+class Dist:
+    def __init__(self, nd): self.nd = nd
+    def distance(self, ref, st):
+        d = st._v - ref.position()._v
+        return Meas(float(np.linalg.norm(d[:self.nd])), 0.002)
+class P4:
+    def Vect(self): return Vec(1.0, 2.0, 0.5)
+    def mass(self): return 3.0969
+MMC.Vector3D = Vec
+MMC.ROOT.Math.XYZVector = Vec
+MMC.ROOT.VertexDistanceXY = lambda: Dist(2)
+MMC.ROOT.VertexDistance3D = lambda: Dist(3)
+class FitCounter:
+    n = 0
+    def Fit(self, tracks):
+        FitCounter.n += 1
+        return Vtx(0.031, 0.052, 0.4, 0.8)         # the raw fit lands somewhere else
+MMC.vtxfit = FitCounter()
+MMC.tofit = mock.MagicMock()
+
+def make_cand():
+    c = MMC.Candidate.__new__(MMC.Candidate)
+    c.muons = mus[:2]
+    c.vtx = Vtx(0.030, 0.050, 0.4, 1.1); c.vtx.chi2, c.vtx.prob = 1.1, 0.3
+    c.pv_bs = Vtx(0.0, 0.0, 0.39, 0); c.bs = Vtx(0.001, 0.0, 0.39, 0)
+    c.p4 = lambda: P4()
+    c.px, c.py, c.pz = (lambda: 1.0), (lambda: 2.0), (lambda: 0.5)
+    c.compute_displacement(); c.compute_flight(c.vtx)
+    return c
+
+MMC.Candidate.set_cov_correctors({})                 # covflow off
+c = make_cand(); c.compute_raw_vertex()
+assert FitCounter.n == 0 and c.vtx_raw is c.vtx and c.cos2d_raw == c.cos2d and c.mcorr_raw == c.mcorr
+MMC.Candidate.set_cov_correctors({'mu1': os.path.join(tmp, '2024', 'mu1', 'task_0'),
+                                  'mu2': os.path.join(tmp, '2024', 'mu2', 'task_0')})
+c = make_cand(); c.compute_raw_vertex()
+assert FitCounter.n == 1 and c.vtx_raw.position().x() == 0.031
+for k in ('cos2d', 'cos3d', 'cos2d_bs', 'mcorr', 'Bdir_phi'):
+    assert getattr(c, k + '_raw') != getattr(c, k), k
+assert c.lxy_raw.value() != c.lxy.value() and c.lxyz_raw.value() != c.lxyz.value()
+print('raw refit             ok: off -> *_raw = nominal, no 2nd fit; on -> lxy %.4f vs %.4f, '
+      'cos2d %.5f vs %.5f' % (c.lxy.value(), c.lxy_raw.value(), c.cos2d, c.cos2d_raw))
 print('ALL OK')

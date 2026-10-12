@@ -60,11 +60,6 @@ cand_branches = {
     'vz'       : lambda cand : cand.vtx.position().z() ,
     'vtx_chi2' : lambda cand : cand.vtx.chi2           ,
     'vtx_prob' : lambda cand : cand.vtx.prob           ,
-    # the same fit with the RAW track covariances: equal to the two above without
-    # covflow; with it, the corrected and uncorrected fit of the same candidate
-    # (MuMuCandidate.compute_raw_vertex)
-    'vtx_chi2_raw' : lambda cand : cand.vtx_raw.chi2   ,
-    'vtx_prob_raw' : lambda cand : cand.vtx_raw.prob   ,
 
     # Displacement wrt the refit PV (cand.pv_bs): beamspot constrained, signal
     # muons removed. Same reference and same names as the RJpsi channel.
@@ -76,8 +71,6 @@ cand_branches = {
     'lxyz'      : lambda cand : cand.lxyz.value()       ,
     'lxyz_err'  : lambda cand : cand.lxyz.error()       ,
     'lxyz_sig'  : lambda cand : cand.lxyz.significance(),
-    'lxy_sig_raw'  : lambda cand : cand.lxy_raw.significance() ,
-    'lxyz_sig_raw' : lambda cand : cand.lxyz_raw.significance(),
 
     # the pre-refit convention (bare beamspot), kept as a fixed comparator:
     # lxy - lxy_bs is the size of the change
@@ -86,6 +79,34 @@ cand_branches = {
     'lxy_bs_err': lambda cand : cand.lxy_bs.error()        ,
     'lxy_bs_sig': lambda cand : cand.lxy_bs.significance() ,
 }
+
+# ----- the same candidate fitted with the RAW track covariances -------------
+# MuMuCandidate.compute_raw_vertex: with covflow (--covflow, MC) the nominal
+# branches above come from the fit with the corrected covariances, these from
+# the fit with the raw ones, same tracks, same PV. covflow does not move the
+# track parameters, but the fit weighs the two muons by their covariances, so
+# the vertex POSITION moves too, and with it Lxy, the pointing angles and mcorr.
+# Without covflow every *_raw branch equals its nominal one (no second fit).
+cand_branches.update({
+    'vx_raw'        : lambda cand : cand.vtx_raw.position().x() ,
+    'vy_raw'        : lambda cand : cand.vtx_raw.position().y() ,
+    'vz_raw'        : lambda cand : cand.vtx_raw.position().z() ,
+    'vtx_chi2_raw'  : lambda cand : cand.vtx_raw.chi2           ,
+    'vtx_prob_raw'  : lambda cand : cand.vtx_raw.prob           ,
+    'mcorr_raw'     : lambda cand : cand.mcorr_raw              ,
+    'cos2d_raw'     : lambda cand : cand.cos2d_raw              ,
+    'cos3d_raw'     : lambda cand : cand.cos3d_raw              ,
+    'lxy_raw'       : lambda cand : cand.lxy_raw.value()        ,
+    'lxy_err_raw'   : lambda cand : cand.lxy_raw.error()        ,
+    'lxy_sig_raw'   : lambda cand : cand.lxy_raw.significance() ,
+    'lxyz_raw'      : lambda cand : cand.lxyz_raw.value()       ,
+    'lxyz_err_raw'  : lambda cand : cand.lxyz_raw.error()       ,
+    'lxyz_sig_raw'  : lambda cand : cand.lxyz_raw.significance(),
+    'cos2d_bs_raw'  : lambda cand : cand.cos2d_bs_raw           ,
+    'lxy_bs_raw'    : lambda cand : cand.lxy_bs_raw.value()        ,
+    'lxy_bs_err_raw': lambda cand : cand.lxy_bs_raw.error()        ,
+    'lxy_bs_sig_raw': lambda cand : cand.lxy_bs_raw.significance() ,
+})
 
 branches = list(event_branches) + list(cand_branches)
 
@@ -146,9 +167,12 @@ for _iname, (_ii, _jj) in zip(VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS):
     cand_branches['pv_cov_%s'    % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.pv,    i, j))
     cand_branches['pv_bs_cov_%s' % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.pv_bs, i, j))
     cand_branches['vtx_cov_%s'   % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.vtx,   i, j))
+    # the dimuon vertex fitted with the raw track covariances (see the *_raw block)
+    cand_branches['vtx_cov_%s_raw' % _iname] = (lambda c, i=_ii, j=_jj : vertex_cov_element(c.vtx_raw, i, j))
 branches += ['pv_cov_%s'    % iname for iname in VTX_COV_ELEMENT_NAMES]
 branches += ['pv_bs_cov_%s' % iname for iname in VTX_COV_ELEMENT_NAMES]
 branches += ['vtx_cov_%s'   % iname for iname in VTX_COV_ELEMENT_NAMES]
+branches += ['vtx_cov_%s_raw' % iname for iname in VTX_COV_ELEMENT_NAMES]
 
 for idx in [1,2]:
     for ibr in muon_branches:

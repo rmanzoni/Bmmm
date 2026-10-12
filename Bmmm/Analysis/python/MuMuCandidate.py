@@ -159,28 +159,50 @@ class Candidate(PrimaryVertexRefitMixin):
         # the switch can be validated rather than taken on trust.
         self.compute_displacement()
 
+        self.compute_flight(self.vtx)
+
+    def compute_flight(self, vtx, suffix=''):
+        '''Flight direction (refit PV -> dimuon vertex) and corrected mass.
+        Sets pv_to_sv, Bdirection, Bdir_eta, Bdir_phi, mmm_p4_par, mmm_p4_perp,
+        mcorr, each with `suffix` ('' for the nominal fit, '_raw' for the fit
+        with the raw covariances).'''
         # wrt the refit, beamspot-constrained, signal-removed PV (self.pv_bs),
         # the same reference the RJpsi channel uses for its flight direction
-        self.pv_to_sv = ROOT.Math.XYZVector(
-                            (self.vtx.position().x() - self.pv_bs.position().x()),
-                            (self.vtx.position().y() - self.pv_bs.position().y()),
-                            (self.vtx.position().z() - self.pv_bs.position().z())
-                        ) if self.vtx.isValid() else np.nan
-        self.Bdirection  = self.pv_to_sv/np.sqrt(self.pv_to_sv.Mag2()) if self.vtx.isValid() else np.nan                  
-        self.Bdir_eta    = self.Bdirection.eta() if self.vtx.isValid() else np.nan                                
-        self.Bdir_phi    = self.Bdirection.phi() if self.vtx.isValid() else np.nan                                
-        self.mmm_p4_par  = self.p4().Vect().Dot(self.Bdirection) if self.vtx.isValid() else np.nan                   
-        self.mmm_p4_perp = np.sqrt(self.p4().Vect().Mag2() - self.mmm_p4_par*self.mmm_p4_par) if self.vtx.isValid() else np.nan
-        self.mcorr       = np.sqrt(self.p4().mass()*self.p4().mass() + self.mmm_p4_perp*self.mmm_p4_perp) + self.mmm_p4_perp if self.vtx.isValid() else np.nan
-            
+        ok = vtx.isValid()
+        pv_to_sv = ROOT.Math.XYZVector(
+                       (vtx.position().x() - self.pv_bs.position().x()),
+                       (vtx.position().y() - self.pv_bs.position().y()),
+                       (vtx.position().z() - self.pv_bs.position().z())
+                   ) if ok else np.nan
+        bdir  = pv_to_sv/np.sqrt(pv_to_sv.Mag2()) if ok else np.nan
+        par   = self.p4().Vect().Dot(bdir) if ok else np.nan
+        perp  = np.sqrt(self.p4().Vect().Mag2() - par*par) if ok else np.nan
+        mcorr = np.sqrt(self.p4().mass()*self.p4().mass() + perp*perp) + perp if ok else np.nan
+        for name, val in (('pv_to_sv', pv_to_sv), ('Bdirection', bdir),
+                          ('Bdir_eta', bdir.eta() if ok else np.nan),
+                          ('Bdir_phi', bdir.phi() if ok else np.nan),
+                          ('mmm_p4_par', par), ('mmm_p4_perp', perp), ('mcorr', mcorr)):
+            setattr(self, name + suffix, val)
+
     def compute_raw_vertex(self):
         '''With covflow installed: the same dimuon fit with the RAW covariances,
-        for the candidate that is written. vtx_chi2_raw / vtx_prob_raw /
-        lxy_sig_raw / lxyz_sig_raw then sit next to the corrected ones in one
-        file, the vertex-level analogue of cov_* / cov_corr_*. Without covflow
-        they equal the nominal branches (no second fit is run).'''
+        for the candidate that is written, and everything derived from it with
+        the same code as the nominal fit (compute_displacement, compute_flight)
+        under a '_raw' suffix: vtx_raw, lxy_raw, lxyz_raw, lxy_bs_raw, cos2d_raw,
+        cos3d_raw, cos2d_bs_raw, mcorr_raw, ...
+
+        covflow changes the covariances, not the track parameters, but the vertex
+        fit weights the two tracks by their covariances, so the fitted position
+        moves too: vx/vy/vz, Lxy, the pointing angles and mcorr all differ from
+        their _raw values, by an amount set by how much the correction changes
+        the RELATIVE weight of the two muons. Without covflow no second fit is
+        run and the _raw attributes are the nominal ones.'''
         if not self.cov_correctors:
-            self.vtx_raw, self.lxy_raw, self.lxyz_raw = self.vtx, self.lxy, self.lxyz
+            self.vtx_raw = self.vtx
+            for name in ('lxy', 'lxyz', 'lxy_bs', 'cos2d', 'cos3d', 'cos2d_bs',
+                         'pv_to_sv', 'Bdirection', 'Bdir_eta', 'Bdir_phi',
+                         'mmm_p4_par', 'mmm_p4_perp', 'mcorr'):
+                setattr(self, name + '_raw', getattr(self, name))
             return
         tofit.clear()
         for imu in self.muons:
@@ -189,13 +211,10 @@ class Candidate(PrimaryVertexRefitMixin):
         vtx.chi2 = vtx.normalisedChiSquared()
         vtx.prob = (1. - stats.chi2.cdf(vtx.chi2, 1)) if vtx.isValid() else np.nan
         self.vtx_raw = vtx
-        self.lxy_raw = self.lxyz_raw = None
-        if vtx.isValid():
-            state = vtx.vertexState()
-            self.lxy_raw  = ROOT.VertexDistanceXY().distance(self.pv_bs, state)
-            self.lxyz_raw = ROOT.VertexDistance3D().distance(self.pv_bs, state)
+        self.compute_displacement(vtx, suffix='_raw')
+        self.compute_flight(vtx, suffix='_raw')
 
-    def compute_displacement(self):
+    def compute_displacement(self, vtx=None, suffix=''):
         '''
         Distance and pointing angle between the refit PV (self.pv_bs) and the
         dimuon vertex (self.vtx), in 2D and in 3D. Same reference, same
@@ -213,20 +232,32 @@ class Candidate(PrimaryVertexRefitMixin):
         The _bs pair is the pre-refit convention this channel used to have, kept
         unchanged as a fixed comparator: lxy - lxy_bs is the size of the switch.
         Everything is NaN (Measurement1D-less) for an invalid vertex.
+
+        vtx / suffix: another fit of the same candidate (compute_raw_vertex: the
+        fit with the raw covariances, suffix '_raw'); default self.vtx, no suffix.
         '''
-        self.lxy = self.lxyz = self.lxy_bs = None
-        self.cos2d = self.cos3d = self.cos2d_bs = np.nan
+        vtx = self.vtx if vtx is None else vtx
+        res = dict(lxy=None, lxyz=None, lxy_bs=None,
+                   cos2d=np.nan, cos3d=np.nan, cos2d_bs=np.nan)
+        try:
+            if vtx.isValid():
+                self._displacement(vtx, res)
+        finally:
+            for k, v in res.items():
+                setattr(self, k + suffix, v)
+        # keep the legacy attribute alive: some code (and the __str__ below)
+        # reads cand.vtx.cos
+        if vtx.isValid():
+            vtx.cos = res['cos2d']
 
-        if not self.vtx.isValid():
-            return
-
-        state = self.vtx.vertexState()
-        sv    = self.vtx.position()
+    def _displacement(self, vtx, res):
+        state = vtx.vertexState()
+        sv    = vtx.position()
 
         # ----- distances, with their errors, via Measurement1D ---------------
-        self.lxy    = ROOT.VertexDistanceXY().distance(self.pv_bs, state)
-        self.lxyz   = ROOT.VertexDistance3D().distance(self.pv_bs, state)
-        self.lxy_bs = ROOT.VertexDistanceXY().distance(self.bs,    state)
+        res['lxy']    = ROOT.VertexDistanceXY().distance(self.pv_bs, state)
+        res['lxyz']   = ROOT.VertexDistance3D().distance(self.pv_bs, state)
+        res['lxy_bs'] = ROOT.VertexDistanceXY().distance(self.bs,    state)
 
         def _cos(dx, dy, dz, px, py, pz):
             d = Vector3D(dx, dy, dz)
@@ -235,26 +266,22 @@ class Candidate(PrimaryVertexRefitMixin):
 
         # ----- pointing angles ------------------------------------------------
         # 2D: transverse displacement from the refit PV against the pair pT
-        self.cos2d = _cos(sv.x() - self.pv_bs.position().x(),
+        res['cos2d'] = _cos(sv.x() - self.pv_bs.position().x(),
                           sv.y() - self.pv_bs.position().y(), 0.,
                           self.px(), self.py(), 0.)
 
         # 3D: full displacement from the refit PV against the pair momentum
         # (consistent with pv_to_sv / Bdirection below, so cos3d is the angle
         # between the flight direction and p)
-        self.cos3d = _cos(sv.x() - self.pv_bs.position().x(),
+        res['cos3d'] = _cos(sv.x() - self.pv_bs.position().x(),
                           sv.y() - self.pv_bs.position().y(),
                           sv.z() - self.pv_bs.position().z(),
                           self.px(), self.py(), self.pz())
 
         # and the pre-refit comparator, wrt the bare beamspot
-        self.cos2d_bs = _cos(sv.x() - self.bs.position().x(),
+        res['cos2d_bs'] = _cos(sv.x() - self.bs.position().x(),
                              sv.y() - self.bs.position().y(), 0.,
                              self.px(), self.py(), 0.)
-
-        # keep the legacy attribute alive: some code (and the __str__ below)
-        # reads cand.vtx.cos
-        self.vtx.cos = self.cos2d
 
     def p4(self):
         return self.mu1.p4() + self.mu2.p4()
