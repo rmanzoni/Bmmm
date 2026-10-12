@@ -138,12 +138,13 @@ if [ -n "${PU}" ]; then
     EXTRA_FLAGS="${EXTRA_FLAGS} --pu=${PU}:${PWD}/${PUCARD}"
     echo ">>> pileup weights : ${PU} with card ${PWD}/${PUCARD}"
 fi
-# covflow (MC): COVFLOW=<dir with @mu@>, the flows shipped in the sandbox by
-# crab_dimuon_mc_run3_covflow.py. torch comes from CMSSW, zuko and covflow from
+# covflow (MC): COVFLOW=<dir>, the flows shipped in the sandbox by
+# crab_dimuon_mc_run3_covflow.py as <dir>/mu1 and <dir>/mu2 (the directory
+# name only: the CRAB server refuses '/' and '@' in scriptArgs). torch comes from CMSSW, zuko and covflow from
 # pylibs/ (make_pylibs.sh --covflow). Checked here, before the event loop.
 if [ -n "${COVFLOW}" ]; then
     for mu in mu1 mu2; do
-        d="${COVFLOW//@mu@/${mu}}"
+        d="${COVFLOW}/${mu}"
         for f in covflow.json flow_mc.pt flow_data.pt scalers.json; do
             if [ ! -f "${d}/${f}" ]; then
                 echo ">>> FATAL: COVFLOW=${COVFLOW}: ${d}/${f} not in the job directory. Aborting job $1."
@@ -154,8 +155,8 @@ if [ -n "${COVFLOW}" ]; then
     done
     python3 -c "import torch, zuko; from covflow import correct, flows, features, data; print('    covflow imports OK, torch', torch.__version__, 'zuko', zuko.__version__)" \
         || { echo ">>> FATAL: COVFLOW set but torch / zuko / covflow do not import. Aborting job $1."; exit 1; }
-    EXTRA_FLAGS="${EXTRA_FLAGS} --covflow=${PWD}/${COVFLOW}"
-    echo ">>> covflow        : ${PWD}/${COVFLOW}"
+    EXTRA_FLAGS="${EXTRA_FLAGS} --covflow=${PWD}/${COVFLOW}/@mu@"
+    echo ">>> covflow        : ${PWD}/${COVFLOW}/{mu1,mu2}"
 fi
 echo ">>> extra flags    : ${EXTRA_FLAGS:-<none>}"
 

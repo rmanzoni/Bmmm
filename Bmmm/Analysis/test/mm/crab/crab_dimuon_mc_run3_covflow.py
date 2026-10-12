@@ -176,9 +176,20 @@ for ds, camp, ep in tasks:
     cfg = base.create_config(ds)
     cfg.General.requestName = (cfg.General.requestName + '_cf' + ep)[:100]
     cfg.Data.outputDatasetTag = '%s_%s_cf%s' % (base.out_dir, camp, ep)
-    cfg.JobType.scriptArgs = list(cfg.JobType.scriptArgs) + ['COVFLOW=covflow_%s/@mu@' % ep]
+    # the directory NAME only: the CRAB server refuses '/' and '@' in scriptArgs
+    # values (400 "Incorrect 'scriptargs' parameter"); crab_script.sh adds /<mu>
+    cfg.JobType.scriptArgs = list(cfg.JobType.scriptArgs) + ['COVFLOW=covflow_%s' % ep]
     cfg.JobType.inputFiles = list(cfg.JobType.inputFiles) + [staged[ep]]
     cfgs.append(cfg)
+
+# what the CRAB server accepts in a scriptArgs value, checked here rather than
+# discovered as a 400 at submission
+import re as _re
+bad = [a for c in cfgs for a in c.JobType.scriptArgs
+       if not _re.match(r'^[A-Za-z0-9_]+=[A-Za-z0-9._:,-]*$', a)]
+if bad:
+    die('scriptArgs the CRAB server would refuse (only letters, digits and ._:,- in '
+        'values): %s' % sorted(set(bad)))
 
 for what, keys in (('requestName', [c.General.requestName for c in cfgs]),
                    ('output tag', ['%s/%s' % (ds.split('/')[1], c.Data.outputDatasetTag)
@@ -195,4 +206,5 @@ for (ds, camp, ep), cfg in zip(tasks, cfgs):
     p = Process(target=base.submit, args=(cfg,))
     p.start()
     p.join()
-print('%s %d task(s)' % ('dry run:' if args.dry_run else 'submitted', len(cfgs)))
+print('%s %d task(s)%s' % ('dry run:' if args.dry_run else 'sent', len(cfgs),
+                           '' if args.dry_run else ' -- check above that none says "failed submitting"'))
