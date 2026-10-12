@@ -25,6 +25,14 @@ event_branches = {
     'nti'    : _common_event['nti']    ,
 }
 
+# gen PV (MC only, NaN in data): genParticles:xyz0, the true interaction point
+# (NanoAOD's GenVtx). See GenVertices.
+def _gen_pv(i):
+    return lambda ev : ev.gen_pv[i] if getattr(ev, 'gen_pv', None) is not None else np.nan
+event_branches['gen_pv_x'] = _gen_pv(0)
+event_branches['gen_pv_y'] = _gen_pv(1)
+event_branches['gen_pv_z'] = _gen_pv(2)
+
 ##########################################################################################
 #####      CANDIDATE-LEVEL
 ##########################################################################################
@@ -177,6 +185,12 @@ for _k in ('n_pix_hit', 'n_pix_b_hit', 'n_pix_e_hit', 'n_pix_layer', 'n_trk_laye
            'pix_first_b_layer', 'pix_first_e_disk', 'pix_first_layer', 'pix_valid_mask',
            'pix_hit_count'):
     muon_branches['%s_raw' % _k] = _raw_hc(_k)
+# production vertex of the matched gen particle (MC only): for a muon from a
+# J/psi, the true dimuon vertex
+muon_branches['gen_vx'] = lambda imu : imu.gen_match.vx() if hasattr(imu, 'gen_match') else np.nan
+muon_branches['gen_vy'] = lambda imu : imu.gen_match.vy() if hasattr(imu, 'gen_match') else np.nan
+muon_branches['gen_vz'] = lambda imu : imu.gen_match.vz() if hasattr(imu, 'gen_match') else np.nan
+
 muon_branches['pt_raw' ] = lambda imu : imu._p4_raw.pt()  if hasattr(imu, '_p4_raw') else np.nan
 muon_branches['eta_raw'] = lambda imu : imu._p4_raw.eta() if hasattr(imu, '_p4_raw') else np.nan
 muon_branches['phi_raw'] = lambda imu : imu._p4_raw.phi() if hasattr(imu, '_p4_raw') else np.nan
@@ -400,3 +414,14 @@ for k, v in paths.items():
     
 branches += paths
 branches += [path+'_ps' for path in paths]
+
+# ----- gen J/psi of the candidate (MC only; GenVertices.gen_info) -----------
+#   gen_jpsi_nmu         reco muons that are daughters of that J/psi (0, 1, 2)
+#   gen_jpsi_vx/vy/vz    J/psi DECAY vertex = the true dimuon vertex
+#   gen_jpsi_mom_pdgid   first ancestor that is not a J/psi copy (b hadron,
+#                        psi(2S), ...; 0 if none)
+#   gen_lxy / gen_lxyz   gen PV -> J/psi decay vertex, transverse / 3D
+for _k in ('jpsi_nmu', 'jpsi_vx', 'jpsi_vy', 'jpsi_vz', 'jpsi_pt', 'jpsi_eta', 'jpsi_phi',
+           'jpsi_mass', 'jpsi_mom_pdgid', 'lxy', 'lxyz'):
+    cand_branches['gen_%s' % _k] = (lambda c, k=_k : c.gen[k] if hasattr(c, 'gen') else np.nan)
+    branches.append('gen_%s' % _k)

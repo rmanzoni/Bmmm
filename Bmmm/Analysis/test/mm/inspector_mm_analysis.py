@@ -214,6 +214,11 @@ handles_mc['genpk'  ] = ('packedGenParticles'  , Handle('std::vector<pat::Packed
 handles_mc['genInfo'] = ('generator'           , Handle('GenEventInfoProduct')                )
 handles_mc['pu'     ] = ('slimmedAddPileupInfo', Handle('std::vector<PileupSummaryInfo>')     )
 
+# gen PV, genParticles:xyz0 (NanoAOD's GenVtx): read fail-soft, outside the
+# handles above, so a sample without it gives NaN gen_pv_* rather than a crash
+from Bmmm.Analysis.GenVertices import GenPVReader, gen_info
+gen_pv_reader = GenPVReader(Handle) if mc else None
+
 handles = OrderedDict()
 handles['muons'  ] = ('slimmedMuons'                 , Handle('std::vector<pat::Muon>')                   )
 handles['trk'    ] = ('packedPFCandidates'           , Handle('std::vector<pat::PackedCandidate>')        )
@@ -429,6 +434,7 @@ for i, event in enumerate(events):
             setattr(event, k, v[1].product())
         
         event.pu_at_bx0 = [ipu for ipu in event.pu if ipu.getBunchCrossing()==0][0]
+        event.gen_pv = gen_pv_reader(event)
             
     lumi = event.eventAuxiliary().luminosityBlock()
     iev  = event.eventAuxiliary().event()
@@ -645,6 +651,16 @@ for i, event in enumerate(events):
         if pu_session is not None:
             tofill.update(pu_session.weights(event.pu_at_bx0.getTrueNumInteractions()))
 
+        # gen matching of the two muons (MC), before the candidate branches:
+        # the gen J/psi of the candidate is built from the two matches
+        if mc:
+            for idx in [1, 2]:
+                imu = getattr(final_cand, 'mu%d' %idx)
+                genp, dr2 = bestMatch(imu, event.genpr)
+                if dr2 < 0.1**2:
+                    imu.gen_match = genp
+            final_cand.gen = gen_info(final_cand.mu1, final_cand.mu2, event.gen_pv)
+
         # the uncorrected fit of the written candidate (a second fit only with covflow)
         final_cand.compute_raw_vertex()
 
@@ -668,10 +684,7 @@ for i, event in enumerate(events):
             # the covariance the fit used for this muon in this role
             final_cand.expose_cov(imu, 'mu%d' % idx)
 
-            if mc:
-                genp, dr2 = bestMatch(imu, event.genpr)
-                if dr2 < 0.1**2:
-                    imu.gen_match = genp
+            # (gen_match set above, before the candidate branches)
 
             for ibranch, igetter in muon_branches.items():
                 tofill['mu%d_%s' %(idx, ibranch)] = safe_get(
@@ -829,6 +842,8 @@ for _role, _corr in sorted(cov_correctors.items()):
     print(_corr.summary())
 if emulator is not None:
     print(emulator.summary())
+if gen_pv_reader is not None:
+    print(gen_pv_reader.summary())
 
 # Grid bookkeeping, written whether or not any candidate survived: an empty
 # ntuple is still a job that legitimately read its share of the dataset.
