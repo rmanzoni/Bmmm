@@ -214,6 +214,40 @@ VARS = [
          label=r'$\mu$ $\sigma(%s)$' % {'qoverp': 'q/p', 'lambda': r'\lambda', 'phi': r'\phi',
                                         'dxy': 'd_{xy}', 'dsz': 'd_{sz}'}[p])
     for p in P
+] + [
+    # ---- hit pattern: the covflow context and what the hit kill changes.
+    # Integer quantities, one bin per value. The raw view reads <hit>_raw (the
+    # hit content before the kill), the corrected view the content after it.
+    dict(name='mu_n_pix_hit',       kind='mu', expr='{mu}_n_pix_hit',       bins=(-0.5, 10.5, 11),
+         label=r'$\mu$ pixel hits'),
+    dict(name='mu_n_pix_b_hit',     kind='mu', expr='{mu}_n_pix_b_hit',     bins=(-0.5, 8.5, 9),
+         label=r'$\mu$ BPix hits'),
+    dict(name='mu_n_pix_e_hit',     kind='mu', expr='{mu}_n_pix_e_hit',     bins=(-0.5, 8.5, 9),
+         label=r'$\mu$ FPix hits'),
+    dict(name='mu_n_pix_layer',     kind='mu', expr='{mu}_n_pix_layer',     bins=(-0.5, 7.5, 8),
+         label=r'$\mu$ pixel layers with a hit'),
+    dict(name='mu_n_trk_layer',     kind='mu', expr='{mu}_n_trk_layer',     bins=(-0.5, 20.5, 21),
+         label=r'$\mu$ tracker layers with a hit'),
+    dict(name='mu_pix_first_b_layer', kind='mu', expr='{mu}_pix_first_b_layer', bins=(-0.5, 4.5, 5),
+         label=r'$\mu$ first BPix layer (0 = none)'),
+    dict(name='mu_pix_first_e_disk', kind='mu', expr='{mu}_pix_first_e_disk', bins=(-0.5, 3.5, 4),
+         label=r'$\mu$ first FPix disk (0 = none)'),
+    dict(name='mu_pix_first_layer', kind='mu', expr='{mu}_pix_first_layer', bins=(-0.5, 7.5, 8),
+         ticks=['none', 'L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3'],
+         label=r'$\mu$ first pixel layer'),
+    dict(name='mu_pix_valid_layers', kind='mask', expr='{mu}_pix_valid_mask', bins=(-0.5, 6.5, 7),
+         ticks=['L1', 'L2', 'L3', 'L4', 'D1', 'D2', 'D3'],
+         label=r'$\mu$ pixel layer / disk with a valid hit (muons per layer)'),
+    # the covflow context cell the flows see: pixel hits x first BPix layer
+    dict(name='mu_context_cell', kind='mu',
+         expr='clip({mu}_n_pix_hit, 0, 6) + 7 * {mu}_pix_first_b_layer', bins=(-0.5, 34.5, 35),
+         label=r'$\mu$ context cell = min(pixel hits, 6) + 7 $\times$ first BPix layer'),
+    # not changed by the emulation (raw = corrected): the reason a first hit is
+    # where it is, as reconstructed
+    dict(name='mu_n_pix_miss_inner', kind='mu', expr='{mu}_n_pix_miss_inner', bins=(-0.5, 4.5, 5),
+         label=r'$\mu$ missing inner pixel layers (not emulated)'),
+    dict(name='mu_n_pix_inact_inner', kind='mu', expr='{mu}_n_pix_inact_inner', bins=(-0.5, 4.5, 5),
+         label=r'$\mu$ inactive inner pixel layers (not emulated)'),
 ]
 
 # raw counterparts that are computed, not stored
@@ -225,7 +259,9 @@ DERIVED_RAW = {
 }
 # changed by the emulation but no raw value stored: refused in the raw view
 NO_RAW = {'eta', 'phi', 'mu1_bs_dxy', 'mu2_bs_dxy', 'mu1_bs_dxy_sig', 'mu2_bs_dxy_sig',
-          'mu1_bs_dxy_e', 'mu2_bs_dxy_e'}
+          'mu1_bs_dxy_e', 'mu2_bs_dxy_e',
+          # changed by the hit kill, no raw copy stored
+          'mu1_pix_miss_mask', 'mu2_pix_miss_mask'}
 
 FUNCS = dict(abs=np.abs, sqrt=np.sqrt, log10=np.log10, log=np.log, exp=np.exp,
              cosh=np.cosh, sinh=np.sinh, cos=np.cos, sin=np.sin, clip=np.clip,
@@ -427,6 +463,18 @@ def values_and_weights(view, var, which, w_evt, sel):
     '''x and w for one variable in one view; muon variables concatenate both
     muons with the event weight repeated.'''
     expr = var.get(which, var['expr']) if which in ('corr', 'raw') else var['expr']
+    if var['kind'] == 'mask':
+        # one entry per (muon, layer with the bit set), at the layer index
+        xs, ws = [], []
+        for mu in ('mu1', 'mu2'):
+            m = view.eval(expr.format(mu=mu))[sel]
+            ok = np.isfinite(m)
+            m, w = m[ok].astype(np.int64), w_evt[sel][ok]
+            for b in range(var['bins'][2]):
+                on = ((m >> b) & 1).astype(bool)
+                xs.append(np.full(int(on.sum()), float(b)))
+                ws.append(w[on])
+        return np.concatenate(xs), np.concatenate(ws)
     if var['kind'] == 'mu':
         xs = [view.eval(expr.format(mu=mu))[sel] for mu in ('mu1', 'mu2')]
         return np.concatenate(xs), np.concatenate([w_evt[sel], w_evt[sel]])
@@ -730,7 +778,8 @@ def _panel(ax, rx, h, s, v, mode, logy):
     rx.axhline(1, color='black', lw=0.8)
     rx.set_ylim(0.5, 1.5)
     rx.set_ylabel('MC / data', fontsize=11)
-    rx.set_xlabel(v['label'] + ('   (both muons)' if v['kind'] == 'mu' else ''), fontsize=13)
+    rx.set_xlabel(v['label'] + ('   (both muons)' if v['kind'] in ('mu', 'mask') else ''),
+                  fontsize=13)
     if logy:
         pos = np.concatenate([x[x > 0] for x in (hd, h['raw'][0], h['corr'][0])])
         if pos.size:
@@ -740,6 +789,9 @@ def _panel(ax, rx, h, s, v, mode, logy):
         ax.set_ylim(0, 1.25 * max(np.nanmax(hd + np.sqrt(ed)), h['raw'][0].max(),
                                    h['corr'][0].max()))
     ax.set_ylabel('candidates' if v['kind'] == 'cand' else 'muons', fontsize=13)
+    if v.get('ticks'):
+        rx.set_xticks(range(len(v['ticks'])))
+        rx.set_xticklabels(v['ticks'])
     ax.legend(fontsize=7, frameon=False)
     for a_ in (ax, rx):
         a_.tick_params(labelsize=10)
