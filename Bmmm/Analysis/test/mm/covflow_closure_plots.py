@@ -16,6 +16,15 @@ the fitted signal model by construction), the fitted data signal shape is
 compared with the MC raw / corrected mass distributions instead, with sigma68
 (half the 15.87-84.13% interval) for each.
 
+Every quantity is shown twice, in two pdfs, each page linear (left) and log
+(right):
+  _sw    with sPlot: data sWeighted over the whole fit window, background
+         subtracted; MC normalised to the data signal yield
+  _nosw  without sPlot: the selection's own mass cut (|m - 3.0969| < 0.1 by
+         default), every data candidate with weight 1, background INCLUDED --
+         the conditions covflow was trained in; MC normalised to the data count.
+         The signal fraction in that cut (from the sWeights) is printed.
+
 Both MC curves come from the SAME events, so their difference is the effect of
 the emulation alone; the ratio panel and a chi2/ndf against data say which of
 the two describes the data.
@@ -69,8 +78,10 @@ Usage (covflow conda env: numpy, uproot, matplotlib, iminuit; mplhep optional)
   python3 covflow_closure_plots.py ... --max-entries 2000000 --prescale-data 0.2
 
 Outputs
-  <out>_<epoch>.pdf     per epoch: the sPlot fit, then one page per quantity
-  <out>_all.pdf         all requested epochs summed
+  <out>_<epoch>_sw.pdf, <out>_<epoch>_nosw.pdf
+                        per epoch: mass page, one page per quantity, summary
+  <out>_<epoch>_splot.pdf   the data mass fit behind the sWeights
+  <out>_all_sw.pdf, <out>_all_nosw.pdf   all requested epochs summed
   <out>.json            yields, fit summaries, and per quantity and epoch the
                         chi2/ndf, means and RMS of the three distributions
 '''
@@ -527,6 +538,34 @@ def kin_weights(data_v, sw, sel_d, mc_v, w_mc, sel_m, nbins=(12, 6)):
 # ---------------------------------------------------------------------------
 # one epoch
 # ---------------------------------------------------------------------------
+def build_hists(ep, label, dv, wd_evt, sel_d, cv, w_c, sel_c, rv, w_r, sel_r, me,
+                data_mass_curve=None):
+    '''Histograms of every VARS entry for data and both MC views, plus the
+    dimuon mass (the fitted data signal shape with sPlot, the data mass
+    itself without).'''
+    hists = {}
+    hmr, _ = np.histogram(rv.get('mass')[sel_r], bins=me, weights=w_r[sel_r])
+    hmc, _ = np.histogram(cv.get('mass')[sel_c], bins=me, weights=w_c[sel_c])
+    if data_mass_curve is None:
+        hmd, _ = np.histogram(dv.get('mass')[sel_d], bins=me, weights=wd_evt[sel_d])
+    else:
+        hmd = data_mass_curve
+    hists['__mass__'] = dict(edges=me, data=hmd, raw=hmr, corr=hmc)
+    prog = Progress(len(VARS), '%s histograms, %s' % (ep, label))
+    for i, v in enumerate(VARS):
+        xd, wd = values_and_weights(dv, v, 'data', wd_evt, sel_d)
+        xc, wc = values_and_weights(cv, v, 'corr', w_c, sel_c)
+        xr, wr = values_and_weights(rv, v, 'raw', w_r, sel_r)
+        hd, ed, edges = hist(xd, wd, v['bins'])
+        hc, ec, _ = hist(xc, wc, v['bins'])
+        hr, er, _ = hist(xr, wr, v['bins'])
+        hists[v['name']] = dict(edges=edges, data=(hd, ed), corr=(hc, ec), raw=(hr, er),
+                                stats=dict(data=wstats(xd, wd), corr=wstats(xc, wc),
+                                           raw=wstats(xr, wr)))
+        prog.update(i + 1)
+    return hists
+
+
 def run_epoch(ep, data_files, mc_files, pu_year, a):
     print('\n=== %s: %d data file(s), %d MC file(s)' % (ep, len(data_files), len(mc_files)))
     sel_nomass, dropped = drop_mass_terms(a.selection)
@@ -588,28 +627,40 @@ def run_epoch(ep, data_files, mc_files, pu_year, a):
     k_c = sw.sum() / w_c[sel_c].sum()
     k_r = sw.sum() / w_r[sel_r].sum()
     w_c, w_r = w_c * k_c, w_r * k_r
+    # (both now sum to the data signal yield on their sPlot selection)
 
     me = mass_edges(a)
-    hmr, _ = np.histogram(rv.get('mass')[sel_r], bins=me, weights=w_r[sel_r])
-    hmc, _ = np.histogram(cv.get('mass')[sel_c], bins=me, weights=w_c[sel_c])
     curve = sp_info.pop('curve')
-    hists = {'__mass__': dict(edges=me, data=curve, raw=hmr, corr=hmc)}
-    s68 = {k: sigma68(v, me) for k, v in (('data', curve), ('raw', hmr), ('corr', hmc))}
+    hists = {}
+    # --- with sPlot: data sWeighted over the whole fit window, MC normalised
+    # to the data signal yield
+    hists['sw'] = build_hists(ep, 'sPlot', dv, sw, sel_d, cv, w_c, sel_c, rv, w_r, sel_r,
+                              me, data_mass_curve=curve)
+    s68 = {k: sigma68(v, me) for k, v in hists['sw']['__mass__'].items() if k != 'edges'}
     sp_info['sigma68_MeV'] = {k: 1e3 * v for k, v in s68.items()}
     print('  mass resolution sigma68: data %.1f MeV (fitted signal), MC raw %.1f, '
           'MC corrected %.1f' % tuple(1e3 * s68[k] for k in ('data', 'raw', 'corr')))
-    prog = Progress(len(VARS), '%s histograms' % ep)
-    for i, v in enumerate(VARS):
-        xd, wd = values_and_weights(dv, v, 'data', sw, sel_d)
-        xc, wc = values_and_weights(cv, v, 'corr', w_c, sel_c)
-        xr, wr = values_and_weights(rv, v, 'raw', w_r, sel_r)
-        hd, ed, edges = hist(xd, wd, v['bins'])
-        hc, ec, _ = hist(xc, wc, v['bins'])
-        hr, er, _ = hist(xr, wr, v['bins'])
-        hists[v['name']] = dict(edges=edges, data=(hd, ed), corr=(hc, ec), raw=(hr, er),
-                                stats=dict(data=wstats(xd, wd), corr=wstats(xc, wc),
-                                           raw=wstats(xr, wr)))
-        prog.update(i + 1)
+    # --- without sPlot: the selection's own mass cut back in (the covflow
+    # training conditions: no sWeights, background included), every data
+    # candidate weight 1, MC normalised to the data count
+    if dropped:
+        mcut = ' & '.join('(%s)' % t for t in dropped)
+        sel_d_ns = sel_d & dv.eval(mcut).astype(bool)
+        sel_c_ns = sel_c & cv.eval(mcut).astype(bool)
+        sel_r_ns = sel_r & rv.eval(mcut).astype(bool)
+    else:
+        mcut = 'the fit window'
+        sel_d_ns, sel_c_ns, sel_r_ns = sel_d, sel_c, sel_r
+    ones = np.ones(dv.n)
+    n_ns = float(sel_d_ns.sum())
+    pur = float(sw[sel_d_ns].sum() / max(n_ns, 1.))
+    print('  without sPlot: %s data candidates in %s, signal fraction there %.1f%% (from the '
+          'sWeights)' % (f'{int(n_ns):,}', mcut, 100 * pur))
+    hists['nosw'] = build_hists(ep, 'no sPlot', dv, ones, sel_d_ns,
+                                cv, w_c * n_ns / w_c[sel_c_ns].sum(), sel_c_ns,
+                                rv, w_r * n_ns / w_r[sel_r_ns].sum(), sel_r_ns, me)
+    sp_info['no_splot'] = dict(mass_cut=mcut, n_data=int(n_ns), signal_fraction=pur,
+                               n_mc_raw=int(sel_r_ns.sum()), n_mc_corr=int(sel_c_ns.sum()))
     if rv.fallbacks:
         print('  raw MC view: unchanged by the emulation, nominal branch used for: %s'
               % ', '.join(sorted(rv.fallbacks)))
@@ -637,67 +688,97 @@ def summarise(h):
     return out
 
 
-def plot_pages(hists, title, pdf_path, extra_first=None):
+MODES = dict(sw=dict(tag='sw', data='data (sWeighted)', norm='MC normalised to the data '
+                     'signal yield', mass='data: fitted signal shape'),
+             nosw=dict(tag='nosw', data='data (no background subtraction)',
+                       norm='no sPlot: data candidates in the selection mass cut, background '
+                            'included; MC normalised to the data count',
+                       mass='data (background included)'))
+
+
+def _panel(ax, rx, h, s, v, mode, logy):
+    e = h['edges']
+    c = 0.5 * (e[1:] + e[:-1])
+    hd, ed = h['data']
+    ax.errorbar(c, hd, yerr=np.sqrt(ed), fmt='o', ms=2.5, color=COLORS['data'],
+                label=MODES[mode]['data'], zorder=3)
+    for which, ls in (('raw', '--'), ('corr', '-')):
+        hm, em = h[which]
+        ax.stairs(hm, e, color=COLORS[which], ls=ls, lw=1.5,
+                  label='%s  $\\chi^2$/ndf %.0f/%d' % (LABELS[which], s[which]['chi2'],
+                                                       s[which]['ndf']))
+        with np.errstate(all='ignore'):
+            r = np.where(hd != 0, hm / hd, np.nan)
+            rerr = np.where(hd != 0, np.sqrt(em) / np.abs(hd), np.nan)
+        rx.errorbar(c, r, yerr=rerr, fmt='o' if which == 'corr' else 's', ms=2,
+                    color=COLORS[which], alpha=0.9)
+    with np.errstate(all='ignore'):
+        dr = np.where(hd != 0, np.sqrt(ed) / np.abs(hd), np.nan)
+    rx.fill_between(c, 1 - dr, 1 + dr, step='mid', color='grey', alpha=0.25, lw=0)
+    rx.axhline(1, color='black', lw=0.8)
+    rx.set_ylim(0.5, 1.5)
+    rx.set_ylabel('MC / data', fontsize=11)
+    rx.set_xlabel(v['label'] + ('   (both muons)' if v['kind'] == 'mu' else ''), fontsize=13)
+    if logy:
+        pos = np.concatenate([x[x > 0] for x in (hd, h['raw'][0], h['corr'][0])])
+        if pos.size:
+            ax.set_yscale('log')
+            ax.set_ylim(0.3 * pos.min(), 5 * pos.max())
+    else:
+        ax.set_ylim(0, 1.25 * max(np.nanmax(hd + np.sqrt(ed)), h['raw'][0].max(),
+                                   h['corr'][0].max()))
+    ax.set_ylabel('candidates' if v['kind'] == 'cand' else 'muons', fontsize=13)
+    ax.legend(fontsize=7, frameon=False)
+    for a_ in (ax, rx):
+        a_.tick_params(labelsize=10)
+
+
+def plot_pages(hists, title, pdf_path, mode):
+    """One page per quantity, linear (left) and log (right) scale; the mass
+    page first, a summary table last."""
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
+    M = MODES[mode]
     table = {}
     with PdfPages(pdf_path) as pdf:
         hm = hists['__mass__']
         e = hm['edges']
         s68 = {k: sigma68(hm[k], e) for k in ('data', 'raw', 'corr')}
         table['__mass__'] = {'sigma68_MeV': {k: 1e3 * v for k, v in s68.items()}}
-        fig, ax = plt.subplots(figsize=(7, 5.5))
+        fig, axs = plt.subplots(1, 2, figsize=(14, 5.5))
         norm = lambda h: h / max(h.sum(), 1e-300) / np.diff(e)
-        ax.stairs(norm(hm['data']), e, color=COLORS['data'], lw=2,
-                  label=r'data, fitted signal shape  $\sigma_{68}$ = %.1f MeV' % (1e3 * s68['data']))
-        for which, ls in (('raw', '--'), ('corr', '-')):
-            ax.stairs(norm(hm[which]), e, color=COLORS[which], ls=ls, lw=1.6,
-                      label=r'%s  $\sigma_{68}$ = %.1f MeV' % (LABELS[which], 1e3 * s68[which]))
-        ax.set_yscale('log')
-        ax.set_xlabel(r'$m(\mu\mu)$ [GeV]')
-        ax.set_ylabel('normalised')
-        ax.set_title('%s: dimuon mass resolution (the sWeighted data mass would be the fit '
-                     'itself)' % title, fontsize=9)
-        ax.legend(fontsize=8, frameon=False)
+        for ax, logy in zip(axs, (False, True)):
+            ax.stairs(norm(hm['data']), e, color=COLORS['data'], lw=2,
+                      label=r'%s  $\sigma_{68}$ = %.1f MeV' % (M['mass'], 1e3 * s68['data']))
+            for which, ls in (('raw', '--'), ('corr', '-')):
+                ax.stairs(norm(hm[which]), e, color=COLORS[which], ls=ls, lw=1.6,
+                          label=r'%s  $\sigma_{68}$ = %.1f MeV' % (LABELS[which], 1e3 * s68[which]))
+            if logy:
+                ax.set_yscale('log')
+            ax.set_xlabel(r'$m(\mu\mu)$ [GeV]', fontsize=13)
+            ax.set_ylabel('normalised', fontsize=13)
+            ax.legend(fontsize=8, frameon=False)
+        fig.suptitle('%s, %s: dimuon mass%s' % (title, mode, ' (the sWeighted data mass would be '
+                     'the fit itself)' if mode == 'sw' else ''), fontsize=10)
         pdf.savefig(fig, bbox_inches='tight')
         plt.close(fig)
         for v in VARS:
             h = hists[v['name']]
             s = summarise(h)
             table[v['name']] = s
-            e = h['edges']
-            c = 0.5 * (e[1:] + e[:-1])
-            fig, (ax, rx) = plt.subplots(2, 1, figsize=(7, 6.5), sharex=True,
-                                         gridspec_kw=dict(height_ratios=(3, 1), hspace=0.05))
-            hd, ed = h['data']
-            ax.errorbar(c, hd, yerr=np.sqrt(ed), fmt='o', ms=3, color=COLORS['data'],
-                        label='data (sWeighted)', zorder=3)
-            for which, ls in (('raw', '--'), ('corr', '-')):
-                hm, em = h[which]
-                ax.stairs(hm, e, color=COLORS[which], ls=ls, lw=1.6,
-                          label='%s  $\\chi^2$/ndf %.0f/%d' % (LABELS[which], s[which]['chi2'],
-                                                               s[which]['ndf']))
-                with np.errstate(all='ignore'):
-                    r = np.where(hd != 0, hm / hd, np.nan)
-                    rerr = np.where(hd != 0, np.sqrt(em) / np.abs(hd), np.nan)
-                rx.errorbar(c, r, yerr=rerr, fmt='o' if which == 'corr' else 's', ms=2.5,
-                            color=COLORS[which], alpha=0.9)
-            with np.errstate(all='ignore'):
-                dr = np.where(hd != 0, np.sqrt(ed) / np.abs(hd), np.nan)
-            rx.fill_between(c, 1 - dr, 1 + dr, step='mid', color='grey', alpha=0.25, lw=0)
-            rx.axhline(1, color='black', lw=0.8)
-            rx.set_ylim(0.5, 1.5)
-            rx.set_ylabel('MC / data')
-            rx.set_xlabel(v['label'] + ('   (both muons)' if v['kind'] == 'mu' else ''))
-            if v.get('logy'):
-                ax.set_yscale('log')
-            ax.set_ylabel('candidates' if v['kind'] == 'cand' else 'muons')
+            fig = plt.figure(figsize=(14, 6.5))
+            gs = fig.add_gridspec(2, 2, height_ratios=(3, 1), hspace=0.06, wspace=0.22)
+            for col, logy in enumerate((False, True)):
+                ax = fig.add_subplot(gs[0, col])
+                rx = fig.add_subplot(gs[1, col], sharex=ax)
+                ax.tick_params(labelbottom=False)
+                _panel(ax, rx, h, s, v, mode, logy)
+                ax.set_title('log scale' if logy else 'linear scale', fontsize=10)
             st = s['stats']
-            ax.set_title('%s   mean: data %.4g, raw %.4g, corr %.4g' % (
-                title, st['data'][0], st['raw'][0], st['corr'][0]), fontsize=9)
-            ax.legend(fontsize=8, frameon=False)
+            fig.suptitle('%s, %s   mean: data %.4g, MC raw %.4g, MC corrected %.4g' % (
+                title, M['data'], st['data'][0], st['raw'][0], st['corr'][0]), fontsize=10)
             pdf.savefig(fig, bbox_inches='tight')
             plt.close(fig)
         # summary page
@@ -718,9 +799,10 @@ def plot_pages(hists, title, pdf_path, extra_first=None):
         t.set_fontsize(7)
         t.scale(1, 1.25)
         s68 = table['__mass__']['sigma68_MeV']
-        ax.set_title('%s: summary (chi2 over the shown bins, MC normalised to the data '
-                     'signal yield)\nmass sigma68: data %.1f MeV, MC raw %.1f, MC corrected %.1f'
-                     % (title, s68['data'], s68['raw'], s68['corr']), fontsize=9)
+        ax.set_title('%s: summary, %s (chi2 over the shown bins; %s)\nmass sigma68: data %.1f MeV, '
+                     'MC raw %.1f, MC corrected %.1f'
+                     % (title, M['data'], M['norm'], s68['data'], s68['raw'], s68['corr']),
+                     fontsize=8)
         pdf.savefig(fig, bbox_inches='tight')
         plt.close(fig)
     return table
@@ -742,6 +824,11 @@ def print_table(title, table):
 
 
 def combine(per_epoch):
+    '''Per mode (sw, nosw): see _combine.'''
+    return {m: _combine([h[m] for h in per_epoch]) for m in ('sw', 'nosw')}
+
+
+def _combine(per_epoch):
     '''Sum the histograms over epochs; means / RMS combined from the per-epoch
     moments, each epoch weighted by its (data-normalised) yield.'''
     out = {'__mass__': dict(edges=per_epoch[0]['__mass__']['edges'],
@@ -826,20 +913,26 @@ def main():
         data_files = expand(a.data or [fill(f) for f in cfg['data']])
         mc_files = expand(a.mc or [fill(f) for f in cfg['mc']])
         hists, info = run_epoch(ep, data_files, mc_files, cfg['pu_year'], a)
-        table = plot_pages(hists, '%s %s' % (ep, a.sample), '%s_%s.pdf' % (a.out, ep))
-        print_table('%s (%s)' % (ep, a.sample), table)
-        info['table'] = table
+        info['table'] = {}
+        for mode in ('sw', 'nosw'):
+            table = plot_pages(hists[mode], '%s %s' % (ep, a.sample),
+                               '%s_%s_%s.pdf' % (a.out, ep, mode), mode)
+            print_table('%s (%s), %s' % (ep, a.sample, MODES[mode]['data']), table)
+            info['table'][mode] = table
         report['epochs'][ep] = info
         per_epoch.append(hists)
     if len(per_epoch) > 1:
         allh = combine(per_epoch)
-        table = plot_pages(allh, 'all epochs %s' % a.sample, '%s_all.pdf' % a.out)
-        print_table('all epochs (%s)' % a.sample, table)
-        report['all'] = table
+        report['all'] = {}
+        for mode in ('sw', 'nosw'):
+            table = plot_pages(allh[mode], 'all epochs %s' % a.sample,
+                               '%s_all_%s.pdf' % (a.out, mode), mode)
+            print_table('all epochs (%s), %s' % (a.sample, MODES[mode]['data']), table)
+            report['all'][mode] = table
     with open(a.out + '.json', 'w') as fh:
         json.dump(report, fh, indent=1, default=lambda o: o.tolist() if hasattr(o, 'tolist') else str(o))
-    print('\nwrote %s_<epoch>.pdf%s, %s_<epoch>_splot.pdf, %s.json'
-          % (a.out, ', %s_all.pdf' % a.out if len(per_epoch) > 1 else '', a.out, a.out))
+    print('\nwrote %s_<epoch>_{sw,nosw}.pdf%s, %s_<epoch>_splot.pdf (mass fit), %s.json'
+          % (a.out, ', %s_all_{sw,nosw}.pdf' % a.out if len(per_epoch) > 1 else '', a.out, a.out))
 
 
 if __name__ == '__main__':
