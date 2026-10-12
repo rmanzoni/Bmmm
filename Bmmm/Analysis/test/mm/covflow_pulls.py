@@ -49,7 +49,12 @@ WIDTH ESTIMATORS (all = 1 for a unit Gaussian)
 Usage (any python with numpy, uproot, matplotlib; e.g. the covflow conda env):
   python3 covflow_pulls.py pilot/*.root
   python3 covflow_pulls.py pilot/*.root --out pulls_pilot --max-entries 200000
-Outputs <out>.pdf (pull distributions, width vs pT and |eta|) and <out>.json.
+Outputs <out>.pdf and <out>.json. The table is printed per muon role (mu1, mu2)
+and for both roles merged, each split into mu+ and mu-. The pdf merges the roles:
+  page 1  all muons: pull distributions, core width vs pT and |eta|, mean vs pT
+  page 2  mu+ and mu- apart: distributions, core width and mean vs pT per charge
+          (a mean of opposite sign for mu+ and mu-, growing as 1/pT, points at
+          the phi transport; the same sign for both, at a reco/gen offset)
 '''
 
 import argparse
@@ -183,7 +188,7 @@ def muon_pulls(cols, mu, args, sel):
             if kind == 'corr' and '%s_covflow_ok' % mu in cols:
                 use &= cols['%s_covflow_ok' % mu] > 0.5
             res[(prm, kind)] = dict(pull=(d / np.sqrt(np.where(var > 0, var, np.nan)))[use],
-                                    pt=pt[use], aeta=np.abs(eta)[use])
+                                    pt=pt[use], aeta=np.abs(eta)[use], q=q[use])
     return res, int(ok.sum())
 
 
@@ -195,11 +200,62 @@ def widths(x):
     q16, q50, q84 = np.quantile(x, [0.158655, 0.5, 0.841345])
     s68 = 0.5 * (q84 - q16)
     core = x[np.abs(x) < 5]
-    return dict(n=n, mean=float(np.mean(core)), median=float(q50), sigma68=float(s68),
+    return dict(n=n, mean=float(np.mean(core)), mean_err=float(np.std(core) / np.sqrt(len(core))),
+                median=float(q50), sigma68=float(s68),
                 # two correlated quantiles of a Gaussian: var(sigma68) = 0.925 sigma^2 / n
                 sigma68_err=float(0.9617 * s68 / np.sqrt(n)),
                 rms5=float(np.std(core)), rms5_err=float(np.std(core) / np.sqrt(2 * len(core))),
                 frac_gt3=float(np.mean(np.abs(x) > 3)))
+
+
+def merge(results):
+    '''Concatenate the per-role results: (param, kind) -> one set of arrays.'''
+    out = {}
+    for res in results:
+        for key, r in res.items():
+            t = out.setdefault(key, {k: [] for k in r})
+            for k, v in r.items():
+                t[k].append(v)
+    return {key: {k: np.concatenate(v) for k, v in t.items()} for key, t in out.items()}
+
+
+def print_table(name, res, nmu, a, store):
+    print('\n%s: %d gen-matched muons (same charge%s)'
+          % (name, nmu, ', pat pT = best-track pT' if a.same_pt_tol >= 0 else ''))
+    print('   %-7s %-5s %8s %9s %9s %9s %9s %8s'
+          % ('param', 'cov', 'n', 'mean', 'sigma68', '+-', 'rms(<5)', '>3sig'))
+    for (prm, kind), r in sorted(res.items(), key=lambda kv: (PARAMS.index(kv[0][0]), kv[0][1] != 'raw')):
+        w = widths(r['pull'])
+        store['%s_%s' % (prm, kind)] = w
+        if w['n'] < 20:
+            print('   %-7s %-5s %8d   (too few)' % (prm, kind, w['n']))
+            continue
+        print('   %-7s %-5s %8d %9.3f %9.3f %9.3f %9.3f %7.2f%%'
+              % (prm, kind, w['n'], w['mean'], w['sigma68'], w['sigma68_err'], w['rms5'],
+                 100 * w['frac_gt3']))
+        for sgn, cname in ((1, 'mu+'), (-1, 'mu-')):
+            ws = widths(r['pull'][r['q'] == sgn])
+            store['%s_%s_%s' % (prm, kind, cname)] = ws
+            if ws['n'] < 20:
+                print('   %7s %-5s %8d   (too few)' % (cname, '', ws['n']))
+                continue
+            print('   %7s %-5s %8d %9.3f %9.3f %9.3f %9.3f %7.2f%%'
+                  % (cname, '', ws['n'], ws['mean'], ws['sigma68'], ws['sigma68_err'], ws['rms5'],
+                     100 * ws['frac_gt3']))
+
+
+def binned(r, var, edges, what, sub=None):
+    '''(x, y, err) of the core width (what='sigma68') or the mean (what='mean')
+    in bins of var, for the pulls selected by sub.'''
+    m0 = np.ones(len(r['pull']), bool) if sub is None else sub
+    xs, ys, es = [], [], []
+    for lo, hi in zip(edges[:-1], edges[1:]):
+        m = m0 & (r[var] >= lo) & (r[var] < hi)
+        w = widths(r['pull'][m])
+        if w['n'] >= 30:
+            xs.append(0.5 * (lo + min(hi, 30.)))
+            ys.append(w[what]); es.append(w[what + '_err'])
+    return xs, ys, es
 
 
 def main():
@@ -221,23 +277,16 @@ def main():
     allres, summary = {}, dict(files=files, n_candidates=n_ev, selection=a.selection,
                                phi_transport=not a.no_phi_transport,
                                same_pt_tol=a.same_pt_tol, muons={})
+    nused = {}
     for mu in a.muons:
-        res, nmu = muon_pulls(cols, mu, a, sel)
+        res, nused[mu] = muon_pulls(cols, mu, a, sel)
         allres[mu] = res
-        summary['muons'][mu] = dict(n_used=nmu)
-        print('\n%s: %d gen-matched muons (same charge%s)'
-              % (mu, nmu, ', pat pT = best-track pT' if a.same_pt_tol >= 0 else ''))
-        print('   %-7s %-5s %8s %9s %9s %9s %9s %8s'
-              % ('param', 'cov', 'n', 'mean', 'sigma68', '+-', 'rms(<5)', '>3sig'))
-        for (prm, kind), r in sorted(res.items(), key=lambda kv: (PARAMS.index(kv[0][0]), kv[0][1] != 'raw')):
-            w = widths(r['pull'])
-            summary['muons'][mu]['%s_%s' % (prm, kind)] = w
-            if w['n'] < 20:
-                print('   %-7s %-5s %8d   (too few)' % (prm, kind, w['n']))
-                continue
-            print('   %-7s %-5s %8d %9.3f %9.3f %9.3f %9.3f %7.2f%%'
-                  % (prm, kind, w['n'], w['mean'], w['sigma68'], w['sigma68_err'], w['rms5'],
-                     100 * w['frac_gt3']))
+        summary['muons'][mu] = dict(n_used=nused[mu])
+        print_table(mu, res, nused[mu], a, summary['muons'][mu])
+    both = merge([allres[mu] for mu in a.muons])
+    name = ' + '.join(a.muons)
+    summary['muons'][name] = dict(n_used=sum(nused.values()))
+    print_table(name, both, sum(nused.values()), a, summary['muons'][name])
     print('\nunit Gaussian: mean 0, sigma68 1, rms(<5) 1, >3sig 0.27%')
 
     # ------------------------------------------------------------------ plots
@@ -249,50 +298,78 @@ def main():
     kinds = ['raw', 'corr'] if has_corr else ['raw']
     col = {'raw': '#2a5a9a', 'corr': '#b5651d'}
     lab = {'raw': 'raw covariance', 'corr': 'covflow-corrected'}
+    chg = (('mu+', 1, 'o', '-'), ('mu-', -1, 's', '--'))
     hb = np.linspace(-6, 6, 81)
     hc = 0.5 * (hb[1:] + hb[:-1])
+    gauss = lambda n: n * (hb[1] - hb[0]) * np.exp(-0.5 * hc ** 2) / np.sqrt(2 * np.pi)
+    who = ' + '.join(a.muons)
+
+    def dist(A, prm, sub=None, title=''):
+        n = 0
+        for k in kinds:
+            r = both.get((prm, k))
+            if r is None:
+                continue
+            x = r['pull'] if sub is None else r['pull'][sub(r)]
+            if len(x) < 20:
+                continue
+            w = widths(x)
+            A.hist(np.clip(x, -6, 6), hb, histtype='step', lw=1.6, color=col[k],
+                   label='%s: mean %+.3f, σ68 %.3f, rms %.3f'
+                         % (lab[k], w['mean'], w['sigma68'], w['rms5']))
+            n = len(x)
+        if n:
+            A.plot(hc, gauss(n), 'k--', lw=1, label='N(0, 1)')
+        A.set_yscale('log'); A.set_ylim(bottom=0.5)
+        A.set_xlabel('pull of %s' % LABEL[prm]); A.legend(fontsize=7.5, frameon=False, loc='lower center')
+        A.set_title(title)
+
+    def finish(A, xl, yl, title, ref):
+        A.axhline(ref, color='0.5', lw=1, ls=':')
+        A.set_xlabel(xl); A.set_ylabel(yl); A.set_title(title)
+        A.legend(fontsize=7.5, frameon=False)
+
     with PdfPages(a.out + '.pdf') as pdf:
-        for mu in a.muons:
-            fig, ax = plt.subplots(3, 3, figsize=(15, 12.5))
-            for i, prm in enumerate(PARAMS):
-                # distribution
-                A = ax[i, 0]
-                n = 0
+        # ---- page 1: all muons, both roles merged
+        fig, ax = plt.subplots(3, 4, figsize=(20, 12.5))
+        fig.suptitle('%s merged, all charges' % who, fontsize=14)
+        for i, prm in enumerate(PARAMS):
+            dist(ax[i, 0], prm, title='%s: pull distribution' % LABEL[prm])
+            for j, (var, edges, xl, what, yl, ref) in enumerate((
+                    ('pt', PT_EDGES, 'p$_T$ [GeV]', 'sigma68', 'σ68 of the pull', 1.),
+                    ('aeta', ETA_EDGES, '|η|', 'sigma68', 'σ68 of the pull', 1.),
+                    ('pt', PT_EDGES, 'p$_T$ [GeV]', 'mean', 'mean pull', 0.))):
+                A = ax[i, 1 + j]
                 for k in kinds:
-                    r = allres[mu].get((prm, k))
-                    if r is None or len(r['pull']) < 20:
+                    r = both.get((prm, k))
+                    if r is not None:
+                        A.errorbar(*binned(r, var, edges, what)[:2], yerr=binned(r, var, edges, what)[2],
+                                   fmt='o-', color=col[k], label=lab[k], ms=4)
+                finish(A, xl, yl, '%s: %s' % (LABEL[prm], 'core width' if what == 'sigma68' else 'mean'), ref)
+        fig.tight_layout(rect=(0, 0, 1, 0.97)); pdf.savefig(fig); plt.close(fig)
+
+        # ---- page 2: mu+ and mu- apart
+        fig, ax = plt.subplots(3, 4, figsize=(20, 12.5))
+        fig.suptitle('%s merged, μ⁺ and μ⁻ apart' % who, fontsize=14)
+        for i, prm in enumerate(PARAMS):
+            for j, (cname, sgn, _, _) in enumerate(chg):
+                dist(ax[i, j], prm, sub=lambda r, s_=sgn: r['q'] == s_,
+                     title='%s, %s' % (LABEL[prm], 'μ⁺' if sgn > 0 else 'μ⁻'))
+            for j, (what, yl, ref) in enumerate((('sigma68', 'σ68 of the pull', 1.),
+                                                 ('mean', 'mean pull', 0.))):
+                A = ax[i, 2 + j]
+                for k in kinds:
+                    r = both.get((prm, k))
+                    if r is None:
                         continue
-                    w = widths(r['pull'])
-                    A.hist(np.clip(r['pull'], -6, 6), hb, histtype='step', lw=1.6, color=col[k],
-                           label='%s: σ68 %.3f, rms %.3f' % (lab[k], w['sigma68'], w['rms5']))
-                    n = len(r['pull'])
-                if n:
-                    A.plot(hc, n * (hb[1] - hb[0]) * np.exp(-0.5 * hc ** 2) / np.sqrt(2 * np.pi),
-                           'k--', lw=1, label='N(0, 1)')
-                A.set_yscale('log'); A.set_ylim(bottom=0.5)
-                A.set_xlabel('pull of %s' % LABEL[prm]); A.legend(fontsize=8, frameon=False)
-                A.set_title('%s, %s' % (mu, LABEL[prm]))
-                # width vs pT and |eta|
-                for j, (var, edges, xl) in enumerate((('pt', PT_EDGES, 'p$_T$ [GeV]'),
-                                                      ('aeta', ETA_EDGES, '|η|'))):
-                    A = ax[i, 1 + j]
-                    for k in kinds:
-                        r = allres[mu].get((prm, k))
-                        if r is None:
-                            continue
-                        xs, ys, es = [], [], []
-                        for lo, hi in zip(edges[:-1], edges[1:]):
-                            m = (r[var] >= lo) & (r[var] < hi)
-                            w = widths(r['pull'][m])
-                            if w['n'] >= 30:
-                                xs.append(0.5 * (lo + min(hi, 30.)))
-                                ys.append(w['sigma68']); es.append(w['sigma68_err'])
-                        A.errorbar(xs, ys, yerr=es, fmt='o-', color=col[k], label=lab[k], ms=4)
-                    A.axhline(1, color='0.5', lw=1, ls=':')
-                    A.set_xlabel(xl); A.set_ylabel('σ68 of the pull')
-                    A.set_title('%s, %s: core width' % (mu, LABEL[prm]))
-                    A.legend(fontsize=8, frameon=False)
-            fig.tight_layout(); pdf.savefig(fig); plt.close(fig)
+                    for cname, sgn, mk, ls in chg:
+                        x, y, e = binned(r, 'pt', PT_EDGES, what, sub=r['q'] == sgn)
+                        A.errorbar(x, y, yerr=e, fmt=mk, ls=ls, color=col[k], ms=4,
+                                   mfc=col[k] if sgn > 0 else 'none',
+                                   label='%s, %s' % (lab[k], 'μ⁺' if sgn > 0 else 'μ⁻'))
+                finish(A, 'p$_T$ [GeV]', yl, '%s: %s vs p$_T$, by charge'
+                       % (LABEL[prm], 'core width' if what == 'sigma68' else 'mean'), ref)
+        fig.tight_layout(rect=(0, 0, 1, 0.97)); pdf.savefig(fig); plt.close(fig)
     with open(a.out + '.json', 'w') as f:
         json.dump(summary, f, indent=1)
     print('[out] %s.pdf, %s.json' % (a.out, a.out))
