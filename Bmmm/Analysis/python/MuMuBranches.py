@@ -88,6 +88,13 @@ cand_branches = {
 # the vertex POSITION moves too, and with it Lxy, the pointing angles and mcorr.
 # Without covflow every *_raw branch equals its nominal one (no second fit).
 cand_branches.update({
+    # the emulation (--emulate): the candidate's weight = product of its two
+    # muons' weights (1 without kill maps, NaN without emulation), and the pair
+    # before the emulation
+    'emu_weight'    : lambda cand : (cand.mu1.emu['weight'] * cand.mu2.emu['weight']
+                                     if hasattr(cand.mu1, 'emu') else np.nan),
+    'mass_raw'      : lambda cand : cand.p4_raw().mass()        ,
+    'pt_raw'        : lambda cand : cand.p4_raw().pt()          ,
     'vx_raw'        : lambda cand : cand.vtx_raw.position().x() ,
     'vy_raw'        : lambda cand : cand.vtx_raw.position().y() ,
     'vz_raw'        : lambda cand : cand.vtx_raw.position().z() ,
@@ -141,6 +148,40 @@ muon_branches.update(_track_cov)
 # NaN / 0 without covflow. mu<i>_cov_* above stay RAW: they are the training
 # input, and the pair says what the correction did to each track.
 muon_branches.update(_track_cov_corr)
+
+# ----- MC emulation (--emulate, CovflowEmulation): what was done to each muon --
+# NaN without the emulation. With it, the nominal branches describe the
+# EMULATED muon (smeared momentum and parameters, hit content after the kill,
+# corrected covariance in cov_corr_*), and these say how it got there:
+#   emu_killed[_L1/_D1/_other]  a pixel hit was removed (route A applied)
+#   emu_weight                  weight from the cells where data is more efficient
+#   emu_d1_<par>, emu_d2_<par>  the two smearings, in the track parameters
+#   emu_d1_nclip, emu_d2_nclip  directions clipped (data more precise than MC
+#                               there: MC uncertainty kept); emu_d2_lam_min the
+#                               most negative relative eigenvalue
+#   *_raw                       the muon before the emulation
+_EMU_PARAMS = ('qoverp', 'lambda', 'phi', 'dxy', 'dsz')
+def _emu(key, i=None):
+    if i is None:
+        return lambda imu : float(imu.emu[key]) if hasattr(imu, 'emu') else np.nan
+    return lambda imu : float(imu.emu[key][i]) if hasattr(imu, 'emu') else np.nan
+for _k in ('ok', 'role', 'range', 'killed', 'killed_L1', 'killed_D1', 'killed_other', 'weight',
+           'd1_nclip', 'd2_nclip', 'd2_lam_min'):
+    muon_branches['emu_%s' % _k] = _emu(_k)
+for _i, _p in enumerate(_EMU_PARAMS):
+    muon_branches['emu_d1_%s' % _p] = _emu('d1', _i)
+    muon_branches['emu_d2_%s' % _p] = _emu('d2', _i)
+def _raw_hc(key):
+    return lambda imu : getattr(imu, '_hit_content_raw', {}).get(key, np.nan)
+for _k in ('n_pix_hit', 'n_pix_b_hit', 'n_pix_e_hit', 'n_pix_layer', 'n_trk_layer',
+           'pix_first_b_layer', 'pix_first_e_disk', 'pix_first_layer', 'pix_valid_mask',
+           'pix_hit_count'):
+    muon_branches['%s_raw' % _k] = _raw_hc(_k)
+muon_branches['pt_raw' ] = lambda imu : imu._p4_raw.pt()  if hasattr(imu, '_p4_raw') else np.nan
+muon_branches['eta_raw'] = lambda imu : imu._p4_raw.eta() if hasattr(imu, '_p4_raw') else np.nan
+muon_branches['phi_raw'] = lambda imu : imu._p4_raw.phi() if hasattr(imu, '_p4_raw') else np.nan
+muon_branches['dxy_raw'] = lambda imu : imu.bestTrack().dxy(imu.pv.position())
+muon_branches['dz_raw' ] = lambda imu : imu.bestTrack().dz(imu.pv.position())
 
 # The per-candidate refit PV: position, provenance and the track count that fed
 # it. pv_refit_valid==0 means the refit was not available and every pv_bs_*

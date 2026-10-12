@@ -41,6 +41,12 @@ class Candidate(PrimaryVertexRefitMixin):
     # Installed once per job with set_cov_correctors (--covflow-mu1/-mu2).
     cov_correctors = {}
 
+    # CovflowEmulation.MCTrackEmulator when the full chain runs (--emulate):
+    # the muons then arrive as clones carrying their emulated track
+    # (_emu_track: hit loss, delta_1, delta_2, corrected covariance), which
+    # fit_track hands to the fit whatever the pair role.
+    emulator = None
+
     @classmethod
     def set_cov_correctors(cls, specs):
         '''specs: {'mu1': run directory, 'mu2': run directory}; empty strings or
@@ -78,6 +84,9 @@ class Candidate(PrimaryVertexRefitMixin):
         reference point untouched). A track covflow cannot correct (non positive
         definite, morph failure) is used raw and flagged <role>_covflow_ok = 0.
         Memoized per object and role.'''
+        emu = getattr(obj, '_emu_track', None)
+        if emu is not None:
+            return emu
         corrector = self.cov_correctors.get(role)
         if corrector is None:
             return obj.bestTrack()
@@ -96,6 +105,9 @@ class Candidate(PrimaryVertexRefitMixin):
         the shared getters read it (CommonBranches.cov_track -> _cov_fit_track,
         track_cov_corr_branches -> cov_corr / covflow_ok / covflow_zmax), so
         mu<i>_dxy_e and friends come from the covariance the fit used.'''
+        if hasattr(imu, '_emu_track'):
+            imu._cov_fit_track = imu._emu_track     # cov_corr etc. set by the emulator
+            return
         if not self.cov_correctors:
             return
         imu._cov_fit_track = self.fit_track(imu, role)
@@ -197,7 +209,7 @@ class Candidate(PrimaryVertexRefitMixin):
         their _raw values, by an amount set by how much the correction changes
         the RELATIVE weight of the two muons. Without covflow no second fit is
         run and the _raw attributes are the nominal ones.'''
-        if not self.cov_correctors:
+        if not (self.cov_correctors or self.emulator):
             self.vtx_raw = self.vtx
             for name in ('lxy', 'lxyz', 'lxy_bs', 'cos2d', 'cos3d', 'cos2d_bs',
                          'pv_to_sv', 'Bdirection', 'Bdir_eta', 'Bdir_phi',
@@ -206,7 +218,7 @@ class Candidate(PrimaryVertexRefitMixin):
             return
         tofit.clear()
         for imu in self.muons:
-            tofit.push_back(imu.bestTrack())
+            tofit.push_back(imu.bestTrack())        # the clone's bestTrack() is the raw one
         vtx = vtxfit.Fit(tofit)
         vtx.chi2 = vtx.normalisedChiSquared()
         vtx.prob = (1. - stats.chi2.cdf(vtx.chi2, 1)) if vtx.isValid() else np.nan
@@ -285,6 +297,9 @@ class Candidate(PrimaryVertexRefitMixin):
 
     def p4(self):
         return self.mu1.p4() + self.mu2.p4()
+    def p4_raw(self):
+        '''The pair four-momentum before the emulation (= p4 without it).'''
+        return getattr(self.mu1, '_p4_raw', self.mu1.p4()) + getattr(self.mu2, '_p4_raw', self.mu2.p4())
     def pt(self):
         return self.p4().pt()
     def eta(self):

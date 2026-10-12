@@ -26,6 +26,18 @@ output layout; its create_config is reused, not copied). What is added:
      from pylibs/, manifest, role, strict state_dict load. A failure here would
      have failed every job.
 
+  4. --emulate: the full MC emulation instead of covflow alone (inspector
+     --emulate, Bmmm CovflowEmulation.MCTrackEmulator). Per event: one run
+     range drawn with the luminosity shares, pixel hits killed from the kill
+     maps (P(kill) = 1 - eff_data/eff_MC; weight where data beats MC), route A
+     for the killed muons (C -> C', delta_1 ~ N(0, clip(C' - C))), covflow at
+     each muon's final context (C*), delta_2 ~ N(0, clip(C* - B)) on every muon
+     with B = C or C'. The fit uses the smeared parameters and B + clip(C* - B);
+     the *_raw branches keep the untouched MC. The kill maps of the epoch are
+     shipped next to the flows (covflow_<epoch>/killmaps_<epoch>.npz/.json) and
+     preflighted with the job's own loader: MC helix origin, epoch, surfaces.
+     --no-killmaps emulates covflow + delta_2 only.
+
 Before running:
     cmsenv
     cd $CMSSW_BASE/src/Bmmm/Analysis/test/mm/crab
@@ -34,6 +46,7 @@ Before running:
     voms-proxy-init -rfc -voms cms -valid 192:00
     python3 crab_dimuon_mc_run3_covflow.py --dry-run     # preflight + configs only
     python3 crab_dimuon_mc_run3_covflow.py               # submit
+    python3 crab_dimuon_mc_run3_covflow.py --emulate     # full emulation, own tag
 
 Submit one costing task first (--max-files 5 --only Summer24 --epochs 2026):
 covflow adds two small torch calls per event and torch to the job memory.
@@ -65,10 +78,30 @@ ap.add_argument('--samples', nargs='+', default=['HbToJPsiMuMu', 'BcToJPsiMuMu']
                 help='primary-dataset prefixes to run on (default: Hb and Bc, the '
                      'latter being covflow\'s independent validation sample)')
 ap.add_argument('--max-files', type=int, default=None, help='costing run: input files per task')
-ap.add_argument('--tag', default='covflow_11oct2026',
-                help='appended to the output directory and work area (default: %(default)s)')
+ap.add_argument('--tag', default=None,
+                help='appended to the output directory and work area (default: covflow_11oct2026, '
+                     'or covflowemu_12oct2026 with --emulate)')
+ap.add_argument('--emulate', action='store_true',
+                help='full MC emulation: hit kill, route A + delta_1, covflow, delta_2 '
+                     '(see 4. above)')
+ap.add_argument('--killmaps', default='/work/manzoni/correct_track_covariance/covflow/'
+                                      'hitemu_allprobes/{epoch}/killmaps/killmaps_{epoch}',
+                help='with --emulate: kill-map stem, {epoch} substituted '
+                     '(.npz + .json; default: %(default)s)')
+ap.add_argument('--no-killmaps', action='store_true',
+                help='with --emulate: no hit kill (covflow + delta_2 only)')
+ap.add_argument('--emu-seed', type=int, default=12345,
+                help='with --emulate: base seed, each event uses (seed, run, lumi, event) '
+                     '(default: %(default)s)')
+ap.add_argument('--no-delta1', action='store_true', help='with --emulate: no delta_1 (checks)')
+ap.add_argument('--no-delta2', action='store_true', help='with --emulate: no delta_2 (checks)')
 ap.add_argument('--dry-run', action='store_true', help='preflight and print, submit nothing')
 args = ap.parse_args()
+if not args.emulate and (args.no_killmaps or args.no_delta1 or args.no_delta2):
+    ap.error('--no-killmaps / --no-delta1 / --no-delta2 need --emulate')
+if args.tag is None:
+    args.tag = 'covflowemu_12oct2026' if args.emulate else 'covflow_11oct2026'
+use_km = args.emulate and not args.no_killmaps
 
 CAMPAIGN_EPOCHS = {
     'Summer22'    : ['2022_preEE'],
@@ -110,7 +143,8 @@ if not tasks:
 epochs = sorted({ep for _, _, ep in tasks})
 
 # ----------------------------------------------------------------------------
-# stage the flows: covflow_stage/covflow_<epoch>/<mu>/{4 files}, shipped whole
+# stage the flows: covflow_stage/covflow_<epoch>/<mu>/{4 files}, shipped whole,
+# plus covflow_<epoch>/killmaps_<epoch>.{npz,json} with --emulate
 # ----------------------------------------------------------------------------
 pylibs = os.path.join(HERE, 'pylibs')
 for need in ('covflow', 'zuko'):
@@ -120,6 +154,10 @@ for need in ('covflow', 'zuko'):
 staged = {}
 for ep in epochs:
     dst = os.path.join(STAGE, 'covflow_%s' % ep)
+    # restaged from scratch: no kill maps left over from an earlier --emulate
+    # submission travel with a covflow-only one
+    if os.path.isdir(dst):
+        shutil.rmtree(dst)
     for mu in ('mu1', 'mu2'):
         src = os.path.join(args.runs, ep, mu, args.task)
         miss = [f for f in FLOW_FILES if not os.path.isfile(os.path.join(src, f))]
@@ -128,6 +166,13 @@ for ep in epochs:
         os.makedirs(os.path.join(dst, mu), exist_ok=True)
         for f in FLOW_FILES:
             shutil.copy2(os.path.join(src, f), os.path.join(dst, mu, f))
+    if use_km:
+        stem = args.killmaps.format(epoch=ep)
+        stem = stem[:-4] if stem.endswith('.npz') else stem
+        for ext in ('.npz', '.json'):
+            if not os.path.isfile(stem + ext):
+                die('kill maps %s%s not found (--killmaps, or --no-killmaps)' % (stem, ext))
+            shutil.copy2(stem + ext, os.path.join(dst, 'killmaps_%s%s' % (ep, ext)))
     staged[ep] = dst
 
 # ----------------------------------------------------------------------------
@@ -140,19 +185,32 @@ check = r'''
 import sys, json
 import torch, zuko
 from Bmmm.Analysis.utils import make_cov_corrector
-out = {'torch': torch.__version__, 'zuko': zuko.__version__}
-for d in sys.argv[1:]:
+use_km = sys.argv[1] == '1'
+out = {'torch': torch.__version__, 'zuko': zuko.__version__, 'killmaps': {}}
+for d in sys.argv[2:]:
+    corr = {}
     for mu in ('mu1', 'mu2'):
-        c = make_cov_corrector('%s/%s' % (d, mu), attr_suffix='_' + mu, role=mu)
+        c = corr[mu] = make_cov_corrector('%s/%s' % (d, mu), attr_suffix='_' + mu, role=mu)
         out['%s/%s' % (d, mu)] = [c.schema, c.role, c.context_names, len(c.idx)]
+    if use_km:
+        # the job's own constructor: hitemu from pylibs/covflow, KillMaps.load,
+        # the MC helix-origin check
+        from Bmmm.Analysis.CovflowEmulation import MCTrackEmulator
+        ep = d.rstrip('/').split('covflow_')[-1]
+        e = MCTrackEmulator(corr, killmaps='%s/killmaps_%s' % (d, ep), verbose=False)
+        m = e.km.meta
+        out['killmaps'][d] = [m.get('epoch'), e.H.meta_origin(m, 'mc'), list(e.km.surfaces),
+                              len(e.km.ranges), bool(m.get('hit_masks')), e.H.__file__]
 print(json.dumps(out))
 '''
-proc = subprocess.run([sys.executable, '-c', check] + [staged[ep] for ep in epochs],
+proc = subprocess.run([sys.executable, '-c', check, '1' if use_km else '0']
+                      + [staged[ep] for ep in epochs],
                       env=env, capture_output=True, text=True)
 if proc.returncode != 0:
-    die('the flows do not load under worker-node conditions:\n%s\n%s\n'
+    die('the flows%s do not load under worker-node conditions:\n%s\n%s\n'
         'If torch is the missing module, this CMSSW python has no torch and the jobs '
-        'cannot run covflow on the grid.' % (proc.stdout[-2000:], proc.stderr[-3000:]))
+        'cannot run covflow on the grid.' % (' / kill maps' if use_km else '',
+                                             proc.stdout[-2000:], proc.stderr[-3000:]))
 report = json.loads(proc.stdout.strip().splitlines()[-1])
 zuko_shipped = report.pop('zuko')
 print('[PREFLIGHT] torch %s, zuko %s (worker-node conditions)' % (report.pop('torch'), zuko_shipped))
@@ -163,10 +221,27 @@ for ep in epochs:
             print('[PREFLIGHT] note: %s/%s was trained with zuko %s, the jobs run %s (the '
                   'flows loaded strictly above; ZUKO_VERSION=%s ./make_pylibs.sh ... to match)'
                   % (ep, mu, trained, zuko_shipped, trained))
+kmrep = report.pop('killmaps')
 for k, v in sorted(report.items()):
     print('[PREFLIGHT] %-60s %s, %s, context %s, %d features' % (os.path.relpath(k, HERE), *v))
+for ep in epochs:
+    if not use_km:
+        break
+    km_ep, origin, surfaces, nranges, masks, hpath = kmrep[staged[ep]]
+    if km_ep != ep:
+        die('covflow_%s carries kill maps built for epoch %r (%s)'
+            % (ep, km_ep, args.killmaps.format(epoch=ep)))
+    print('[PREFLIGHT] killmaps_%-14s epoch %s, MC origin %s, %d range(s), surfaces %s, %s'
+          % (ep, km_ep, origin, nranges, ' '.join(surfaces),
+             'per-layer masks' if masks else 'L1/D1 only (no per-layer masks)'))
+if use_km:
+    print('[PREFLIGHT] hitemu loaded from %s' % os.path.relpath(hpath, HERE))
+if args.emulate:
+    print('[PREFLIGHT] emulation: %s, delta_1 %s, delta_2 %s, seed %d'
+          % ('kill maps' if use_km else 'NO kill maps (covflow + delta_2)',
+             'off' if args.no_delta1 else 'on', 'off' if args.no_delta2 else 'on', args.emu_seed))
 size = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(STAGE) for f in fs)
-print('[PREFLIGHT] staged flows: %.1f MB' % (size / 1e6))
+print('[PREFLIGHT] staged flows%s: %.1f MB' % (' and kill maps' if use_km else '', size / 1e6))
 
 # ----------------------------------------------------------------------------
 # configs
@@ -174,11 +249,21 @@ print('[PREFLIGHT] staged flows: %.1f MB' % (size / 1e6))
 cfgs = []
 for ds, camp, ep in tasks:
     cfg = base.create_config(ds)
-    cfg.General.requestName = (cfg.General.requestName + '_cf' + ep)[:100]
-    cfg.Data.outputDatasetTag = '%s_%s_cf%s' % (base.out_dir, camp, ep)
+    sfx = ('_emu' if args.emulate else '_cf') + ep
+    cfg.General.requestName = (cfg.General.requestName + sfx)[:100]
+    cfg.Data.outputDatasetTag = '%s_%s%s' % (base.out_dir, camp, sfx)
     # the directory NAME only: the CRAB server refuses '/' and '@' in scriptArgs
     # values (400 "Incorrect 'scriptargs' parameter"); crab_script.sh adds /<mu>
-    cfg.JobType.scriptArgs = list(cfg.JobType.scriptArgs) + ['COVFLOW=covflow_%s' % ep]
+    sa = ['COVFLOW=covflow_%s' % ep]
+    if args.emulate:
+        sa += ['EMULATE=1', 'EMUSEED=%d' % args.emu_seed]
+        if use_km:
+            sa += ['KILLMAPS=killmaps_%s' % ep]       # inside covflow_<ep>/
+        if args.no_delta1:
+            sa += ['NODELTA1=1']
+        if args.no_delta2:
+            sa += ['NODELTA2=1']
+    cfg.JobType.scriptArgs = list(cfg.JobType.scriptArgs) + sa
     cfg.JobType.inputFiles = list(cfg.JobType.inputFiles) + [staged[ep]]
     cfgs.append(cfg)
 
@@ -201,6 +286,8 @@ for what, keys in (('requestName', [c.General.requestName for c in cfgs]),
 for (ds, camp, ep), cfg in zip(tasks, cfgs):
     print('%-12s %-14s %s\n    -> %s  [%s]' % (camp, ep, ds, cfg.General.requestName,
                                               cfg.Data.outputDatasetTag))
+    if args.dry_run:
+        print('    scriptArgs: %s' % ' '.join(cfg.JobType.scriptArgs))
     if args.dry_run:
         continue
     p = Process(target=base.submit, args=(cfg,))

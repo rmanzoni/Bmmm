@@ -61,10 +61,11 @@ def cov_track(imu):
     self-consistent: an error bar computed from a covariance no fit ever saw is
     a number with no owner.
 
-    A branch describing a POSITION or a MOMENTUM should stay on bestTrack():
-    the two tracks carry identical parameters by construction (track_with_cov
-    copies momentum, charge and reference point), so using bestTrack() there
-    keeps <obj>_dxy an independent check that nothing moved the trajectory.
+    Positions (dxy, dz, bs_dxy) come from the same track: with the MC
+    emulation (CovflowEmulation, --emulate) the fitted track also carries the
+    smeared parameters, and the ntuple must describe the track the fit used.
+    Without emulation the two tracks have identical parameters (track_with_cov
+    copies momentum, charge and reference point), so nothing changes there.
 
     Falls back to bestTrack() when no corrector is installed, which is what
     makes this a no-op for every channel and every job that does not use one.
@@ -106,15 +107,15 @@ muon_branches = {
     'pfiso04_nh'     :  lambda imu : imu.iso04.sumNeutralHadronEt  ,
     'pfiso04_ph'     :  lambda imu : imu.iso04.sumPhotonEt         ,
     'pfiso04_pu'     :  lambda imu : imu.iso04.sumPUPt             ,
-    'dxy'            :  lambda imu : imu.bestTrack().dxy(imu.pv.position()),
+    'dxy'            :  lambda imu : cov_track(imu).dxy(imu.pv.position()),
     'dxy_e'          :  lambda imu : cov_track(imu).dxyError(imu.pv.position(), imu.pv.error()),
-    'dxy_sig'        :  lambda imu : imu.bestTrack().dxy(imu.pv.position()) / cov_track(imu).dxyError(imu.pv.position(), imu.pv.error()),
-    'dz'             :  lambda imu : imu.bestTrack().dz(imu.pv.position()),
+    'dxy_sig'        :  lambda imu : cov_track(imu).dxy(imu.pv.position()) / cov_track(imu).dxyError(imu.pv.position(), imu.pv.error()),
+    'dz'             :  lambda imu : cov_track(imu).dz(imu.pv.position()),
     'dz_e'           :  lambda imu : cov_track(imu).dzError(),
-    'dz_sig'         :  lambda imu : imu.bestTrack().dz(imu.pv.position()) / cov_track(imu).dzError(),
-    'bs_dxy'         :  lambda imu : imu.bestTrack().dxy(imu.bs.position()),
+    'dz_sig'         :  lambda imu : cov_track(imu).dz(imu.pv.position()) / cov_track(imu).dzError(),
+    'bs_dxy'         :  lambda imu : cov_track(imu).dxy(imu.bs.position()),
     'bs_dxy_e'       :  lambda imu : cov_track(imu).dxyError(imu.bs.position(), imu.bs.error()),
-    'bs_dxy_sig'     :  lambda imu : imu.bestTrack().dxy(imu.bs.position()) / cov_track(imu).dxyError(imu.bs.position(), imu.bs.error()),
+    'bs_dxy_sig'     :  lambda imu : cov_track(imu).dxy(imu.bs.position()) / cov_track(imu).dxyError(imu.bs.position(), imu.bs.error()),
     # The same three errors from the RAW covariance. Without a corrector these
     # equal the branches above exactly; with one, the pair is what lets a single
     # file say how much the correction moved the impact-parameter resolution --

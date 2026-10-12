@@ -131,6 +131,21 @@ parser.add_argument('--covflow-mu1'  , dest='covflow_mu1', default=''    , type=
                     help='covflow run directory for mu1 (overrides --covflow for mu1)')
 parser.add_argument('--covflow-mu2'  , dest='covflow_mu2', default=''    , type=str,
                     help='covflow run directory for mu2 (overrides --covflow for mu2)')
+parser.add_argument('--emulate'      , dest='emulate'    , action='store_true',
+                    help='MC: the full chain before the vertex fit (CovflowEmulation): '
+                         'hit kill from --killmaps (if given), route A (C -> C\' and '
+                         'delta_1) for the killed muons, covflow at each muon\'s context, '
+                         'delta_2 on every muon. Needs the covflow flows (--covflow). Without '
+                         'it, --covflow corrects the covariances only.')
+parser.add_argument('--killmaps'     , dest='killmaps'   , default=''    , type=str,
+                    help='with --emulate: kill-map stem (killmaps_<epoch>, .npz + .json from '
+                         'covflow build_kill_maps.py) of the SAME epoch as the flows')
+parser.add_argument('--emu-seed'     , dest='emu_seed'   , default=12345 , type=int,
+                    help='with --emulate: base seed; each event uses (seed, run, lumi, event)')
+parser.add_argument('--no-delta1'    , dest='no_delta1'  , action='store_true',
+                    help='with --emulate: no delta_1 (checks only)')
+parser.add_argument('--no-delta2'    , dest='no_delta2'  , action='store_true',
+                    help='with --emulate: no delta_2 (checks only; covariances still corrected)')
 args = parser.parse_args()
 
 inputFiles  = args.inputFiles
@@ -169,6 +184,21 @@ if any(covflow_specs.values()) and not mc:
     raise RuntimeError('--covflow without --mc: the covflow morph maps MC track '
                        'covariances onto data and does not exist for data.')
 cov_correctors = Candidate.set_cov_correctors(covflow_specs)
+emulator = None
+if args.emulate or args.killmaps or args.no_delta1 or args.no_delta2:
+    if not args.emulate:
+        raise RuntimeError('--killmaps / --no-delta1 / --no-delta2 need --emulate')
+    if not cov_correctors:
+        raise RuntimeError('--emulate needs the covflow flows (--covflow, or --covflow-mu1 '
+                           'and --covflow-mu2)')
+    from Bmmm.Analysis.CovflowEmulation import MCTrackEmulator
+    emulator = MCTrackEmulator(cov_correctors, killmaps=args.killmaps or None,
+                               seed=args.emu_seed, delta1=not args.no_delta1,
+                               delta2=not args.no_delta2)
+    Candidate.emulator = emulator
+    print('#### emulation ON: %s, delta_1 %s, delta_2 %s, seed %d'
+          % ('kill maps ' + args.killmaps if args.killmaps else 'no kill maps (covflow + delta_2)',
+             'off' if args.no_delta1 else 'on', 'off' if args.no_delta2 else 'on', args.emu_seed))
 for _role, _corr in sorted(cov_correctors.items()):
     print('#### covflow %s : %s' % (_role, _corr.directory))
     print('####   manifest   %s, trained on %s' % (_corr.schema, _corr.role))
@@ -539,7 +569,12 @@ for i, event in enumerate(events):
 
     # covflow: correct the event's muons in one torch call per role BEFORE any
     # candidate (and its vertex fit) is built. No-op without --covflow.
-    Candidate.prime_cov_correctors(muons, event)
+    # With --emulate the muons are replaced by their emulated clones instead
+    # (kill, route A, covflow, delta_1, delta_2), sorted by the smeared pT.
+    if emulator is not None:
+        muons = emulator.process(muons, event)
+    else:
+        Candidate.prime_cov_correctors(muons, event)
 
     # build analysis candidates
     cands = []
@@ -792,6 +827,8 @@ if pu_session is not None:
 
 for _role, _corr in sorted(cov_correctors.items()):
     print(_corr.summary())
+if emulator is not None:
+    print(emulator.summary())
 
 # Grid bookkeeping, written whether or not any candidate survived: an empty
 # ntuple is still a job that legitimately read its share of the dataset.

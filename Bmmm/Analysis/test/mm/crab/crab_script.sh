@@ -97,6 +97,11 @@ LUMIMASK=""
 PU=""
 PUCARD=""
 COVFLOW=""
+EMULATE=""
+KILLMAPS=""
+EMUSEED=""
+NODELTA1=""
+NODELTA2=""
 for arg in "$@"; do
     case "${arg}" in
         OUTNAME=*)     OUTNAME="${arg#*=}" ;;
@@ -106,6 +111,11 @@ for arg in "$@"; do
         PU=*)          PU="${arg#*=}" ;;
         PUCARD=*)      PUCARD="${arg#*=}" ;;
         COVFLOW=*)     COVFLOW="${arg#*=}" ;;
+        EMULATE=1)     EMULATE=1 ;;
+        KILLMAPS=*)    KILLMAPS="${arg#*=}" ;;
+        EMUSEED=*)     EMUSEED="${arg#*=}" ;;
+        NODELTA1=1)    NODELTA1=1 ;;
+        NODELTA2=1)    NODELTA2=1 ;;
     esac
 done
 echo ">>> output basename: ${OUTNAME}"
@@ -157,6 +167,32 @@ if [ -n "${COVFLOW}" ]; then
         || { echo ">>> FATAL: COVFLOW set but torch / zuko / covflow do not import. Aborting job $1."; exit 1; }
     EXTRA_FLAGS="${EXTRA_FLAGS} --covflow=${PWD}/${COVFLOW}/@mu@"
     echo ">>> covflow        : ${PWD}/${COVFLOW}/{mu1,mu2}"
+fi
+# full MC emulation (crab_dimuon_mc_run3_covflow.py --emulate): EMULATE=1,
+# KILLMAPS=<stem> inside ${COVFLOW}/ (absent: covflow + delta_2 only),
+# EMUSEED=<int>, NODELTA1=1 / NODELTA2=1 for checks.
+if [ -n "${EMULATE}" ]; then
+    if [ -z "${COVFLOW}" ]; then
+        echo ">>> FATAL: EMULATE=1 needs COVFLOW=<dir>. Aborting job $1."
+        exit 1
+    fi
+    EXTRA_FLAGS="${EXTRA_FLAGS} --emulate"
+    if [ -n "${KILLMAPS}" ]; then
+        for ext in npz json; do
+            if [ ! -f "${COVFLOW}/${KILLMAPS}.${ext}" ]; then
+                echo ">>> FATAL: KILLMAPS=${KILLMAPS}: ${COVFLOW}/${KILLMAPS}.${ext} not in the job directory. Aborting job $1."
+                ls -la "${COVFLOW}"
+                exit 1
+            fi
+        done
+        python3 -c "from Bmmm.Analysis.CovflowEmulation import import_hitemu; H = import_hitemu(); print('    hitemu OK:', H.__file__)" \
+            || { echo ">>> FATAL: KILLMAPS set but covflow's hitemu does not import. Aborting job $1."; exit 1; }
+        EXTRA_FLAGS="${EXTRA_FLAGS} --killmaps=${PWD}/${COVFLOW}/${KILLMAPS}"
+    fi
+    [ -n "${EMUSEED}" ]  && EXTRA_FLAGS="${EXTRA_FLAGS} --emu-seed=${EMUSEED}"
+    [ -n "${NODELTA1}" ] && EXTRA_FLAGS="${EXTRA_FLAGS} --no-delta1"
+    [ -n "${NODELTA2}" ] && EXTRA_FLAGS="${EXTRA_FLAGS} --no-delta2"
+    echo ">>> emulation      : kill maps ${KILLMAPS:-<none>}, seed ${EMUSEED:-default}${NODELTA1:+, no delta_1}${NODELTA2:+, no delta_2}"
 fi
 echo ">>> extra flags    : ${EXTRA_FLAGS:-<none>}"
 

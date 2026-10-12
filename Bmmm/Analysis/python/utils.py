@@ -436,6 +436,50 @@ def track_with_cov(trk, cov):
         ROOT.reco.TrackBase.TrackQuality(trk.qualityMask()),
     )
 
+def track_params(trk):
+    '''The 5 reco::TrackBase parameters (qoverp, lambda, phi, dxy, dsz), in the
+    order of COV_PARAM_NAMES and of the covariance. lambda = pi/2 - theta
+    ('lambda' is a python keyword, hence theta).'''
+    return np.array([trk.qoverp(), 0.5 * np.pi - trk.theta(), trk.phi(), trk.dxy(), trk.dsz()],
+                    dtype=np.float64)
+
+
+def track_with_params(trk, params, cov):
+    '''A new reco::Track with parameters `params` (qoverp, lambda, phi, dxy, dsz)
+    and covariance `cov`; chi2, ndof, charge, algo and quality from `trk`.
+
+    reco::Track is built from a reference point and a momentum, and its five
+    parameters are derived from them (TrackBase::dxy, dsz). The momentum
+    follows from (qoverp, lambda, phi); the reference point is placed so that
+    dxy and dsz come out as asked while moving as little as possible: it keeps
+    its distance s along the (new) transverse direction,
+        x = s cos(phi) - dxy sin(phi),   y = s sin(phi) + dxy cos(phi),
+        z = (dsz + s sin(lambda)) / cos(lambda),   s = x_ref cos(phi) + y_ref sin(phi).
+    With params = track_params(trk) this gives back trk's own reference point
+    and momentum exactly. Returns None if the smeared q/p changed sign: the
+    charge is not something a resolution smearing may flip.'''
+    qop, lam, phi, dxy, dsz = [float(x) for x in params]
+    q = trk.charge()
+    if qop == 0 or np.sign(qop) != np.sign(q):
+        return None
+    p = abs(1. / qop)
+    cl, sl, cp, sp = np.cos(lam), np.sin(lam), np.cos(phi), np.sin(phi)
+    ref = trk.referencePoint()
+    s = ref.x() * cp + ref.y() * sp
+    point = ROOT.reco.TrackBase.Point(s * cp - dxy * sp, s * sp + dxy * cp, (dsz + s * sl) / cl)
+    mom = ROOT.reco.TrackBase.Vector(p * cl * cp, p * cl * sp, p * sl)
+    return ROOT.reco.Track(
+        trk.chi2(),
+        trk.ndof(),
+        point,
+        mom,
+        q,
+        smatrix55_from_cov(cov),
+        trk.algo(),
+        ROOT.reco.TrackBase.TrackQuality(trk.qualityMask()),
+    )
+
+
 def scale_cov(cov, scales):
     '''Rescale the uncertainty of each track parameter WITHOUT touching any
     correlation: cov' = D cov D with D = diag(scales).
@@ -962,6 +1006,23 @@ class CovFlowCorrector(CovCorrector):
             self.n_out_of_latent_range += int(out.any(1).sum())
         zmax = np.max(np.abs(z), axis=1)
         return packed_corr, zmax
+
+    def morph_mc_batch(self, packed, ctx_from, ctx_to):
+        '''Route A, MC part: packed (N,15) at context ctx_from -> the same
+        quantile of the MC covariance distribution at ctx_to,
+            C' = f_MC^-1( f_MC(C; c); c' ),
+        the MC flow both ways (HITEMU 7.2.2; identical to covflow's
+        hitemu.CovFlow.morph_mc). Features outside the flow's subspace are
+        copied unchanged; active_features does not apply (it restricts the
+        data/MC correction, not the hit loss inside MC).'''
+        y  = self.to_feat(self.CFEAT.packed_to_matrix(packed))
+        ys = self.scaler.x(y)
+        z  = self.CFL.data_to_latent(self.flow_mc, ys[:, self.idx], self.scaler.c(ctx_from),
+                                     device=self.device, batch=self.batch)
+        ys2 = ys.copy()
+        ys2[:, self.idx] = self.CFL.latent_to_data(self.flow_mc, z, self.scaler.c(ctx_to),
+                                                   device=self.device, batch=self.batch)
+        return self.CFEAT.matrix_to_packed(self.to_mat(self.scaler.x_inv(ys2)))
 
     # ---------------------------------------------------------------------
     def prime(self, objs, event=None):
