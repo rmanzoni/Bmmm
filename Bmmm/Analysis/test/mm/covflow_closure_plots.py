@@ -55,14 +55,15 @@ trigger, both muons matched to the dimuon filter, medium ID, displaced J/psi),
 mass term replaced by the sPlot window, plus gen-matched muons in MC.
 
 INPUT FILES
-  The EPOCHS table below holds PLACEHOLDERS (<DATA_DIR>, <MC_DIR>): fill them
-  with --data-dir / --mc-dir, or edit the table once the CRAB outputs are
-  merged, or give --data / --mc explicitly for a single --epochs value.
-  MC: one file per (sample, epoch) -- Summer24 is three productions (2024, 2025,
-  2026 flows), named by the epoch.
+  The EPOCHS table below is the usual association map (covflow's
+  configs/run3_epochs.py): data eras per epoch, and one MC file per (sample,
+  epoch), <sample>_<campaign>_<epoch>.root -- Summer24 is three productions
+  (2024, 2025, 2026 flows). <DATA_DIR> and <MC_DIR> are --data-dir / --mc-dir,
+  both by default the merged ntuples of 12 Oct 2026 (NTUPLE_DIR). Or give
+  --data / --mc explicitly for a single --epochs value.
 
 Usage (covflow conda env: numpy, uproot, matplotlib, iminuit; mplhep optional)
-  python3 covflow_closure_plots.py --data-dir /pnfs/.../data --mc-dir /pnfs/.../mc
+  python3 covflow_closure_plots.py --epochs 2026 --out closure/hb_2026
   python3 covflow_closure_plots.py --epochs 2026 --data 'd/*.root' --mc 'm/*.root' --out cl_2026
   python3 covflow_closure_plots.py ... --sample bc          # the validation sample
   python3 covflow_closure_plots.py ... --max-entries 2000000 --prescale-data 0.2
@@ -87,46 +88,48 @@ import numpy as np
 JPSI = 3.0969
 
 # ---------------------------------------------------------------------------
-# PLACEHOLDERS -- the merged CRAB outputs. {sample} = hb / bc.
+# the merged ntuples; {sample} = hb / bc
 # Data eras per epoch as in covflow's configs/run3_epochs.py.
 # ---------------------------------------------------------------------------
+NTUPLE_DIR = '/pnfs/psi.ch/cms/trivcat/store/user/manzoni/rjpsi_run3/covflow_dimuon_ntuples_12oct26'
+
 EPOCHS = {
     '2022_preEE': dict(pu_year='2022', campaign='Summer22',
                        data=['<DATA_DIR>/data2022C_PromptReco_v1.root',
                              '<DATA_DIR>/data2022D_PromptReco_v1.root',
                              '<DATA_DIR>/data2022D_PromptReco_v2.root'],
-                       mc=['<MC_DIR>/{sample}_Summer22_emu2022_preEE.root']),
+                       mc=['<MC_DIR>/{sample}_Summer22_2022_preEE.root']),
     '2022_postEE': dict(pu_year='2022', campaign='Summer22EE',
                         data=['<DATA_DIR>/data2022E_PromptReco_v1.root',
                               '<DATA_DIR>/data2022F_22Sep2023_v1.root',
                               '<DATA_DIR>/data2022G_22Sep2023_v1.root'],
-                        mc=['<MC_DIR>/{sample}_Summer22EE_emu2022_postEE.root']),
+                        mc=['<MC_DIR>/{sample}_Summer22EE_2022_postEE.root']),
     '2023_preBPix': dict(pu_year='2023', campaign='Summer23',
                          data=['<DATA_DIR>/data2023C_22Sep2023_v1_v2.root',
                                '<DATA_DIR>/data2023C_22Sep2023_v2_v1.root',
                                '<DATA_DIR>/data2023C_22Sep2023_v3_v1.root',
                                '<DATA_DIR>/data2023C_22Sep2023_v4_v1.root'],
-                         mc=['<MC_DIR>/{sample}_Summer23_emu2023_preBPix.root']),
+                         mc=['<MC_DIR>/{sample}_Summer23_2023_preBPix.root']),
     '2023_postBPix': dict(pu_year='2023', campaign='Summer23BPix',
                           data=['<DATA_DIR>/data2023D_22Sep2023_v1_v1.root',
                                 '<DATA_DIR>/data2023D_22Sep2023_v2_v1.root'],
-                          mc=['<MC_DIR>/{sample}_Summer23BPix_emu2023_postBPix.root']),
+                          mc=['<MC_DIR>/{sample}_Summer23BPix_2023_postBPix.root']),
     '2024': dict(pu_year='2024', campaign='Summer24',
                  data=['<DATA_DIR>/data2024%s.root' % e for e in
                        ('C_MINIv6NANOv15_v1', 'D_MINIv6NANOv15_v1', 'E_MINIv6NANOv15_v1',
                         'F_MINIv6NANOv15_v3', 'G_MINIv6NANOv15_v1', 'H_MINIv6NANOv15_v1',
                         'I_MINIv6NANOv15_v2_v2', 'I_MINIv6NANOv15_v3')],
-                 mc=['<MC_DIR>/{sample}_Summer24_emu2024.root']),
+                 mc=['<MC_DIR>/{sample}_Summer24_2024.root']),
     '2025': dict(pu_year='2025', campaign='Summer24',
                  data=['<DATA_DIR>/data2025%s.root' % e for e in
                        ('B_PromptReco_v1', 'C_PromptReco_v1', 'C_PromptReco_v2',
                         'D_PromptReco_v1', 'E_PromptReco_v1', 'F_PromptReco_v1',
                         'F_PromptReco_v2', 'G_PromptReco_v1')],
-                 mc=['<MC_DIR>/{sample}_Summer24_emu2025.root']),
+                 mc=['<MC_DIR>/{sample}_Summer24_2025.root']),
     '2026': dict(pu_year='2026', campaign='Summer24',
                  data=['<DATA_DIR>/data2026B_PromptReco_v1.root',
                        '<DATA_DIR>/data2026D_PromptReco_v1.root'],
-                 mc=['<MC_DIR>/{sample}_Summer24_emu2026.root']),
+                 mc=['<MC_DIR>/{sample}_Summer24_2026.root']),
 }
 
 # covflow's Run 3 training selection (configs/run3_epochs.py), mass term
@@ -772,8 +775,10 @@ def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--epochs', nargs='+', default=list(EPOCHS), choices=list(EPOCHS))
     p.add_argument('--sample', default='hb', help='MC sample in the file names: hb (default) or bc')
-    p.add_argument('--data-dir', default=None, help='replaces <DATA_DIR> in the EPOCHS table')
-    p.add_argument('--mc-dir', default=None, help='replaces <MC_DIR> in the EPOCHS table')
+    p.add_argument('--data-dir', default=NTUPLE_DIR,
+                   help='replaces <DATA_DIR> in the EPOCHS table (default %(default)s)')
+    p.add_argument('--mc-dir', default=NTUPLE_DIR,
+                   help='replaces <MC_DIR> in the EPOCHS table (default %(default)s)')
     p.add_argument('--data', nargs='+', default=None,
                    help='data files / globs (one --epochs value only)')
     p.add_argument('--mc', nargs='+', default=None, help='MC files / globs (one --epochs value only)')
