@@ -653,9 +653,21 @@ def run_epoch(ep, data_files, mc_files, pu_year, a):
         sel_d_ns, sel_c_ns, sel_r_ns = sel_d, sel_c, sel_r
     ones = np.ones(dv.n)
     n_ns = float(sel_d_ns.sum())
-    pur = float(sw[sel_d_ns].sum() / max(n_ns, 1.))
-    print('  without sPlot: %s data candidates in %s, signal fraction there %.1f%% (from the '
-          'sWeights)' % (f'{int(n_ns):,}', mcut, 100 * pur))
+    # signal inside the cut from the FITTED signal shape (curve, expected signal
+    # counts per mass bin); NOT from the sum of sWeights inside the cut, which
+    # is biased (the weights are valid only summed over the whole window)
+    pur = np.nan
+    try:
+        cen = 0.5 * (me[1:] + me[:-1])
+        ns = dict(FUNCS)
+        ns['mass'] = cen
+        inside = np.asarray(eval(mcut, {'__builtins__': {}}, ns), bool) if dropped else \
+            np.ones(cen.size, bool)
+        pur = float(curve[inside].sum() / max(n_ns, 1.))
+    except Exception:
+        pass
+    print('  without sPlot: %s data candidates in %s, signal fraction there %.1f%% (fitted '
+          'signal shape)' % (f'{int(n_ns):,}', mcut, 100 * pur))
     hists['nosw'] = build_hists(ep, 'no sPlot', dv, ones, sel_d_ns,
                                 cv, w_c * n_ns / w_c[sel_c_ns].sum(), sel_c_ns,
                                 rv, w_r * n_ns / w_r[sel_r_ns].sum(), sel_r_ns, me)
