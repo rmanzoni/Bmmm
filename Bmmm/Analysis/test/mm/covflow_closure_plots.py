@@ -55,17 +55,15 @@ trigger, both muons matched to the dimuon filter, medium ID, displaced J/psi),
 mass term replaced by the sPlot window, plus gen-matched muons in MC.
 
 INPUT FILES
-  Every *.root file under --data-dir and under --mc-dir is read, searched
-  recursively (a CRAB output tree <tag>/<timestamp>/0000/*.root works as is).
-  The two may contain {epoch} (and --mc-dir {sample}), filled per epoch:
-      --data-dir /pnfs/.../data/{epoch}  --mc-dir /pnfs/.../mc/{sample}_{epoch}
-  Without {epoch}, a directory holds ONE epoch: give a single --epochs value.
-  MC: one directory per (sample, epoch) -- Summer24 is three productions (2024,
-  2025, 2026 flows).
+  The EPOCHS table below holds PLACEHOLDERS (<DATA_DIR>, <MC_DIR>): fill them
+  with --data-dir / --mc-dir, or edit the table once the CRAB outputs are
+  merged, or give --data / --mc explicitly for a single --epochs value.
+  MC: one file per (sample, epoch) -- Summer24 is three productions (2024, 2025,
+  2026 flows), named by the epoch.
 
 Usage (covflow conda env: numpy, uproot, matplotlib, iminuit; mplhep optional)
-  python3 covflow_closure_plots.py --data-dir <DATA_DIR>/{epoch} --mc-dir <MC_DIR>/{sample}_{epoch}
-  python3 covflow_closure_plots.py --epochs 2026 --data-dir <DATA_DIR> --mc-dir <MC_DIR> --out cl_2026
+  python3 covflow_closure_plots.py --data-dir /pnfs/.../data --mc-dir /pnfs/.../mc
+  python3 covflow_closure_plots.py --epochs 2026 --data 'd/*.root' --mc 'm/*.root' --out cl_2026
   python3 covflow_closure_plots.py ... --sample bc          # the validation sample
   python3 covflow_closure_plots.py ... --max-entries 2000000 --prescale-data 0.2
 
@@ -89,16 +87,46 @@ import numpy as np
 JPSI = 3.0969
 
 # ---------------------------------------------------------------------------
-# epochs: the pileup-weight year of each (MC is Summer24 for 2024-2026)
+# PLACEHOLDERS -- the merged CRAB outputs. {sample} = hb / bc.
+# Data eras per epoch as in covflow's configs/run3_epochs.py.
 # ---------------------------------------------------------------------------
 EPOCHS = {
-    '2022_preEE'   : dict(pu_year='2022'),
-    '2022_postEE'  : dict(pu_year='2022'),
-    '2023_preBPix' : dict(pu_year='2023'),
-    '2023_postBPix': dict(pu_year='2023'),
-    '2024'         : dict(pu_year='2024'),
-    '2025'         : dict(pu_year='2025'),
-    '2026'         : dict(pu_year='2026'),
+    '2022_preEE': dict(pu_year='2022', campaign='Summer22',
+                       data=['<DATA_DIR>/data2022C_PromptReco_v1.root',
+                             '<DATA_DIR>/data2022D_PromptReco_v1.root',
+                             '<DATA_DIR>/data2022D_PromptReco_v2.root'],
+                       mc=['<MC_DIR>/{sample}_Summer22_emu2022_preEE.root']),
+    '2022_postEE': dict(pu_year='2022', campaign='Summer22EE',
+                        data=['<DATA_DIR>/data2022E_PromptReco_v1.root',
+                              '<DATA_DIR>/data2022F_22Sep2023_v1.root',
+                              '<DATA_DIR>/data2022G_22Sep2023_v1.root'],
+                        mc=['<MC_DIR>/{sample}_Summer22EE_emu2022_postEE.root']),
+    '2023_preBPix': dict(pu_year='2023', campaign='Summer23',
+                         data=['<DATA_DIR>/data2023C_22Sep2023_v1_v2.root',
+                               '<DATA_DIR>/data2023C_22Sep2023_v2_v1.root',
+                               '<DATA_DIR>/data2023C_22Sep2023_v3_v1.root',
+                               '<DATA_DIR>/data2023C_22Sep2023_v4_v1.root'],
+                         mc=['<MC_DIR>/{sample}_Summer23_emu2023_preBPix.root']),
+    '2023_postBPix': dict(pu_year='2023', campaign='Summer23BPix',
+                          data=['<DATA_DIR>/data2023D_22Sep2023_v1_v1.root',
+                                '<DATA_DIR>/data2023D_22Sep2023_v2_v1.root'],
+                          mc=['<MC_DIR>/{sample}_Summer23BPix_emu2023_postBPix.root']),
+    '2024': dict(pu_year='2024', campaign='Summer24',
+                 data=['<DATA_DIR>/data2024%s.root' % e for e in
+                       ('C_MINIv6NANOv15_v1', 'D_MINIv6NANOv15_v1', 'E_MINIv6NANOv15_v1',
+                        'F_MINIv6NANOv15_v3', 'G_MINIv6NANOv15_v1', 'H_MINIv6NANOv15_v1',
+                        'I_MINIv6NANOv15_v2_v2', 'I_MINIv6NANOv15_v3')],
+                 mc=['<MC_DIR>/{sample}_Summer24_emu2024.root']),
+    '2025': dict(pu_year='2025', campaign='Summer24',
+                 data=['<DATA_DIR>/data2025%s.root' % e for e in
+                       ('B_PromptReco_v1', 'C_PromptReco_v1', 'C_PromptReco_v2',
+                        'D_PromptReco_v1', 'E_PromptReco_v1', 'F_PromptReco_v1',
+                        'F_PromptReco_v2', 'G_PromptReco_v1')],
+                 mc=['<MC_DIR>/{sample}_Summer24_emu2025.root']),
+    '2026': dict(pu_year='2026', campaign='Summer24',
+                 data=['<DATA_DIR>/data2026B_PromptReco_v1.root',
+                       '<DATA_DIR>/data2026D_PromptReco_v1.root'],
+                 mc=['<MC_DIR>/{sample}_Summer24_emu2026.root']),
 }
 
 # covflow's Run 3 training selection (configs/run3_epochs.py), mass term
@@ -321,15 +349,18 @@ class View(object):
 # ---------------------------------------------------------------------------
 # reading
 # ---------------------------------------------------------------------------
-def root_files(directory, what):
-    '''Every *.root file under `directory`, recursively, sorted.'''
-    if '<' in directory and '>' in directory:
-        die('%s directory %s is still a placeholder' % (what, directory))
-    if not os.path.isdir(directory):
-        die('%s directory %s not found' % (what, directory))
-    files = sorted(glob.glob(os.path.join(directory, '**', '*.root'), recursive=True))
-    if not files:
-        die('no .root file under %s' % directory)
+def expand(patterns):
+    files = []
+    for p in patterns:
+        if '<' in p and '>' in p:
+            die('placeholder path %s: give --data-dir / --mc-dir, or --data / --mc' % p)
+        g = sorted(glob.glob(p)) if any(ch in p for ch in '*?[') else [p]
+        if not g:
+            die('no file matches %s' % p)
+        files += g
+    for f in files:
+        if not f.startswith('root://') and not os.path.isfile(f):
+            die('%s not found' % f)
     return files
 
 
@@ -741,12 +772,11 @@ def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--epochs', nargs='+', default=list(EPOCHS), choices=list(EPOCHS))
     p.add_argument('--sample', default='hb', help='MC sample in the file names: hb (default) or bc')
-    p.add_argument('--data-dir', default='<DATA_DIR>/{epoch}',
-                   help='all *.root under it, recursively; {epoch} filled per epoch '
-                        '(default, a PLACEHOLDER: %(default)s)')
-    p.add_argument('--mc-dir', default='<MC_DIR>/{sample}_{epoch}',
-                   help='all *.root under it, recursively; {epoch} and {sample} filled '
-                        '(default, a PLACEHOLDER: %(default)s)')
+    p.add_argument('--data-dir', default=None, help='replaces <DATA_DIR> in the EPOCHS table')
+    p.add_argument('--mc-dir', default=None, help='replaces <MC_DIR> in the EPOCHS table')
+    p.add_argument('--data', nargs='+', default=None,
+                   help='data files / globs (one --epochs value only)')
+    p.add_argument('--mc', nargs='+', default=None, help='MC files / globs (one --epochs value only)')
     p.add_argument('--selection', default=SELECTION,
                    help='common selection; its mass terms are replaced by the sPlot window')
     p.add_argument('--mc-selection', default=MC_SELECTION, help='extra MC selection (gen matching)')
@@ -767,9 +797,8 @@ def parse_args():
                    help='keep this random fraction of the data (fast iterations)')
     p.add_argument('--out', default='covflow_closure')
     a = p.parse_args()
-    for opt, d in (('--data-dir', a.data_dir), ('--mc-dir', a.mc_dir)):
-        if '{epoch}' not in d and len(a.epochs) != 1:
-            p.error('%s has no {epoch}: it holds one epoch, give a single --epochs value' % opt)
+    if (a.data or a.mc) and len(a.epochs) != 1:
+        p.error('--data / --mc need exactly one --epochs value')
     return a
 
 
@@ -787,8 +816,10 @@ def main():
     per_epoch = []
     for ep in a.epochs:
         cfg = EPOCHS[ep]
-        data_files = root_files(a.data_dir.replace('{epoch}', ep), 'data')
-        mc_files = root_files(a.mc_dir.replace('{epoch}', ep).replace('{sample}', a.sample), 'MC')
+        fill = lambda s: s.replace('<DATA_DIR>', a.data_dir or '<DATA_DIR>') \
+                          .replace('<MC_DIR>', a.mc_dir or '<MC_DIR>').format(sample=a.sample)
+        data_files = expand(a.data or [fill(f) for f in cfg['data']])
+        mc_files = expand(a.mc or [fill(f) for f in cfg['mc']])
         hists, info = run_epoch(ep, data_files, mc_files, cfg['pu_year'], a)
         table = plot_pages(hists, '%s %s' % (ep, a.sample), '%s_%s.pdf' % (a.out, ep))
         print_table('%s (%s)' % (ep, a.sample), table)
