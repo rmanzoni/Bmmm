@@ -35,7 +35,7 @@ from Bmmm.Analysis.JpsiTkBParking2018Inspector import JpsiTkBParking2018Inspecto
 CHANNEL = 'jpsi_tk_bparking2018'
 cuts = dict(_jpsi_tk_cuts)
 cuts[CHANNEL] = copy(_jpsi_tk_cuts['jpsi_tk'])
-cuts[CHANNEL]['max_mass'] = 7.0   # [GeV]
+cuts[CHANNEL]['max_mass'] = 6.2   # [GeV]
 
 
 class Inspector(JpsiTkBParking2018Inspector):

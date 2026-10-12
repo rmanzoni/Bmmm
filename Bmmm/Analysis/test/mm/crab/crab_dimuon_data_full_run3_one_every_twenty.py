@@ -94,40 +94,40 @@ already_submitted = [
 # campaigns cover the same runs. Comment out entries to submit a subset;
 # submitting ONE first is how you find out what a job costs.
 productions = [
-    '/ParkingDoubleMuonLowMass1/Run2022C-PromptReco-v1/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v1/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v2/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2022E-PromptReco-v1/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2022F-22Sep2023-v1/MINIAOD'       ,
-    '/ParkingDoubleMuonLowMass1/Run2022G-22Sep2023-v1/MINIAOD'       ,
-
-    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v1-v2/MINIAOD'    ,
-    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v2-v1/MINIAOD'    ,
-    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v3-v1/MINIAOD'    ,
-    '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v4-v1/MINIAOD'    ,
-    '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v1-v1/MINIAOD'    ,
-    '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v2-v1/MINIAOD'    ,
-
-    '/ParkingDoubleMuonLowMass1/Run2024C-MINIv6NANOv15-v1/MINIAOD'   ,
-    '/ParkingDoubleMuonLowMass1/Run2024D-MINIv6NANOv15-v1/MINIAOD'   ,
-    '/ParkingDoubleMuonLowMass1/Run2024E-MINIv6NANOv15-v1/MINIAOD'   ,
-    '/ParkingDoubleMuonLowMass1/Run2024F-MINIv6NANOv15-v3/MINIAOD'   ,
-    '/ParkingDoubleMuonLowMass1/Run2024G-MINIv6NANOv15-v1/MINIAOD'   ,
-    '/ParkingDoubleMuonLowMass1/Run2024H-MINIv6NANOv15-v1/MINIAOD'   ,
-    '/ParkingDoubleMuonLowMass1/Run2024I-MINIv6NANOv15-v3/MINIAOD'   ,
-    '/ParkingDoubleMuonLowMass1/Run2024I-MINIv6NANOv15_v2-v2/MINIAOD',
-
-    '/ParkingDoubleMuonLowMass1/Run2025B-PromptReco-v1/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2025C-PromptReco-v1/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2025C-PromptReco-v2/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2025D-PromptReco-v1/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2022C-PromptReco-v1/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v1/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2022D-PromptReco-v2/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2022E-PromptReco-v1/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2022F-22Sep2023-v1/MINIAOD'       ,
+#     '/ParkingDoubleMuonLowMass1/Run2022G-22Sep2023-v1/MINIAOD'       ,
+# 
+#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v1-v2/MINIAOD'    ,
+#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v2-v1/MINIAOD'    ,
+#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v3-v1/MINIAOD'    ,
+#     '/ParkingDoubleMuonLowMass1/Run2023C-22Sep2023_v4-v1/MINIAOD'    ,
+#     '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v1-v1/MINIAOD'    ,
+#     '/ParkingDoubleMuonLowMass1/Run2023D-22Sep2023_v2-v1/MINIAOD'    ,
+# 
+#     '/ParkingDoubleMuonLowMass1/Run2024C-MINIv6NANOv15-v1/MINIAOD'   ,
+#     '/ParkingDoubleMuonLowMass1/Run2024D-MINIv6NANOv15-v1/MINIAOD'   ,
+#     '/ParkingDoubleMuonLowMass1/Run2024E-MINIv6NANOv15-v1/MINIAOD'   ,
+#     '/ParkingDoubleMuonLowMass1/Run2024F-MINIv6NANOv15-v3/MINIAOD'   ,
+#     '/ParkingDoubleMuonLowMass1/Run2024G-MINIv6NANOv15-v1/MINIAOD'   ,
+#     '/ParkingDoubleMuonLowMass1/Run2024H-MINIv6NANOv15-v1/MINIAOD'   ,
+#     '/ParkingDoubleMuonLowMass1/Run2024I-MINIv6NANOv15-v3/MINIAOD'   ,
+#     '/ParkingDoubleMuonLowMass1/Run2024I-MINIv6NANOv15_v2-v2/MINIAOD',
+# 
+#     '/ParkingDoubleMuonLowMass1/Run2025B-PromptReco-v1/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2025C-PromptReco-v1/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2025C-PromptReco-v2/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2025D-PromptReco-v1/MINIAOD'      ,
     '/ParkingDoubleMuonLowMass1/Run2025E-PromptReco-v1/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2025F-PromptReco-v1/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2025F-PromptReco-v2/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2025G-PromptReco-v1/MINIAOD'      ,
-           
-    '/ParkingDoubleMuonLowMass1/Run2026B-PromptReco-v1/MINIAOD'      ,
-    '/ParkingDoubleMuonLowMass1/Run2026D-PromptReco-v1/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2025F-PromptReco-v1/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2025F-PromptReco-v2/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2025G-PromptReco-v1/MINIAOD'      ,
+#            
+#     '/ParkingDoubleMuonLowMass1/Run2026B-PromptReco-v1/MINIAOD'      ,
+#     '/ParkingDoubleMuonLowMass1/Run2026D-PromptReco-v1/MINIAOD'      ,
 ]
 
 

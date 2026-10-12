@@ -52,8 +52,8 @@ from http.client import HTTPException
 # ----------------------------------------------------------------------------
 # user knobs
 # ----------------------------------------------------------------------------
-work_area     = 'crab_jpsi_tk_bparking2018_mc_08oct2026'
-out_dir       = 'jpsi_tk_ntuples_mc_ul2018_08oct2026'     # under /store/user/manzoni/
+work_area     = 'crab_jpsi_tk_bparking2018_mc_09oct2026'
+out_dir       = 'jpsi_tk_ntuples_mc_ul2018_09oct2026'     # under /store/user/manzoni/
 files_per_job = 1
 storage_site  = 'T3_CH_PSI'
 
@@ -66,6 +66,7 @@ already_submitted = [
 
 productions = [
     '/BuToJpsiK_BMuonFilter_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/RunIISummer20UL18MiniAODv2-BPH_106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM',
+    '/BuToJpsiPi_SoftQCDnonD_TuneCP5_13TeV-pythia8-evtgen/RunIISummer20UL18MiniAODv2-BPH_106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM',
 ]
 
 
