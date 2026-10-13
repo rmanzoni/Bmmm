@@ -40,7 +40,12 @@ RESOLUTION AND sPlot-FREE COMPARISONS (<out>_<epoch>_resolution.pdf)
        Honest errors lie on the diagonal; the ratio panel is the in-data
        equivalent of a mass pull width.
     3. per-bin-fit yields of the resolution-correlated quantities, with the
-       sWeighted data overlaid (the size of the sPlot bias).
+       sWeighted data overlaid (the size of the sPlot bias); after each, the
+       mass fits behind it, one panel per bin (linear and log pages): data
+       with its fit and fitted background, and both MC views (no background)
+       scaled to the data signal yield and drawn on top of the fitted data
+       background, histogram and own signal fit. The global fits (whole
+       sample) are shown the same way after the summary.
     4. MC truth: m - m_gen (m_gen from the two gen-matched muons, final-state
        radiation therefore removed) and the mass pull (m - m_gen)/sigma(m),
        raw vs corrected, for all events, events with no hit killed, events
@@ -788,7 +793,7 @@ def build_binfit(dv, sw, sel_d, cv, w_c, sel_c, rv, w_r, sel_r, a, ep):
             ww = w[ev]
             o['%s_yield' % k] = np.bincount(b, weights=ww, minlength=nb)
             o['%s_sx' % k] = np.bincount(b, weights=ww * x, minlength=nb)
-            if k == 'data' or name == CALIB_VAR:
+            if True:                    # per-bin mass histograms, every sample
                 mass = np.asarray(view.get('mass'), np.float64)[ev]
                 h, _, _ = np.histogram2d(b, mass, bins=(np.arange(nb + 1) - 0.5, fe), weights=ww)
                 o['%s_mass' % k] = h
@@ -885,8 +890,7 @@ def analyse_resolution(R, a, title):
         return r
 
     res = dict(title=title, model=model.describe(), glob={}, vars={})
-    n_fits = 3 + sum(len(R['vars'][n]['edges']) - 1 for n in R['vars']) + \
-        2 * (len(R['vars'][CALIB_VAR]['edges']) - 1 if CALIB_VAR in R['vars'] else 0)
+    n_fits = 3 + 3 * sum(len(R['vars'][n]['edges']) - 1 for n in R['vars'])
     prog = Progress(n_fits, '%s resolution fits' % title)
     done = [0]
 
@@ -913,7 +917,7 @@ def analyse_resolution(R, a, title):
         res['glob'][k] = dict(valid=bool(r.valid), sigma68=sigma68_model(model, r.values),
                               sigma_eff=float(model.sigma_eff(r.values)),
                               s1=float(r.values['s1']), mu=float(r.values['mu']),
-                              Ns=float(r.values['Ns']))
+                              Ns=float(r.values['Ns']), par=dict(r.values))
     # ---- per-bin fits
     for name, o in R['vars'].items():
         nb = len(o['edges']) - 1
@@ -925,6 +929,8 @@ def analyse_resolution(R, a, title):
         for k in ('raw', 'corr'):
             rv_['%s_yield' % k] = np.asarray(o['%s_yield' % k], float)
             rv_['%s_s68' % k] = np.full(nb, np.nan)
+        for k in ('data', 'raw', 'corr'):
+            rv_['%s_par' % k] = [None] * nb       # fitted parameters per bin (plots)
         for k in ('data', 'raw', 'corr'):
             with np.errstate(all='ignore'):
                 rv_['%s_mean' % k] = np.asarray(o['%s_sx' % k], float) / \
@@ -940,18 +946,21 @@ def analyse_resolution(R, a, title):
                 rv_['data_err'][b] = r.errors['Ns']
                 rv_['data_s68'][b] = sigma68_model(model, r.values)
                 rv_['data_valid'][b] = bool(r.valid)
-            if name == CALIB_VAR:
-                for k in ('raw', 'corr'):
-                    if G[k] is None:
-                        tick()
-                        continue
-                    gm = dict(G[k].values)
-                    cm = np.asarray(o['%s_mass' % k][b], float)
-                    fx = dict({s: gm[s] for s in shape}, **bkg0)
-                    r = fit(cm, start=dict(gm, Ns=float(cm.sum()), **bkg0), fixed=fx)
+                rv_['data_par'][b] = dict(r.values)
+            # MC: signal only (no background), shape as in the MC global fit,
+            # width and peak free -- the same treatment as the data bin
+            for k in ('raw', 'corr'):
+                if G[k] is None:
                     tick()
-                    if r is not None:
-                        rv_['%s_s68' % k][b] = sigma68_model(model, r.values)
+                    continue
+                gm = dict(G[k].values)
+                cm = np.asarray(o['%s_mass' % k][b], float)
+                fx = dict({s: gm[s] for s in shape}, **bkg0)
+                r = fit(cm, start=dict(gm, Ns=float(cm.sum()), **bkg0), fixed=fx)
+                tick()
+                if r is not None:
+                    rv_['%s_s68' % k][b] = sigma68_model(model, r.values)
+                    rv_['%s_par' % k][b] = dict(r.values)
         with np.errstate(all='ignore'):
             rv_['data_precise'] = rv_['data_valid'] & \
                 (rv_['data_err'] / rv_['data_yield'] < WEAK_REL_ERR)
@@ -1409,11 +1418,99 @@ def print_resolution(res):
         print('  ' + line)
 
 
+def _rebin(h, k):
+    h = np.asarray(h, float)
+    return h.reshape(-1, k).sum(1)
+
+
+def bin_fit_pages(pdf, plt, res, R, name, model):
+    """The mass fit in every bin of one variable, data and both MC views in
+    the same panel. Data: points, the fitted total (signal + background) and
+    the fitted background. MC has no background: each MC view is scaled to the
+    data signal yield of the bin and drawn ON TOP of the fitted data
+    background, histogram (thin step) and its own signal fit (line), so it
+    reads directly against the data points. One page linear, one page log."""
+    o, h = res['vars'][name], R['vars'][name]
+    fe = np.asarray(R['fit_edges'], float)
+    nfe = len(fe) - 1
+    rb = max(d for d in (5, 4, 2, 1) if nfe % d == 0)
+    de = fe[::rb]
+    dc = 0.5 * (de[1:] + de[:-1])
+    e = o['edges']
+    nb = len(e) - 1
+    ncol = 4 if nb > 1 else 1
+    nrow = int(np.ceil(nb / ncol))
+    size = (4.2 * ncol, 3.4 * nrow) if nb > 1 else (10, 6.5)
+    for logy in (False, True):
+        fig, axs = plt.subplots(nrow, ncol, figsize=size, squeeze=False)
+        for b in range(nrow * ncol):
+            ax = axs[b // ncol, b % ncol]
+            if b >= nb:
+                ax.axis('off')
+                continue
+            cnt = _rebin(h['data_mass'][b], rb)
+            ax.errorbar(1e3 * dc, cnt, yerr=np.sqrt(np.clip(cnt, 0, None)), fmt='o', ms=2,
+                        color=COLORS['data'], lw=0.8, zorder=4, label='data')
+            pd = o['data_par'][b]
+            if pd is not None:
+                tot = _rebin(model.bin_expect(fe, pd), rb)
+                bkg = _rebin(model.bin_expect(fe, dict(pd, Ns=0.)), rb)
+                ns_d = pd['Ns']
+                ax.plot(1e3 * dc, tot, color=COLORS['data'], lw=1.2, zorder=5,
+                        label=r'data fit: $\sigma_{68}$ %.1f MeV' % (1e3 * o['data_s68'][b]))
+                ax.plot(1e3 * dc, bkg, color='grey', ls='--', lw=1, zorder=3,
+                        label='data fit: background')
+            else:
+                bkg = np.zeros_like(cnt)
+                ns_d = cnt.sum()
+            for k, ls in (('raw', '--'), ('corr', '-')):
+                hm = _rebin(h['%s_mass' % k][b], rb)
+                if hm.sum() <= 0:
+                    continue
+                sc = ns_d / hm.sum()
+                ax.stairs(bkg + sc * hm, 1e3 * de, color=COLORS[k], lw=0.7, alpha=0.55, ls=ls)
+                pm = o['%s_par' % k][b]
+                if pm is not None:
+                    curve = _rebin(model.bin_expect(fe, dict(pm, Ns=ns_d, Nb=0.)), rb) + bkg
+                    ax.plot(1e3 * dc, curve, color=COLORS[k], lw=1.3, ls=ls, zorder=4,
+                            label=r'%s fit: $\sigma_{68}$ %.1f MeV'
+                            % (LABELS[k], 1e3 * o['%s_s68' % k][b]))
+            weak = '' if o['data_precise'][b] else '  (weak)'
+            ny = ('no fit' if not np.isfinite(o['data_yield'][b]) else
+                  r'%.0f $\pm$ %.0f' % (o['data_yield'][b], o['data_err'][b])
+                  if np.isfinite(o['data_err'][b]) else '%.0f' % o['data_yield'][b])
+            where = 'whole sample' if name == 'all' else '%s: %s - %s%s' % (
+                name, _fmt_edge(e[b]), _fmt_edge(e[b + 1]), weak)
+            ax.set_title('%s   N$_S$ %s' % (where, ny), fontsize=8 if nb > 1 else 11)
+            if logy:
+                pos = cnt[cnt > 0]
+                if pos.size:
+                    ax.set_yscale('log')
+                    ax.set_ylim(0.5 * max(pos.min(), 0.5), 3 * pos.max())
+            else:
+                ax.set_ylim(0, 1.25 * max(cnt.max(), 1))
+            ax.tick_params(labelsize=7)
+            ax.set_xlabel(r'$m(\mu\mu)$ [MeV]', fontsize=8)
+            ax.legend(fontsize=5.5 if nb > 1 else 9, frameon=False, loc='upper left')
+        fig.suptitle('%s: mass fit %s (%s).\nMC (no background) scaled to the '
+                     'data signal yield and drawn on top of the fitted data background;\nthin '
+                     'step = MC histogram, line = its signal fit'
+                     % (res['title'], 'of the whole sample' if name == 'all' else
+                        'in each bin of %s' % name, 'log' if logy else 'linear'), fontsize=9)
+        fig.tight_layout(rect=(0, 0, 1, 0.94 if nb > 1 else 0.88))
+        pdf.savefig(fig)
+        plt.close(fig)
+
+
 def plot_resolution(res, R, pdf_path):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
+    from covflow import splot as SP
+    md = res['model']
+    model = SP.MassModel(md['window'][0], md['window'][1], signal=md['signal'],
+                         tails=md['tails'], background=md['background'])
     with PdfPages(pdf_path) as pdf:
         # ---- 1. summary
         fig = plt.figure(figsize=(11, 8.5))
@@ -1423,6 +1520,21 @@ def plot_resolution(res, R, pdf_path):
                  fontsize=7.5, va='top')
         pdf.savefig(fig)
         plt.close(fig)
+        # ---- 1b. the global fits, same layout as the per-bin ones
+        g = res['glob']
+        if g.get('data', {}).get('par') is not None:
+            G1 = dict(title=res['title'], vars={'all': dict(
+                edges=np.array([0., 1e3]), data_par=[g['data']['par']],
+                data_s68=np.array([g['data']['sigma68']]),
+                data_yield=np.array([g['data']['Ns']]), data_err=np.array([np.nan]),
+                data_precise=np.array([True]),
+                **{'%s_%s' % (k, f): ([g[k]['par']] if f == 'par' else np.array([g[k]['sigma68']]))
+                   if g.get(k, {}).get('par') is not None else
+                   ([None] if f == 'par' else np.array([np.nan]))
+                   for k in ('raw', 'corr') for f in ('par', 's68')})})
+            R1 = dict(fit_edges=R['fit_edges'], vars={'all': {
+                '%s_mass' % k: [R['mass_all'][k]] for k in ('data', 'raw', 'corr')}})
+            bin_fit_pages(pdf, plt, G1, R1, 'all', model)
         # ---- 2. calibration of sigma(m)
         if CALIB_VAR in res['vars']:
             o = res['vars'][CALIB_VAR]
@@ -1526,6 +1638,7 @@ def plot_resolution(res, R, pdf_path):
                          % (res['title'], name, extra), fontsize=10)
             pdf.savefig(fig, bbox_inches='tight')
             plt.close(fig)
+            bin_fit_pages(pdf, plt, res, R, name, model)
         # ---- 4. MC truth
         if 'truth' in R and 'truth' in res:
             T, t = R['truth'], res['truth']
