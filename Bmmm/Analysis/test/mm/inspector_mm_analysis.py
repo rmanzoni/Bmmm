@@ -146,6 +146,11 @@ parser.add_argument('--no-delta1'    , dest='no_delta1'  , action='store_true',
                     help='with --emulate: no delta_1 (checks only)')
 parser.add_argument('--no-delta2'    , dest='no_delta2'  , action='store_true',
                     help='with --emulate: no delta_2 (checks only; covariances still corrected)')
+parser.add_argument('--track-scales' , dest='track_scales', default=''   , type=str,
+                    help='with --emulate: JSON of per-parameter error scale factors '
+                         '(fit_track_scales.py, schema trackscales/1): delta_3, the data\'s own '
+                         'understatement of its track errors, added to the MC track parameters '
+                         'before the vertex fit; the stated covariances are not changed')
 args = parser.parse_args()
 
 inputFiles  = args.inputFiles
@@ -185,20 +190,22 @@ if any(covflow_specs.values()) and not mc:
                        'covariances onto data and does not exist for data.')
 cov_correctors = Candidate.set_cov_correctors(covflow_specs)
 emulator = None
-if args.emulate or args.killmaps or args.no_delta1 or args.no_delta2:
+if args.emulate or args.killmaps or args.no_delta1 or args.no_delta2 or args.track_scales:
     if not args.emulate:
-        raise RuntimeError('--killmaps / --no-delta1 / --no-delta2 need --emulate')
+        raise RuntimeError('--killmaps / --no-delta1 / --no-delta2 / --track-scales need --emulate')
     if not cov_correctors:
         raise RuntimeError('--emulate needs the covflow flows (--covflow, or --covflow-mu1 '
                            'and --covflow-mu2)')
     from Bmmm.Analysis.CovflowEmulation import MCTrackEmulator
     emulator = MCTrackEmulator(cov_correctors, killmaps=args.killmaps or None,
                                seed=args.emu_seed, delta1=not args.no_delta1,
-                               delta2=not args.no_delta2)
+                               delta2=not args.no_delta2,
+                               track_scales=args.track_scales or None)
     Candidate.emulator = emulator
-    print('#### emulation ON: %s, delta_1 %s, delta_2 %s, seed %d'
+    print('#### emulation ON: %s, delta_1 %s, delta_2 %s, delta_3 %s, seed %d'
           % ('kill maps ' + args.killmaps if args.killmaps else 'no kill maps (covflow + delta_2)',
-             'off' if args.no_delta1 else 'on', 'off' if args.no_delta2 else 'on', args.emu_seed))
+             'off' if args.no_delta1 else 'on', 'off' if args.no_delta2 else 'on',
+             args.track_scales or 'off', args.emu_seed))
 for _role, _corr in sorted(cov_correctors.items()):
     print('#### covflow %s : %s' % (_role, _corr.directory))
     print('####   manifest   %s, trained on %s' % (_corr.schema, _corr.role))

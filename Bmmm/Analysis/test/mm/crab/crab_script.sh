@@ -102,6 +102,7 @@ KILLMAPS=""
 EMUSEED=""
 NODELTA1=""
 NODELTA2=""
+TRACKSCALES=""
 for arg in "$@"; do
     case "${arg}" in
         OUTNAME=*)     OUTNAME="${arg#*=}" ;;
@@ -116,6 +117,7 @@ for arg in "$@"; do
         EMUSEED=*)     EMUSEED="${arg#*=}" ;;
         NODELTA1=1)    NODELTA1=1 ;;
         NODELTA2=1)    NODELTA2=1 ;;
+        TRACKSCALES=*) TRACKSCALES="${arg#*=}" ;;
     esac
 done
 echo ">>> output basename: ${OUTNAME}"
@@ -170,7 +172,8 @@ if [ -n "${COVFLOW}" ]; then
 fi
 # full MC emulation (crab_dimuon_mc_run3_covflow.py --emulate): EMULATE=1,
 # KILLMAPS=<stem> inside ${COVFLOW}/ (absent: covflow + delta_2 only),
-# EMUSEED=<int>, NODELTA1=1 / NODELTA2=1 for checks.
+# EMUSEED=<int>, NODELTA1=1 / NODELTA2=1 for checks, TRACKSCALES=<json in the
+# job directory> for delta_3 (the data's own understatement of its errors).
 if [ -n "${EMULATE}" ]; then
     if [ -z "${COVFLOW}" ]; then
         echo ">>> FATAL: EMULATE=1 needs COVFLOW=<dir>. Aborting job $1."
@@ -192,7 +195,14 @@ if [ -n "${EMULATE}" ]; then
     [ -n "${EMUSEED}" ]  && EXTRA_FLAGS="${EXTRA_FLAGS} --emu-seed=${EMUSEED}"
     [ -n "${NODELTA1}" ] && EXTRA_FLAGS="${EXTRA_FLAGS} --no-delta1"
     [ -n "${NODELTA2}" ] && EXTRA_FLAGS="${EXTRA_FLAGS} --no-delta2"
-    echo ">>> emulation      : kill maps ${KILLMAPS:-<none>}, seed ${EMUSEED:-default}${NODELTA1:+, no delta_1}${NODELTA2:+, no delta_2}"
+    if [ -n "${TRACKSCALES}" ]; then
+        if [ ! -f "${TRACKSCALES}" ]; then
+            echo ">>> FATAL: TRACKSCALES=${TRACKSCALES} not in the job directory. Aborting job $1."
+            exit 1
+        fi
+        EXTRA_FLAGS="${EXTRA_FLAGS} --track-scales=${PWD}/${TRACKSCALES}"
+    fi
+    echo ">>> emulation      : kill maps ${KILLMAPS:-<none>}, seed ${EMUSEED:-default}${NODELTA1:+, no delta_1}${NODELTA2:+, no delta_2}${TRACKSCALES:+, delta_3 from ${TRACKSCALES}}"
 fi
 echo ">>> extra flags    : ${EXTRA_FLAGS:-<none>}"
 

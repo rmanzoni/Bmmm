@@ -164,6 +164,8 @@ muon_branches.update(_track_cov_corr)
 #   emu_killed[_L1/_D1/_other]  a pixel hit was removed (route A applied)
 #   emu_weight                  weight from the cells where data is more efficient
 #   emu_d1_<par>, emu_d2_<par>  the two smearings, in the track parameters
+#   emu_d3_<par>                the third (--track-scales: the data's own
+#                               understatement of its errors), 0 without it
 #   emu_d1_nclip, emu_d2_nclip  directions clipped (data more precise than MC
 #                               there: MC uncertainty kept); emu_d2_lam_min the
 #                               most negative relative eigenvalue
@@ -174,11 +176,12 @@ def _emu(key, i=None):
         return lambda imu : float(imu.emu[key]) if hasattr(imu, 'emu') else np.nan
     return lambda imu : float(imu.emu[key][i]) if hasattr(imu, 'emu') else np.nan
 for _k in ('ok', 'role', 'range', 'killed', 'killed_L1', 'killed_D1', 'killed_other', 'weight',
-           'd1_nclip', 'd2_nclip', 'd2_lam_min'):
+           'd1_nclip', 'd2_nclip', 'd3_nclip', 'd2_lam_min'):
     muon_branches['emu_%s' % _k] = _emu(_k)
 for _i, _p in enumerate(_EMU_PARAMS):
     muon_branches['emu_d1_%s' % _p] = _emu('d1', _i)
     muon_branches['emu_d2_%s' % _p] = _emu('d2', _i)
+    muon_branches['emu_d3_%s' % _p] = _emu('d3', _i)
 def _raw_hc(key):
     return lambda imu : getattr(imu, '_hit_content_raw', {}).get(key, np.nan)
 for _k in ('n_pix_hit', 'n_pix_b_hit', 'n_pix_e_hit', 'n_pix_layer', 'n_trk_layer',

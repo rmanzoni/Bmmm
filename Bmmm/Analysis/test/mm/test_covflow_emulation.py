@@ -382,7 +382,48 @@ a3 = emu.process([base], FakeEvent(9, 3, 12346))[0].emu
 check(np.array_equal(a1['d2'], a2['d2']) and a1['killed'] == a2['killed'], 'same event -> same result')
 check(not np.array_equal(a1['d2'], a3['d2']), 'next event -> another draw')
 
+# ----------------------------------------------------------------- 7. delta_3 (track scales)
+print('7. delta_3: track scales')
+TS = dict(schema='trackscales/1', s_dxy=1.08, s_dsz=1.05, s_qoverp=1.02, pair_angles=True)
+emu3 = CE.MCTrackEmulator(corrs, killmaps=stem, seed=99, track_scales=CE.TrackScales(TS))
+b1 = emu.process([base], FakeEvent(9, 3, 777))[0].emu
+b3 = emu3.process([base], FakeEvent(9, 3, 777))[0].emu
+check(np.array_equal(b1['d2'], b3['d2']) and np.array_equal(b1['d1'], b3['d1']),
+      'delta_3 on: delta_1 and delta_2 of the event unchanged')
+check(np.all(b1['d3'] == 0) and np.any(b3['d3'] != 0), 'delta_3 zero without scales, drawn with')
+ts = CE.TrackScales(TS)
+S = ts.factors(np.array([U.track_params(base.bestTrack())]))[0]
+check(np.allclose(S, [1.02, 1.05, 1.08, 1.08, 1.05]),
+      'factors in (qoverp, lambda, phi, dxy, dsz) order, angles paired: %s' % np.round(S, 3))
+d3u, d2u3 = [], []
+for iev in range(6000):
+    cl = emu3.process([base], FakeEvent(8, 1, iev))[0]
+    if not cl.emu['killed']:
+        d3u.append(cl.emu['d3'])
+        d2u3.append(cl.emu['d2'])
+Cfit_u = C + D2u
+D3u = CE.clip_increment(ts.increment(Cfit_u[None], np.array([U.track_params(base.bestTrack())])),
+                        Cfit_u[None])[0][0]
+n3 = len(d3u)
+check(wdev(d3u, D3u, Cfit_u) < 6 / np.sqrt(n3),
+      'delta_3, unkilled (%d events): covariance = clip(S C_fit S - C_fit), max whitened '
+      'deviation %.3f' % (n3, wdev(d3u, D3u, Cfit_u)))
+tot = np.cov((np.array(d2u3) + np.array(d3u)).T)
+check(np.abs(np.linalg.inv(np.linalg.cholesky(C)) @ (tot - D2u - D3u)
+             @ np.linalg.inv(np.linalg.cholesky(C)).T).max() < 8 / np.sqrt(n3),
+      'delta_2 + delta_3 add in variance (independent)')
+try:
+    CE.TrackScales(dict(TS, s_dxy=0.97))
+    check(False, 'a factor below 1 is refused')
+except RuntimeError:
+    check(True, 'a factor below 1 is refused')
+TSpt = dict(TS, pt_edges=[0, 4, 1e9], s_dxy_pt=[1.01, 1.10], s_dsz_pt=[1.0, 1.2])
+Spt = CE.TrackScales(TSpt).factors(np.array([[1 / 3., 0, 0, 0, 0], [1 / 6., 0, 0, 0, 0]]))
+check(np.allclose(Spt[:, 3], [1.01, 1.10]) and np.allclose(Spt[:, 4], [1.0, 1.2]),
+      'per-pT factors picked by the muon pT (3 and 6 GeV)')
+
 print('\n' + emu.summary())
+print(emu3.summary())
 if fails:
     raise SystemExit('\nFAILED: %d check(s): %s' % (len(fails), fails))
 print('ALL OK')

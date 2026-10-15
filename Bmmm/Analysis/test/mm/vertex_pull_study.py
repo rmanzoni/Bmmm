@@ -70,11 +70,25 @@ WHAT IS MEASURED
     both:   ct (the non-prompt leakage check: ct < 0 is nearly leakage-free)
   and per data file (era).
 
-  Which numbers to trust most: vtx_pull_perp and dimu_sqrtchi2 are the least
-  sensitive to non-prompt leakage (tested on synthetic samples with 30%
-  non-prompt: perp 1.10 -> 1.102, x/y/z/par and the tracks 2-4% high, the 3D
-  chi2 up to 9% high at ct < 0.01, all converging to the truth for tighter ct).
-  Compare the ct < 0 bins with the inclusive value before quoting a k.
+  Which numbers to trust (2026 data, pull-study note v2, 15 Oct 2026):
+    - the prompt selection keeps >= 8% non-prompt J/psi in data (up to ~30%
+      at high pT). They push the SV only FORWARD: the along pull gets a
+      one-sided excess, x / y / z are inflated, the across pull and the
+      two-muon chi2 are immune.
+    - vtx_pull_par_left: the along pull fitted on its LEFT half only (window
+      [mu - r sigma, mu + 0.3 sigma], mu free; sigma68 from the left side),
+      which non-prompt J/psi cannot reach. Reads ~+0.01 high at 8%
+      contamination, +0.02-0.04 at 25% (toys). Its forward excess
+      (N+ - N-)/N is reported per bin: a lower limit on the non-prompt share.
+    - the clean set: vtx_pull_par_left, vtx_pull_perp, dimu_sqrtchi2.
+      x / y / z are kept as cross-checks only.
+  Which track errors each sees (straight-track model, note Fig. 13): across
+  = d_xy only; along = d_xy + d_sz, the d_sz share growing with |deta|;
+  two-muon chi2 = mostly d_sz; the directions (phi, lambda) and q/p are
+  invisible to all of them. Per candidate, the d_xy share of the along error
+  and of the chi2 is computed from the muon kinematics and errors
+  (error_shares) and used as a binning (share_along, pt_x_share) and as a
+  profile (mean share per bin), the input of fit_track_scales.py.
 
 CORE FIT
   Gaussian, least squares on the histogram (errors from sum w^2, so it is
@@ -130,6 +144,8 @@ OBS = {
     'vtx_pull_z':      ('vtx', 'pull', r'$(SV-PV)_z/\sigma$'),
     'vtx_pull_perp':   ('vtx', 'pull', r'$(SV-PV)_{\perp p_T}/\sigma$'),
     'vtx_pull_par':    ('vtx', 'pull', r'$(SV-PV)_{\parallel p_T}/\sigma$'),
+    # derived in combine() from vtx_pull_par, fitted on its left half only
+    'vtx_pull_par_left': ('vtx', 'pull', r'$(SV-PV)_{\parallel p_T}/\sigma$, left half'),
     'vtx_sqrtchi2_3d': ('vtx', 'abs3', r'$\sqrt{\chi^2_{3D}}$ of SV - PV'),
     'dimu_sqrtchi2':   ('vtx', 'abs1', r'$\sqrt{\chi^2}$ of the dimuon vertex (1 dof)'),
     'trk_pull_dxy':    ('trk', 'pull', r'muon $d_{xy}$(PV)$/\sigma$'),
@@ -155,7 +171,21 @@ BINNINGS = {
     'first_layer': ('trk', [-0.5, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5],
                     'first pixel layer (0 none, 1-4 L1-L4, 5-7 D1-D3)'),
     'n_pix_hit':   ('trk', [0, 2.5, 3.5, 4.5, 5.5, 99], 'pixel hits'),
+    # which track errors the vertex sees (fit_track_scales.py)
+    'abs_deta':    ('vtx', [0, 0.1, 0.2, 0.3, 0.45, 0.7, 10], r'$|\Delta\eta(\mu,\mu)|$'),
+    'share_along': ('vtx', [0, 0.5, 0.7, 0.8, 0.9, 0.95, 1.001],
+                    r'share of the along error from $d_{xy}$'),
+    # an effect tied to the muon charge shifts the along pull in opposite
+    # directions in the two bins (note section 12.5)
+    'mu_plus_side': ('vtx', [-1.5, 0, 1.5], r'$\mu^+$ right ($-1$) / left ($+1$) of the J/$\psi$'),
 }
+# 2D binning J/psi pT x share_along, flattened (index = ipt * NS + ishare);
+# level 'vtx2d': no per-bin plots, read by fit_track_scales.py
+PT2_EDGES = [0, 10, 15, 25, 1e9]
+SH2_EDGES = [0, 0.7, 0.85, 0.95, 1.001]
+BINNINGS['pt_x_share'] = ('vtx2d', list(np.arange((len(PT2_EDGES) - 1) * (len(SH2_EDGES) - 1) + 1)
+                                        .astype(float)), r'J/$\psi$ $p_T$ $\times$ $d_{xy}$ share')
+PROFILES = ('share_along', 'share_chi2', 'pvshare_along', 'pvshare_across')
 
 VTX_COV = ('xx', 'xy', 'xz', 'yy', 'yz', 'zz')
 
@@ -194,7 +224,8 @@ def needed_branches(is_mc, a):
     b |= {'pv_bs_cov_' + e for e in VTX_COV} | {'vtx_cov_' + e for e in VTX_COV}
     for mu in ('mu1', 'mu2'):
         b |= {'%s_%s' % (mu, k) for k in ('pt', 'eta', 'phi', 'id_medium', 'dxy', 'dz', 'dz_e',
-                                           'cov_dxy_dxy', 'pix_first_layer', 'n_pix_hit')}
+                                           'cov_dxy_dxy', 'pix_first_layer', 'n_pix_hit',
+                                           'charge')}
     if is_mc:
         b |= {'mass_raw', 'pt_raw', 'vx_raw', 'vy_raw', 'vz_raw',
               'vtx_chi2_raw', 'emu_weight', a.pu_weight, 'gen_pv_x', 'gen_pv_y', 'gen_pv_z',
@@ -356,8 +387,91 @@ def vertex_binvars(v):
     dphi = np.angle(np.exp(1j * (f('mu1_phi') - f('mu2_phi'))))
     dr = np.hypot(f('mu1_eta') - f('mu2_eta'), dphi)
     nl1 = (f('mu1_pix_first_layer') == 1).astype(float) + (f('mu2_pix_first_layer') == 1)
+    sh = error_shares(v)
+    # side of the mu+: sign of (u_J/psi x p_mu+)_z
+    q1 = f('mu1_charge')
+    pxp = np.where(q1 > 0, f('mu1_pt') * np.cos(f('mu1_phi')), f('mu2_pt') * np.cos(f('mu2_phi')))
+    pyp = np.where(q1 > 0, f('mu1_pt') * np.sin(f('mu1_phi')), f('mu2_pt') * np.sin(f('mu2_phi')))
+    side = np.sign(px * pyp - py * pxp)
+    ns = len(SH2_EDGES) - 1
+    ipt = np.clip(np.searchsorted(PT2_EDGES, pt, side='right') - 1, 0, len(PT2_EDGES) - 2)
+    ish = np.clip(np.searchsorted(SH2_EDGES, sh['share_along'], side='right') - 1, 0, ns - 1)
+    ptsh = np.where(np.isfinite(sh['share_along']) & np.isfinite(pt), ipt * ns + ish + 0.5, np.nan)
     return dict(incl=np.zeros(len(px)), jpsi_pt=pt, jpsi_abseta=np.abs(eta), dr_mumu=dr,
-                pv_ntrk=f('pv_refit_ntrk'), n_mu_l1=nl1, ct=cand_ct(v))
+                pv_ntrk=f('pv_refit_ntrk'), n_mu_l1=nl1, ct=cand_ct(v),
+                abs_deta=np.abs(f('mu1_eta') - f('mu2_eta')), share_along=sh['share_along'],
+                mu_plus_side=side, pt_x_share=ptsh), sh
+
+
+def pv_shares(v, is_mc):
+    '''Share of the stated SV - PV variance that comes from the PV, along and
+    across the J/psi flight direction. Across the flight the dimuon vertex is
+    known to ~10-20 um, comparable with the beamspot-constrained PV (~10 um):
+    there the PV is a sizeable part of the pull's denominator, and dilutes any
+    understatement of the SV errors. Along the flight (~80 um) it is ~1%.'''
+    D = displacement(v, is_mc)
+    Csv = cov3(v, 'vtx_cov_')
+    Cpv = cov3(v, 'pv_bs_cov_')
+    out = {}
+    for nm, u in (('along', D['upar']), ('across', D['uperp'])):
+        with np.errstate(all='ignore'):
+            a = np.einsum('ni,nij,nj->n', u, Cpv, u)
+            b = np.einsum('ni,nij,nj->n', u, Csv, u)
+            out['pvshare_' + nm] = a / (a + b)
+    return out
+
+
+def error_shares(v):
+    '''Per candidate: the share of the vertex error ALONG the J/psi flight
+    direction, and of the two-muon distance (the chi2), that comes from the
+    muons' transverse position errors d_xy rather than from d_sz.
+
+    Model (pull-study note, section 12.3 and Fig. 13): two straight tracks
+    through a common point near the beam line; the vertex is the weighted
+    meeting point, each track contributing its offset in the plane
+    perpendicular to it with weights 1/sigma(d_xy)^2 (transverse direction
+    e1) and 1/sigma(d_sz)^2 (e2 = u x e1). Then, exactly for this model,
+        d v / d dxy_i = A^-1 e1_i / sigma_dxy_i^2,
+        d v / d dsz_i = A^-1 e2_i / sigma_dsz_i^2,   A = sum_i E_i^T W_i E_i
+    and the two-muon distance g = (P2 - P1) . n, n = u1 x u2 / |u1 x u2|,
+        d g / d dxy_i = -+ n . e1_i,   d g / d dsz_i = -+ n_z / cos(lambda_i).
+    The direction errors (phi, lambda) do not enter for a vertex at the
+    track reference point. sigma(d_sz) = dz_e cos(lambda).'''
+    f = lambda n: np.asarray(v(n), np.float64)
+    E1, E2, Wd, Wz, U = [], [], [], [], []
+    for mu in ('mu1', 'mu2'):
+        phi, eta = f(mu + '_phi'), f(mu + '_eta')
+        lam = np.arctan(np.sinh(eta))
+        cl = np.cos(lam)
+        u = np.stack([cl * np.cos(phi), cl * np.sin(phi), np.sin(lam)], -1)
+        e1 = np.stack([-np.sin(phi), np.cos(phi), np.zeros_like(phi)], -1)
+        e2 = np.cross(u, e1)
+        with np.errstate(all='ignore'):
+            sd2 = f(mu + '_cov_dxy_dxy')
+            sz2 = (f(mu + '_dz_e') * cl) ** 2
+        E1.append(e1); E2.append(e2); Wd.append(1. / sd2); Wz.append(1. / sz2); U.append(u)
+    A = sum(Wd[i][:, None, None] * E1[i][:, :, None] * E1[i][:, None, :] +
+            Wz[i][:, None, None] * E2[i][:, :, None] * E2[i][:, None, :] for i in range(2))
+    ok = np.all(np.isfinite(A.reshape(len(A), -1)), 1)
+    Ainv = np.full_like(A, np.nan)
+    if ok.any():
+        Ainv[ok] = np.linalg.inv(A[ok])
+    pxj = U[0][:, :2] + U[1][:, :2]
+    uJ = np.concatenate([pxj / np.linalg.norm(pxj, axis=1, keepdims=True),
+                         np.zeros((len(A), 1))], 1)
+    vxy = vsz = 0.
+    for i in range(2):
+        gx = np.einsum('ni,nij,nj->n', uJ, Ainv, E1[i]) * Wd[i]
+        gz = np.einsum('ni,nij,nj->n', uJ, Ainv, E2[i]) * Wz[i]
+        vxy = vxy + gx ** 2 / Wd[i]
+        vsz = vsz + gz ** 2 / Wz[i]
+    n = np.cross(U[0], U[1])
+    with np.errstate(all='ignore'):
+        n = n / np.linalg.norm(n, axis=1, keepdims=True)
+        cxy = sum((np.einsum('ni,ni->n', n, E1[i])) ** 2 / Wd[i] for i in range(2))
+        csz = sum((n[:, 2] / np.cos(np.arctan(U[i][:, 2] / np.hypot(U[i][:, 0], U[i][:, 1]))))
+                  ** 2 / Wz[i] for i in range(2))
+        return dict(share_along=vxy / (vxy + vsz), share_chi2=cxy / (cxy + csz))
 
 
 def cand_ct(v):
@@ -377,6 +491,20 @@ def track_binvars(v, mu):
 class Store(object):
     def __init__(self):
         self.h = {}
+        self.p = {}         # (quantity, binning, view) -> [sum w, sum w x] per bin
+
+    def fill_prof(self, binvars, view, quants, w):
+        for bname, bv in binvars.items():
+            be = np.asarray(BINNINGS[bname][1], float)
+            nb = len(be) - 1
+            ib = np.clip(np.searchsorted(be, bv, side='right') - 1, 0, nb - 1)
+            for q, x in quants.items():
+                ok = np.isfinite(bv) & (bv >= be[0]) & (bv < be[-1]) & np.isfinite(x) & np.isfinite(w)
+                key = (q, bname, view)
+                if key not in self.p:
+                    self.p[key] = [np.zeros(nb), np.zeros(nb)]
+                self.p[key][0] += np.bincount(ib[ok], weights=w[ok], minlength=nb)
+                self.p[key][1] += np.bincount(ib[ok], weights=(w * x)[ok], minlength=nb)
 
     def fill(self, obs, binvars, view, x, w):
         kind = OBS[obs.split(':')[0]][1]
@@ -402,6 +530,8 @@ class Store(object):
         for (o, b, v), (w, w2) in self.h.items():
             arr['w|%s|%s|%s' % (o, b, v)] = w
             arr['w2|%s|%s|%s' % (o, b, v)] = w2
+        for (q, b, v), (sw, swx) in self.p.items():
+            arr['p|%s|%s|%s' % (q, b, v)] = np.stack([sw, swx])
         arr['meta'] = np.array(json.dumps(meta))
         os.makedirs(os.path.dirname(os.path.abspath(path)) or '.', exist_ok=True)
         np.savez_compressed(path, **arr)
@@ -418,6 +548,9 @@ def load_store(path):
             npb = len((PULL_EDGES if kind == 'pull' else ABS_EDGES)) - 1
             nb = len(BINNINGS[b][1]) - 1
             h[(o, b, v)] = (z[k].reshape(nb, npb), z['w2|%s|%s|%s' % (o, b, v)].reshape(nb, npb))
+        elif k.startswith('p|'):
+            _, q, b, v = k.split('|')
+            h[('prof:' + q, b, v)] = (z[k][0], z[k][1])
     return meta, h
 
 
@@ -514,10 +647,12 @@ def fill_chunk(ch, is_mc, store, counts, a):
 
 def fill_view(v, is_mc, view, w, store):
     vo = vertex_observables(v, is_mc)
-    vb = vertex_binvars(v)
+    vb, sh = vertex_binvars(v)
     for name, x in vo.items():
         base, _, tag = name.partition(':')
         store.fill(base, vb, view + (':truth' if tag else ''), x, w)
+    sh = dict(sh, **pv_shares(v, is_mc))
+    store.fill_prof(vb, view, {q: sh[q] for q in PROFILES}, w)
     for mu in ('mu1', 'mu2'):
         to = track_observables(v, mu, is_mc)
         tb = track_binvars(v, mu)
@@ -597,6 +732,54 @@ def core_fit(h, w2, edges, kind, r=1.0, min_core=100.):
     return out
 
 
+def left_half_fit(h, w2, edges, r=1.0, up=0.3, min_core=200.):
+    '''The along pull without the non-prompt J/psi, which only reach its right
+    (positive) side: a Gaussian fitted in [mu - r sigma, mu + up sigma], mean
+    free, iterated from the full core fit; sigma68 from the left side alone,
+    F(mu - s68) = 0.3173 F(mu); tail3 = left-side fraction beyond 3 sigma,
+    doubled. Also excess = (N(>0) - N(<0)) / N: a lower limit on the
+    non-prompt share. On toys with 8% (25%) contamination the width reads
+    ~+0.01 (+0.02-0.04) high.'''
+    out = core_fit(h, w2, edges, 'pull', r, min_core)
+    c = 0.5 * (edges[1:] + edges[:-1])
+    n = float(np.sum(h))
+    out['excess'] = float((h[c > 0].sum() - h[c < 0].sum()) / n) if n > 0 else np.nan
+    if not out['ok']:
+        return out
+    bw = edges[1] - edges[0]
+    mu, sg = out['mu'], out['sigma']
+    err = np.sqrt(np.where(w2 > 0, w2, 1.0))
+    from iminuit import Minuit
+    from iminuit.cost import LeastSquares
+
+    def model(x, A, m, s):
+        return A * bw / (np.sqrt(2 * np.pi) * s) * np.exp(-0.5 * ((x - m) / s) ** 2)
+
+    res = None
+    for _ in range(40):
+        win = (c > mu - r * sg) & (c < mu + up * sg)
+        if win.sum() < 6 or h[win].sum() < min_core:
+            out['ok'] = False
+            return out
+        mi = Minuit(LeastSquares(c[win], h[win], err[win], model), A=n, m=mu, s=sg)
+        mi.limits['s'] = (0.05, 20)
+        mi.migrad()
+        nm, ns_ = float(mi.values['m']), float(mi.values['s'])
+        conv = abs(ns_ - sg) < 1e-5 and abs(nm - mu) < 1e-5
+        mu, sg, res = nm, ns_, mi
+        if conv:
+            break
+    cdf = np.concatenate([[0.], np.cumsum(np.clip(h, 0, None))])
+    F = lambda x: np.interp(x, edges, cdf)
+    xs = np.linspace(mu - 6, mu, 6001)
+    s68 = mu - float(np.interp(0.317311 * F(mu), F(xs), xs))
+    out.update(mu=mu, mu_err=float(res.errors['m']), sigma=sg, sigma_err=float(res.errors['s']),
+               sigma68=s68, tail3=float(2 * F(mu - 3 * sg) / max(n, 1e-300)),
+               ok=bool(res.valid), A=float(res.values['A']), chi2=float(res.fval),
+               ndf=int(((c > mu - r * sg) & (c < mu + up * sg)).sum() - 3))
+    return out
+
+
 # ---------------------------------------------------------------------------
 # plot
 # ---------------------------------------------------------------------------
@@ -631,12 +814,19 @@ def combine(stores, a):
                 if v == 'data_SR':
                     add((o, b, 'data_SR'), w, w2)
                     sb = h.get((o, b, 'data_SB'), (np.zeros_like(w), np.zeros_like(w2)))
-                    sub = (w - f_sb * sb[0], w2 + f_sb ** 2 * sb[1])
+                    if o.startswith('prof:'):       # (sum w, sum w x): both subtracted
+                        sub = (w - f_sb * sb[0], w2 - f_sb * sb[1])
+                    else:
+                        sub = (w - f_sb * sb[0], w2 + f_sb ** 2 * sb[1])
                     add((o, b, 'data'), *sub)
                     add((o, b, 'data@' + lab), *sub)
         else:
             for k, (w, w2) in h.items():
                 add(k, w, w2)
+    # the along pull, to be fitted on its left half (analyse)
+    for (o, b, v), wv in list(H.items()):
+        if o == 'vtx_pull_par':
+            H[('vtx_pull_par_left', b, v)] = wv
     # the ct < 0 half: prompt J/psi only (non-prompt leakage lives at ct > 0)
     be = np.asarray(BINNINGS['ct'][1])
     neg = np.nonzero(be[1:] <= 0)[0]
@@ -649,10 +839,25 @@ def combine(stores, a):
 def analyse(H, a):
     R = {}
     for (o, b, v), (w, w2) in H.items():
+        if o.startswith('prof:'):
+            continue
         kind = OBS[o][1]
         edges = PULL_EDGES if kind == 'pull' else ABS_EDGES
-        R[(o, b, v)] = [core_fit(w[i], w2[i], edges, kind, a.core) for i in range(len(w))]
+        if o == 'vtx_pull_par_left':
+            R[(o, b, v)] = [left_half_fit(w[i], w2[i], edges, a.core) for i in range(len(w))]
+        else:
+            R[(o, b, v)] = [core_fit(w[i], w2[i], edges, kind, a.core) for i in range(len(w))]
     return R
+
+
+def profiles(H):
+    '''mean d_xy shares per bin: {(quantity, binning, view): array}'''
+    P = {}
+    for (o, b, v), (sw, swx) in H.items():
+        if o.startswith('prof:'):
+            with np.errstate(all='ignore'):
+                P[(o[5:], b, v)] = swx / sw
+    return P
 
 
 def views_present(R, o, b):
@@ -680,6 +885,8 @@ def summary_lines(R, eras, meta_all, f_sb, a):
               'observable', 'data', 'MC raw', 'MC corr', 'raw truth', 'corr truth', 'data/raw',
               'data/corr')]
         for o in OBS:
+            if sel_name == 'ct<0' and o == 'vtx_pull_par_left':
+                continue                    # ct < 0 IS the left half: nothing left to fit
             def g(v, sel_name=sel_name):
                 r = R.get((o, sel_name, v))
                 return r[0] if r else None
@@ -699,8 +906,30 @@ def summary_lines(R, eras, meta_all, f_sb, a):
         L.append('  %-16s ' % o + '  '.join(
             '%s %.4f' % (e, R[(o, 'incl', 'data@' + e)][0]['sigma'])
             for e in eras if (o, 'incl', 'data@' + e) in R))
-    L += ['', 'reading: honest errors give 1 (pulls) / k = 1 (sqrt chi2). data/MC raw is the factor',
-          'to apply to the MC (or the inverse to the data) for the error scale to match.']
+    # the clean set and the two tests of the note's section 12.5
+    L += ['', 'CLEAN SET (immune to non-prompt J/psi): core / sigma68, data / MC corr',
+          '%-22s %17s %17s %17s %15s' % ('', 'data', 'MC raw', 'MC corr', 'data/corr')]
+    for o, lab in (('vtx_pull_par_left', 'along (left half)'), ('vtx_pull_perp', 'across'),
+                   ('dimu_sqrtchi2', 'two-muon chi2, k')):
+        rr = [R.get((o, 'incl', v), [None])[0] for v in ('data', 'mc_raw', 'mc_corr')]
+        cell = lambda r: '%.4f / %.4f' % (r['sigma'], r['sigma68']) if r and np.isfinite(r['sigma']) \
+            else '-'
+        rat = ('%.4f / %.4f' % (rr[0]['sigma'] / rr[2]['sigma'], rr[0]['sigma68'] / rr[2]['sigma68'])
+               if rr[0] and rr[2] and np.isfinite(rr[0]['sigma']) and np.isfinite(rr[2]['sigma'])
+               else '-')
+        L.append('%-22s %17s %17s %17s %15s' % (lab, *[cell(r) for r in rr], rat))
+    ex = R.get(('vtx_pull_par_left', 'incl', 'data'))
+    if ex:
+        L.append('forward excess (N+ - N-)/N of the along pull, data: %.4f  (lower limit on the '
+                 'non-prompt share)' % ex[0]['excess'])
+    cs = R.get(('vtx_pull_par_left', 'mu_plus_side', 'data'))
+    if cs and all(r['ok'] for r in cs):
+        d = cs[1]['mu'] - cs[0]['mu']
+        e = np.hypot(cs[0]['mu_err'], cs[1]['mu_err'])
+        L.append('charge test: along-pull centre, mu+ left minus mu+ right: %+.4f +- %.4f '
+                 '(%.1f sigma; 0 if nothing is tied to the muon charge)' % (d, e, d / e))
+    L += ['', 'reading: honest errors give 1 (pulls) / k = 1 (sqrt chi2). The factors to apply to',
+          'the track errors come from fit_track_scales.py, not from these numbers directly.']
     return L
 
 
@@ -717,6 +946,7 @@ def plot(paths, out, a):
     H, eras, f_sb = combine(stores, a)
     print('fitting %d histogram sets ...' % len(H))
     R = analyse(H, a)
+    P = profiles(H)
     lines = summary_lines(R, eras, [m for m, _ in stores], f_sb, a)
     print('\n'.join(lines))
     os.makedirs(os.path.dirname(os.path.abspath(out)) or '.', exist_ok=True)
@@ -868,8 +1098,11 @@ def plot(paths, out, a):
                 pdf.savefig(fig)
                 plt.close(fig)
     js = {'%s|%s|%s' % k: v for k, v in R.items()}
+    jp = {'%s|%s|%s' % k: v for k, v in P.items()}
     with open(out + '.json', 'w') as fh:
-        json.dump(dict(summary=lines, results=js, binnings={k: v[1] for k, v in BINNINGS.items()}),
+        json.dump(dict(summary=lines, results=js, profiles=jp,
+                       binnings={k: v[1] for k, v in BINNINGS.items()},
+                       pt2_edges=PT2_EDGES, sh2_edges=SH2_EDGES),
                   fh, indent=1, default=lambda x: x.tolist() if hasattr(x, 'tolist') else str(x))
     print('wrote %s.pdf, %s_fits.pdf, %s.json' % (out, out, out))
 
