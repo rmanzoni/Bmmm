@@ -87,7 +87,7 @@ WHAT IS MEASURED
   two-muon chi2 = mostly d_sz; the directions (phi, lambda) and q/p are
   invisible to all of them. Per candidate, the d_xy share of the along error
   and of the chi2 is computed from the muon kinematics and errors
-  (error_shares) and used as a binning (share_along, pt_x_share) and as a
+  (error_shares) and used as a binning (share_along, pt_x_share, pt_eta_x_share) and as a
   profile (mean share per bin), the input of fit_track_scales.py.
 
 CORE FIT
@@ -185,6 +185,15 @@ PT2_EDGES = [0, 10, 15, 25, 1e9]
 SH2_EDGES = [0, 0.7, 0.85, 0.95, 1.001]
 BINNINGS['pt_x_share'] = ('vtx2d', list(np.arange((len(PT2_EDGES) - 1) * (len(SH2_EDGES) - 1) + 1)
                                         .astype(float)), r'J/$\psi$ $p_T$ $\times$ $d_{xy}$ share')
+# 3D binning J/psi pT x muon |eta| (the more forward muon) x share_along, flattened
+# (index = (ipt * NE + ieta) * NS + ishare): s per muon pT x |eta| for the t table
+# (note 10b, 13.3). The J/psi pT edges are twice the muon pT edges of the t table
+# (vertex_errors.py merged to 3-5-8-15-inf GeV), the |eta| edges are the same.
+PT3_EDGES = [0, 10, 16, 30, 1e9]
+ETA3_EDGES = [0, 0.9, 1.5, 2.5]
+BINNINGS['pt_eta_x_share'] = ('vtx2d', list(np.arange((len(PT3_EDGES) - 1) * (len(ETA3_EDGES) - 1)
+                                                      * (len(SH2_EDGES) - 1) + 1).astype(float)),
+                              r'J/$\psi$ $p_T$ $\times$ muon $|\eta|$ $\times$ $d_{xy}$ share')
 PROFILES = ('share_along', 'share_chi2', 'pvshare_along', 'pvshare_across')
 
 VTX_COV = ('xx', 'xy', 'xz', 'yy', 'yz', 'zz')
@@ -397,10 +406,16 @@ def vertex_binvars(v):
     ipt = np.clip(np.searchsorted(PT2_EDGES, pt, side='right') - 1, 0, len(PT2_EDGES) - 2)
     ish = np.clip(np.searchsorted(SH2_EDGES, sh['share_along'], side='right') - 1, 0, ns - 1)
     ptsh = np.where(np.isfinite(sh['share_along']) & np.isfinite(pt), ipt * ns + ish + 0.5, np.nan)
+    ne3 = len(ETA3_EDGES) - 1
+    aeta = np.maximum(np.abs(f('mu1_eta')), np.abs(f('mu2_eta')))
+    ipt3 = np.clip(np.searchsorted(PT3_EDGES, pt, side='right') - 1, 0, len(PT3_EDGES) - 2)
+    ie3 = np.searchsorted(ETA3_EDGES, aeta, side='right') - 1
+    pesh = np.where(np.isfinite(sh['share_along']) & np.isfinite(pt) & (ie3 >= 0) & (ie3 < ne3),
+                    (ipt3 * ne3 + np.clip(ie3, 0, ne3 - 1)) * ns + ish + 0.5, np.nan)
     return dict(incl=np.zeros(len(px)), jpsi_pt=pt, jpsi_abseta=np.abs(eta), dr_mumu=dr,
                 pv_ntrk=f('pv_refit_ntrk'), n_mu_l1=nl1, ct=cand_ct(v),
                 abs_deta=np.abs(f('mu1_eta') - f('mu2_eta')), share_along=sh['share_along'],
-                mu_plus_side=side, pt_x_share=ptsh), sh
+                mu_plus_side=side, pt_x_share=ptsh, pt_eta_x_share=pesh), sh
 
 
 def pv_shares(v, is_mc):
@@ -1102,7 +1117,8 @@ def plot(paths, out, a):
     with open(out + '.json', 'w') as fh:
         json.dump(dict(summary=lines, results=js, profiles=jp,
                        binnings={k: v[1] for k, v in BINNINGS.items()},
-                       pt2_edges=PT2_EDGES, sh2_edges=SH2_EDGES),
+                       pt2_edges=PT2_EDGES, sh2_edges=SH2_EDGES,
+                       pt3_edges=PT3_EDGES, eta3_edges=ETA3_EDGES),
                   fh, indent=1, default=lambda x: x.tolist() if hasattr(x, 'tolist') else str(x))
     print('wrote %s.pdf, %s_fits.pdf, %s.json' % (out, out, out))
 

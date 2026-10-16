@@ -25,6 +25,9 @@ The production-level version of the chain agreed in the covflow decision log
      fit_track_scales.py). One factor per track parameter, S = diag(s_p):
      the parameters get delta_3 ~ N(0, clip(S C_fit S - C_fit)) and the
      stated covariance stays C_fit, as in data, where it is too small by S.
+     With a t table (make_t_table.py) the factor per muon pT x |eta| is
+     t = s x (data stated sigma / corrected-MC stated sigma), so that MC
+     gets data's RESOLUTION, not only data's honesty (note 10b).
      See TrackScales.
   5. A new reco::Track with the smeared parameters and C_fit, and a clone of
      the pat::Muon carrying the smeared momentum with the PDG muon mass (the
@@ -114,6 +117,14 @@ class TrackScales(object):
          "pt_edges": [0, 6, 10, 1e9],          optional, muon pT [GeV]; then
          "s_dxy_pt": [...], "s_dsz_pt": [...]} per-bin values replace s_dxy, s_dsz
 
+    A t table (make_t_table.py, pull-study note 10b and 13.3) adds
+         "eta_edges": [0, 0.9, 1.5, 2.5],      muon |eta|, with pt_edges; then
+         "s_dxy_pt_eta": [[...], ...],         [pt bin][eta bin] values replace
+         "s_dsz_pt_eta": [[...], ...],         s_dxy, s_dsz and the *_pt lists
+         "floored": [[ipt, ieta], ...]         cells where t < 1 was set to 1:
+                                               muons there are counted
+                                               (d3_floored), not narrowed
+
     pair_angles: a track's position and direction errors come from the same
     hits (rho(phi, dxy) ~ -0.89): if the hit errors are understated, both are.
     Scaling each pair together also keeps S C S - C positive semi-definite
@@ -128,8 +139,22 @@ class TrackScales(object):
                                % c.get('schema'))
         self.pair = bool(c.get('pair_angles', True))
         self.edges = np.asarray(c['pt_edges'], float) if 'pt_edges' in c else None
+        self.eta_edges = np.asarray(c['eta_edges'], float) if 'eta_edges' in c else None
         vals = [c.get(k, 1.0) for k in ('s_dxy', 's_dsz', 's_qoverp', 's_phi', 's_lambda')]
-        if self.edges is not None:
+        self.floored = np.zeros((1, 1), bool)
+        if self.eta_edges is not None:
+            if self.edges is None:
+                raise RuntimeError('track scales: eta_edges needs pt_edges')
+            shape = (len(self.edges) - 1, len(self.eta_edges) - 1)
+            for k in ('s_dxy_pt_eta', 's_dsz_pt_eta'):
+                if np.shape(c.get(k, [])) != shape:
+                    raise RuntimeError('track scales: %s needs shape %s (pt_edges x eta_edges), got %s'
+                                       % (k, shape, np.shape(c.get(k, []))))
+                vals += list(np.ravel(c[k]))
+            self.floored = np.zeros(shape, bool)
+            for ip, ie in c.get('floored', []):
+                self.floored[ip, ie] = True
+        elif self.edges is not None:
             nb = len(self.edges) - 1
             for k in ('s_dxy_pt', 's_dsz_pt'):
                 if len(c.get(k, [])) != nb:
@@ -153,7 +178,11 @@ class TrackScales(object):
         c = self.cfg
         s_xy = np.full(N, float(c.get('s_dxy', 1.0)))
         s_sz = np.full(N, float(c.get('s_dsz', 1.0)))
-        if self.edges is not None:
+        if self.eta_edges is not None:
+            ip, ie = self.cells(par)
+            s_xy = np.asarray(c['s_dxy_pt_eta'], float)[ip, ie]
+            s_sz = np.asarray(c['s_dsz_pt_eta'], float)[ip, ie]
+        elif self.edges is not None:
             pt = np.cos(par[:, 1]) / np.maximum(np.abs(par[:, 0]), 1e-12)
             ib = np.clip(np.searchsorted(self.edges, pt, side='right') - 1, 0,
                          len(self.edges) - 2)
@@ -164,6 +193,26 @@ class TrackScales(object):
         s_qp = np.full(N, float(c.get('s_qoverp', 1.0)))
         return np.stack([s_qp, s_lam, s_phi, s_xy, s_sz], -1)
 
+    def cells(self, par):
+        '''(N,5) track parameters -> muon (pT bin, |eta| bin), clamped to the table;
+        pT = cos(lambda) / |q/p|, |eta| = |asinh(tan(lambda))|'''
+        par = np.atleast_2d(np.asarray(par, np.float64))
+        pt = np.cos(par[:, 1]) / np.maximum(np.abs(par[:, 0]), 1e-12)
+        aeta = np.abs(np.arcsinh(np.tan(par[:, 1])))
+        ip = np.clip(np.searchsorted(self.edges, pt, side='right') - 1, 0, len(self.edges) - 2)
+        ie = np.clip(np.searchsorted(self.eta_edges, aeta, side='right') - 1, 0,
+                     len(self.eta_edges) - 2)
+        return ip, ie
+
+    def floored_mask(self, par):
+        '''True for muons in a cell where t < 1 was set to 1 (MC already wider than
+        data there: smearing cannot fix it, note 10b)'''
+        par = np.atleast_2d(np.asarray(par, np.float64))
+        if self.eta_edges is None or not self.floored.any():
+            return np.zeros(len(par), bool)
+        ip, ie = self.cells(par)
+        return self.floored[ip, ie]
+
     def increment(self, C, par):
         '''S C S - C per track: the covariance of the extra scatter delta_3.'''
         S = self.factors(par)
@@ -171,7 +220,13 @@ class TrackScales(object):
 
     def describe(self):
         c = self.cfg
-        if self.edges is not None:
+        if self.eta_edges is not None:
+            core = ('t table per muon pT %s x |eta| %s: s_dxy %s, s_dsz %s, %d cell(s) floored at 1'
+                    % ([float(x) for x in self.edges], [float(x) for x in self.eta_edges],
+                       np.round(np.asarray(c['s_dxy_pt_eta'], float), 4).tolist(),
+                       np.round(np.asarray(c['s_dsz_pt_eta'], float), 4).tolist(),
+                       int(self.floored.sum())))
+        elif self.edges is not None:
             core = 'per muon pT %s: s_dxy %s, s_dsz %s' % (list(self.edges), c['s_dxy_pt'],
                                                            c['s_dsz_pt'])
         else:
@@ -231,7 +286,7 @@ class MCTrackEmulator(object):
                       % (killmaps, self.km.meta.get('epoch'), ' '.join(self.km.surfaces),
                          len(self.km.ranges), origin))
         self.n = dict(muons=0, killed=0, killed_L1=0, killed_D1=0, killed_other=0,
-                      weight_ne1=0, route_a=0, d1_clipped=0, d2_clipped=0, d3_clipped=0, failed=0,
+                      weight_ne1=0, route_a=0, d1_clipped=0, d2_clipped=0, d3_clipped=0, d3_floored=0, failed=0,
                       not_pos_def=0, charge_flip=0)
         self.sum_w = 0.0
 
@@ -393,6 +448,7 @@ class MCTrackEmulator(object):
                 n3clip[idx] = (lam3 < -CLIP_TOL).sum(1)
                 d3[idx] = np.einsum('nij,nj->ni', A3, rng.standard_normal((len(idx), 5)))
                 self.n['d3_clipped'] += int((n3clip[idx] > 0).sum())
+                self.n['d3_floored'] += int(self.scales.floored_mask(par0[idx]).sum())
 
         # ---- 5. tracks and muon clones ---------------------------------
         par = par0 + d1 + d2 + d3
@@ -426,9 +482,10 @@ class MCTrackEmulator(object):
         f = lambda k: '%d (%.2f%%)' % (self.n[k], 100. * self.n[k] / n)
         return ('[emulation] %d muons: killed %s (L1 %s, D1 %s, other %s), weight != 1 %s, '
                 'mean weight %.4f, route A %s with delta_1 clipped %s, delta_2 clipped %s, '
-                'delta_3 clipped %s, not pos-def %s, failed %s, charge flip %s'
+                'delta_3 clipped %s, in t < 1 cells %s, not pos-def %s, failed %s, charge flip %s'
                 % (self.n['muons'], f('killed'), f('killed_L1'), f('killed_D1'),
                    f('killed_other'), f('weight_ne1'), self.sum_w / n, f('route_a'),
-                   f('d1_clipped'), f('d2_clipped'), f('d3_clipped'), f('not_pos_def'),
+                   f('d1_clipped'), f('d2_clipped'), f('d3_clipped'), f('d3_floored'),
+                   f('not_pos_def'),
                    f('failed'),
                    f('charge_flip')))

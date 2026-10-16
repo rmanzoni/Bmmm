@@ -37,7 +37,9 @@ OUTPUT
                cannot remove scatter), s_qoverp = 1 and pair_angles = true
                (not measured here), plus the full fit record under "fit"
   <out>.pdf    ratios per bin with the fitted model, per data view; the
-               per-J/psi-pT fit if pt_x_share is present
+               per-J/psi-pT fit if pt_x_share is present, and the per J/psi pT
+               x muon |eta| fit if pt_eta_x_share is present (fit/per_pt_eta in
+               the JSON: the s input of make_t_table.py)
   stdout       the numbers and the along test
 
 USAGE
@@ -187,6 +189,36 @@ def per_pt(R, P, js, dview, width, s_pv):
     return out
 
 
+def per_pt_eta(R, P, js, dview, width, s_pv):
+    '''s per J/psi pT x muon |eta| (the more forward muon), from pt_eta_x_share:
+    the input of make_t_table.py. Same model and fit as the inclusive one,
+    restricted to the share bins of one (pT, |eta|) cell.'''
+    b = 'pt_eta_x_share'
+    if '%s|%s|%s' % (OBS_AC, b, dview) not in R or 'pt3_edges' not in js:
+        return None
+    pte, ete, she = js['pt3_edges'], js['eta3_edges'], js['sh2_edges']
+    npt, ne, nsh = len(pte) - 1, len(ete) - 1, len(she) - 1
+    A = analyse_view(R, P, b, dview, width, s_pv)
+    if A is None:
+        return None
+    g = lambda k: np.asarray(A[k], float)
+    out = []
+    for ip in range(npt):
+        for ie in range(ne):
+            sel = np.zeros(npt * ne * nsh, bool)
+            k0 = (ip * ne + ie) * nsh
+            sel[k0:k0 + nsh] = True
+            fit = fit_bins(g('r_across'), g('e_across'), g('r_chi2'), g('e_chi2'),
+                           g('pvshare_across'), g('share_chi2'), s_pv, sel)
+            if fit is None:
+                out.append(dict(pt=[pte[ip], pte[ip + 1]], eta=[ete[ie], ete[ie + 1]], fit=None))
+                continue
+            t = along_test(fit, g('r_along')[sel], g('e_along')[sel], g('pvshare_along')[sel],
+                           g('share_along')[sel], s_pv)
+            out.append(dict(pt=[pte[ip], pte[ip + 1]], eta=[ete[ie], ete[ie + 1]], fit=fit, along=t))
+    return out
+
+
 def report(A, label):
     f = A['fit']
     L = ['%s  [%s, %s widths]' % (label, A['binning'], A['width']),
@@ -209,7 +241,7 @@ def report(A, label):
     return L
 
 
-def plot(results, ptres, out):
+def plot(results, ptres, out, ptetares=None):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -257,6 +289,27 @@ def plot(results, ptres, out):
             fig.tight_layout()
             pdf.savefig(fig)
             plt.close(fig)
+        if ptetares:
+            fig, ax = plt.subplots(1, 2, figsize=(12, 4.4))
+            etas = sorted({tuple(p['eta']) for p in ptetares})
+            pts = sorted({tuple(p['pt']) for p in ptetares})
+            for k, key in enumerate(('s_dxy', 's_dsz')):
+                for j, (e0, e1), col in zip(range(len(etas)), etas, ('#2f6eba', '#7a3db8', '#e09f3e')):
+                    cell = [p for p in ptetares if tuple(p['eta']) == (e0, e1) and p['fit']]
+                    xs = [pts.index(tuple(p['pt'])) + 0.08 * (j - 1) for p in cell]
+                    ax[k].errorbar(xs, [p['fit'][key] for p in cell],
+                                   yerr=[p['fit'][key + '_err'] for p in cell], fmt='o-', color=col,
+                                   label='muon |$\\eta$| %g-%g' % (e0, e1))
+                ax[k].set_xticks(range(len(pts)))
+                ax[k].set_xticklabels(['%g-%g' % (a_, min(b_, 999)) for a_, b_ in pts])
+                ax[k].set_xlabel('J/$\\psi$ $p_T$ [GeV]')
+                ax[k].axhline(1, color='grey', lw=0.8, ls=':')
+                ax[k].set_title('%s per J/$\\psi$ $p_T$ x muon |$\\eta$| (data)' % key, fontsize=10,
+                                loc='left')
+                ax[k].legend(frameon=False, fontsize=8)
+            fig.tight_layout()
+            pdf.savefig(fig)
+            plt.close(fig)
 
 
 def main():
@@ -297,6 +350,22 @@ def main():
                                                          f['s_dxy_err'], f['s_dsz'], f['s_dsz_err'],
                                                          t.get('extra_var', np.nan),
                                                          t.get('extra_var_err', np.nan)))
+    peres = per_pt_eta(R, P, js, 'data', a.width, a.s_pv)
+    if peres:
+        lines.append('per J/psi pT x muon |eta| (data; |eta| of the more forward muon):')
+        for p in peres:
+            if p['fit']:
+                f_ = p['fit']
+                lines.append('  pT %5g-%-5g |eta| %3g-%-3g  s_dxy %.4f +- %.4f  s_dsz %.4f +- %.4f  '
+                             'chi2 %.1f / %d' % (p['pt'][0], min(p['pt'][1], 999), p['eta'][0],
+                                                p['eta'][1], f_['s_dxy'], f_['s_dxy_err'],
+                                                f_['s_dsz'], f_['s_dsz_err'], f_['chi2'], f_['ndf']))
+            else:
+                lines.append('  pT %5g-%-5g |eta| %3g-%-3g  no fit' % (p['pt'][0], min(p['pt'][1], 999),
+                                                                    p['eta'][0], p['eta'][1]))
+    else:
+        lines.append('no pt_eta_x_share binning in %s: refill with the current vertex_pull_study.py '
+                     'for the per-|eta| factors' % a.json)
     print('\n'.join(lines))
     f = results[0]['fit']
     clamp = {k: max(f[k], 1.0) for k in ('s_dxy', 's_dsz')}
@@ -310,10 +379,10 @@ def main():
                         not_measured='phi, lambda (paired with dxy, dsz by assumption) and q/p '
                                      '(=1): invisible to the vertex pulls, to be measured with the '
                                      'J/psi mass resolution',
-                        views=results, per_pt=ptres))
+                        views=results, per_pt=ptres, per_pt_eta=peres))
     with open(a.out + '.json', 'w') as fh:
         json.dump(out, fh, indent=1, default=float)
-    plot(results, ptres, a.out)
+    plot(results, ptres, a.out, peres)
     print('wrote %s.json, %s.pdf' % (a.out, a.out))
 
 
