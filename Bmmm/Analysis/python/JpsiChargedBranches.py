@@ -9,6 +9,7 @@ from Bmmm.Analysis.utils import (
 #   from Bmmm.Analysis.JpsiChargedBranches import ..., safe_get
 # in JpsiMuBranches / JpsiTkBranches keeps working.
 from Bmmm.Analysis.CommonBranches import event_branches as _common_event
+from Bmmm.Analysis.CommonBranches import beamspot_shape as _bs_shape
 from Bmmm.Analysis.CommonBranches import muon_branches as _common_muon
 from Bmmm.Analysis.CommonBranches import track_cov_branches as _track_cov
 from Bmmm.Analysis.CommonBranches import track_cov_corr_branches as _track_cov_corr
@@ -42,6 +43,10 @@ event_branches = {
     'bs_z0'   : _common_event['bs_z0']  ,
     'bs_z0e'  : lambda ev : ev.bs.z0Error()                         ,
 }
+# beamspot shape: the ceiling of the beamspot-constrained refit PV transverse
+# error (see CommonBranches)
+for _k, _g in _bs_shape.items():
+    event_branches[_k] = (lambda ev, g=_g : g(ev.bs))
 
 # Built from the shared per-muon block, with the RJpsi-only quantities inserted
 # where they have always been: the refitted-J/psi rf_* right after the raw

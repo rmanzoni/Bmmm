@@ -4,6 +4,7 @@ import numpy as np
 
 from Bmmm.Analysis.utils import VTX_COV_ELEMENT_NAMES, VTX_COV_INDEX_PAIRS, vertex_cov_element
 from Bmmm.Analysis.CommonBranches import event_branches as _common_event
+from Bmmm.Analysis.CommonBranches import beamspot_shape as _bs_shape
 from Bmmm.Analysis.CommonBranches import muon_branches as _common_muon
 from Bmmm.Analysis.CommonBranches import track_cov_branches as _track_cov
 from Bmmm.Analysis.CommonBranches import track_cov_corr_branches as _track_cov_corr
@@ -122,6 +123,13 @@ cand_branches.update({
     'lxy_bs_err_raw': lambda cand : cand.lxy_bs_raw.error()        ,
     'lxy_bs_sig_raw': lambda cand : cand.lxy_bs_raw.significance() ,
 })
+
+# beamspot shape (width, length, tilt) and the position errors: the ceiling of
+# the beamspot-constrained refit PV transverse error (see CommonBranches)
+cand_branches['bs_x0e'] = lambda cand : cand.beamspot.x0Error()
+cand_branches['bs_y0e'] = lambda cand : cand.beamspot.y0Error()
+for _k, _g in _bs_shape.items():
+    cand_branches[_k] = (lambda cand, g=_g : g(cand.beamspot))
 
 branches = list(event_branches) + list(cand_branches)
 

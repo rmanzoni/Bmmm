@@ -38,6 +38,22 @@ event_branches = {
     'bs_z0'  : lambda ev : ev.bs.z0()                            ,
 }
 
+# Beamspot SHAPE, as the getter of a reco::BeamSpot. The refit PV is
+# beamspot-constrained, so its transverse error can never exceed the beamspot
+# width along that direction: in MC (one fixed width) this is a hard wall in the
+# stated PV error, in data the width changes lumisection by lumisection. Needed
+# to compare the PV errors of data and MC (pull-study note, section 10b).
+# Channels add them with their own accessor (event: ev.bs, candidate: cand.beamspot).
+beamspot_shape = {
+    'bs_width_x'   : lambda bs : bs.BeamWidthX()      ,
+    'bs_width_y'   : lambda bs : bs.BeamWidthY()      ,
+    'bs_width_xe'  : lambda bs : bs.BeamWidthXError() ,
+    'bs_width_ye'  : lambda bs : bs.BeamWidthYError() ,
+    'bs_sigma_z'   : lambda bs : bs.sigmaZ()          ,
+    'bs_dxdz'      : lambda bs : bs.dxdz()            ,
+    'bs_dydz'      : lambda bs : bs.dydz()            ,
+}
+
 
 ##########################################################################################
 #####      PER-MUON QUANTITIES, COMMON TO ALL CHANNELS
