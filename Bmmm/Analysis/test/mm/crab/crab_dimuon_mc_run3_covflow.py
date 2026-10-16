@@ -55,6 +55,7 @@ covflow adds two small torch calls per event and torch to the job memory.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -95,10 +96,22 @@ ap.add_argument('--emu-seed', type=int, default=12345,
                      '(default: %(default)s)')
 ap.add_argument('--no-delta1', action='store_true', help='with --emulate: no delta_1 (checks)')
 ap.add_argument('--no-delta2', action='store_true', help='with --emulate: no delta_2 (checks)')
+ap.add_argument('--track-scales', default=None,
+                help='with --emulate: JSON from fit_track_scales.py (schema trackscales/1), '
+                     'shipped with the job: delta_3, the data\'s own understatement of its '
+                     'track errors')
 ap.add_argument('--dry-run', action='store_true', help='preflight and print, submit nothing')
 args = ap.parse_args()
-if not args.emulate and (args.no_killmaps or args.no_delta1 or args.no_delta2):
-    ap.error('--no-killmaps / --no-delta1 / --no-delta2 need --emulate')
+if not args.emulate and (args.no_killmaps or args.no_delta1 or args.no_delta2 or args.track_scales):
+    ap.error('--no-killmaps / --no-delta1 / --no-delta2 / --track-scales need --emulate')
+if args.track_scales:
+    _ts = json.load(open(args.track_scales))
+    if _ts.get('schema') != 'trackscales/1':
+        ap.error('--track-scales %s: schema %r, expected trackscales/1'
+                 % (args.track_scales, _ts.get('schema')))
+    if not re.match(r'^[A-Za-z0-9._-]+$', os.path.basename(args.track_scales)):
+        ap.error('--track-scales: the file name may only contain letters, digits and ._- '
+                 '(it travels as a CRAB scriptArgs value)')
 if args.tag is None:
     args.tag = 'covflowemu_12oct2026' if args.emulate else 'covflow_11oct2026'
 use_km = args.emulate and not args.no_killmaps
@@ -263,8 +276,11 @@ for ds, camp, ep in tasks:
             sa += ['NODELTA1=1']
         if args.no_delta2:
             sa += ['NODELTA2=1']
+        if args.track_scales:
+            sa += ['TRACKSCALES=%s' % os.path.basename(args.track_scales)]
     cfg.JobType.scriptArgs = list(cfg.JobType.scriptArgs) + sa
-    cfg.JobType.inputFiles = list(cfg.JobType.inputFiles) + [staged[ep]]
+    cfg.JobType.inputFiles = list(cfg.JobType.inputFiles) + [staged[ep]] + \
+        ([os.path.abspath(args.track_scales)] if args.track_scales else [])
     cfgs.append(cfg)
 
 # what the CRAB server accepts in a scriptArgs value, checked here rather than

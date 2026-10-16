@@ -20,6 +20,12 @@ The production-level version of the chain agreed in the covflow decision log
          C_fit = B + clip(C* - B):
      C* in the directions where data is less precise than MC, the MC
      uncertainty B where data is more precise (nothing to smear there).
+  4b. DELTA_3 (optional, --track-scales): the data's own understatement of
+     its errors, measured with prompt J/psi pulls (vertex_pull_study.py,
+     fit_track_scales.py). One factor per track parameter, S = diag(s_p):
+     the parameters get delta_3 ~ N(0, clip(S C_fit S - C_fit)) and the
+     stated covariance stays C_fit, as in data, where it is too small by S.
+     See TrackScales.
   5. A new reco::Track with the smeared parameters and C_fit, and a clone of
      the pat::Muon carrying the smeared momentum with the PDG muon mass (the
      mass is assigned, never measured).
@@ -95,6 +101,87 @@ def clip_increment(D, B):
     return D_plus, A, lam
 
 
+class TrackScales(object):
+    '''Per-parameter factors by which the data understate their track errors
+    (strategy A of the vertex-pull study: MC gets the extra scatter, its stated
+    errors stay data-like). JSON written by fit_track_scales.py:
+
+        {"schema": "trackscales/1",
+         "s_dxy": 1.02, "s_dsz": 1.035,       measured with the vertex pulls
+         "s_qoverp": 1.0,                      not seen by the vertex pulls
+         "pair_angles": true,                  s_phi = s_dxy, s_lambda = s_dsz
+         "s_phi": 1.0, "s_lambda": 1.0,        used only if pair_angles is false
+         "pt_edges": [0, 6, 10, 1e9],          optional, muon pT [GeV]; then
+         "s_dxy_pt": [...], "s_dsz_pt": [...]} per-bin values replace s_dxy, s_dsz
+
+    pair_angles: a track's position and direction errors come from the same
+    hits (rho(phi, dxy) ~ -0.89): if the hit errors are understated, both are.
+    Scaling each pair together also keeps S C S - C positive semi-definite
+    within the pair. The vertex pulls do not see phi, lambda (pull-study note,
+    Fig. 13): this is an assumption, to be checked with the J/psi mass.
+    Factors below 1 are refused: a random step cannot remove scatter.'''
+
+    def __init__(self, cfg):
+        self.cfg = c = dict(cfg)
+        if c.get('schema') != 'trackscales/1':
+            raise RuntimeError('track scales: schema %r, expected trackscales/1'
+                               % c.get('schema'))
+        self.pair = bool(c.get('pair_angles', True))
+        self.edges = np.asarray(c['pt_edges'], float) if 'pt_edges' in c else None
+        vals = [c.get(k, 1.0) for k in ('s_dxy', 's_dsz', 's_qoverp', 's_phi', 's_lambda')]
+        if self.edges is not None:
+            nb = len(self.edges) - 1
+            for k in ('s_dxy_pt', 's_dsz_pt'):
+                if len(c.get(k, [])) != nb:
+                    raise RuntimeError('track scales: %s needs %d values (pt_edges)' % (k, nb))
+            vals += list(c['s_dxy_pt']) + list(c['s_dsz_pt'])
+        bad = [v for v in vals if not (np.isfinite(v) and v >= 1.0)]
+        if bad:
+            raise RuntimeError('track scales: factors must be >= 1 (a random step cannot '
+                               'remove scatter), got %s' % bad)
+
+    @classmethod
+    def load(cls, path):
+        import json
+        with open(path) as fh:
+            return cls(json.load(fh))
+
+    def factors(self, par):
+        '''(N,5) track parameters -> (N,5) factors, in TRACK_PARAMS order.'''
+        par = np.atleast_2d(np.asarray(par, np.float64))
+        N = len(par)
+        c = self.cfg
+        s_xy = np.full(N, float(c.get('s_dxy', 1.0)))
+        s_sz = np.full(N, float(c.get('s_dsz', 1.0)))
+        if self.edges is not None:
+            pt = np.cos(par[:, 1]) / np.maximum(np.abs(par[:, 0]), 1e-12)
+            ib = np.clip(np.searchsorted(self.edges, pt, side='right') - 1, 0,
+                         len(self.edges) - 2)
+            s_xy = np.asarray(c['s_dxy_pt'], float)[ib]
+            s_sz = np.asarray(c['s_dsz_pt'], float)[ib]
+        s_phi = s_xy if self.pair else np.full(N, float(c.get('s_phi', 1.0)))
+        s_lam = s_sz if self.pair else np.full(N, float(c.get('s_lambda', 1.0)))
+        s_qp = np.full(N, float(c.get('s_qoverp', 1.0)))
+        return np.stack([s_qp, s_lam, s_phi, s_xy, s_sz], -1)
+
+    def increment(self, C, par):
+        '''S C S - C per track: the covariance of the extra scatter delta_3.'''
+        S = self.factors(par)
+        return C * S[:, :, None] * S[:, None, :] - C
+
+    def describe(self):
+        c = self.cfg
+        if self.edges is not None:
+            core = 'per muon pT %s: s_dxy %s, s_dsz %s' % (list(self.edges), c['s_dxy_pt'],
+                                                           c['s_dsz_pt'])
+        else:
+            core = 's_dxy %.4f, s_dsz %.4f' % (c.get('s_dxy', 1.0), c.get('s_dsz', 1.0))
+        return '%s, s_qoverp %.4f, %s' % (
+            core, c.get('s_qoverp', 1.0),
+            'angles paired with the positions' if self.pair else
+            's_phi %.4f, s_lambda %.4f' % (c.get('s_phi', 1.0), c.get('s_lambda', 1.0)))
+
+
 def lorentz_vector(px, py, pz, m):
     E = np.sqrt(px * px + py * py + pz * pz + m * m)
     try:
@@ -111,16 +198,21 @@ class MCTrackEmulator(object):
     killmaps   : kill-map stem (killmaps_<epoch>, .npz/.json) or None: no
                  kill, no route A (covflow + delta_2 only)
     delta1, delta2 : switch the smearings off for checks (the covariances
-                 are still corrected)'''
+                 are still corrected)
+    track_scales : None, a TrackScales or the path of its JSON: delta_3'''
 
     def __init__(self, correctors, killmaps=None, seed=12345, delta1=True, delta2=True,
-                 verbose=True):
+                 track_scales=None, verbose=True):
         if set(correctors) != {'mu1', 'mu2'}:
             raise RuntimeError('the emulation needs the mu1 AND the mu2 flows, got %s'
                                % sorted(correctors))
         self.corr = correctors
         self.seed = int(seed)
         self.delta1, self.delta2 = bool(delta1), bool(delta2)
+        self.scales = (TrackScales.load(track_scales) if isinstance(track_scales, str)
+                       else track_scales)
+        if self.scales is not None and verbose:
+            print('#### emulation: delta_3 (track scales) %s' % self.scales.describe())
         self.km = None
         self.H = None
         if killmaps:
@@ -139,7 +231,7 @@ class MCTrackEmulator(object):
                       % (killmaps, self.km.meta.get('epoch'), ' '.join(self.km.surfaces),
                          len(self.km.ranges), origin))
         self.n = dict(muons=0, killed=0, killed_L1=0, killed_D1=0, killed_other=0,
-                      weight_ne1=0, route_a=0, d1_clipped=0, d2_clipped=0, failed=0,
+                      weight_ne1=0, route_a=0, d1_clipped=0, d2_clipped=0, d3_clipped=0, failed=0,
                       not_pos_def=0, charge_flip=0)
         self.sum_w = 0.0
 
@@ -288,15 +380,29 @@ class MCTrackEmulator(object):
                 B[idx], C_fit[idx], d1[idx], d2[idx] = C[idx], C[idx], 0., 0.
                 self.n['failed'] += len(idx)
 
+        # ---- 4b. delta_3: the data's own understatement (track scales) --
+        # drawn AFTER every delta_1 / delta_2 draw, so switching it on does
+        # not change the other random numbers of the event
+        d3 = np.zeros((N, 5))
+        n3clip = np.zeros(N, np.int64)
+        if self.scales is not None:
+            idx = [i for i in range(N) if ok[i]]
+            if idx:
+                D3 = self.scales.increment(C_fit[idx], par0[idx])
+                _, A3, lam3 = clip_increment(D3, C_fit[idx])
+                n3clip[idx] = (lam3 < -CLIP_TOL).sum(1)
+                d3[idx] = np.einsum('nij,nj->ni', A3, rng.standard_normal((len(idx), 5)))
+                self.n['d3_clipped'] += int((n3clip[idx] > 0).sum())
+
         # ---- 5. tracks and muon clones ---------------------------------
-        par = par0 + d1 + d2
+        par = par0 + d1 + d2 + d3
         for i, cl in enumerate(clones):
             trk = track_with_params(trks[i], par[i], C_fit[i]) if ok[i] else None
             if ok[i] and trk is None:
                 self.n['charge_flip'] += 1
                 ok[i] = False
             if trk is None:
-                trk, par[i], C_fit[i], d1[i], d2[i] = trks[i], par0[i], C[i], 0., 0.
+                trk, par[i], C_fit[i], d1[i], d2[i], d3[i] = trks[i], par0[i], C[i], 0., 0., 0.
             mom = trk.momentum()
             cl.setP4(lorentz_vector(mom.x(), mom.y(), mom.z(), MUON_MASS))
             cl._emu_track = trk
@@ -309,8 +415,9 @@ class MCTrackEmulator(object):
             cl.emu = dict(ok=bool(ok[i]), role=1 if roles[i] == 'mu1' else 2, range=rix,
                           killed=bool(killed[i]), killed_L1=bool(kL1[i]), killed_D1=bool(kD1[i]),
                           killed_other=bool(kOther[i]), weight=float(w[i]),
-                          d1=d1[i].copy(), d2=d2[i].copy(), d1_nclip=int(n1clip[i]),
-                          d2_nclip=int(n2clip[i]), d2_lam_min=float(lam2min[i]))
+                          d1=d1[i].copy(), d2=d2[i].copy(), d3=d3[i].copy(),
+                          d1_nclip=int(n1clip[i]), d2_nclip=int(n2clip[i]),
+                          d3_nclip=int(n3clip[i]), d2_lam_min=float(lam2min[i]))
         clones.sort(key=lambda m: m.pt(), reverse=True)
         return clones
 
@@ -319,8 +426,9 @@ class MCTrackEmulator(object):
         f = lambda k: '%d (%.2f%%)' % (self.n[k], 100. * self.n[k] / n)
         return ('[emulation] %d muons: killed %s (L1 %s, D1 %s, other %s), weight != 1 %s, '
                 'mean weight %.4f, route A %s with delta_1 clipped %s, delta_2 clipped %s, '
-                'not pos-def %s, failed %s, charge flip %s'
+                'delta_3 clipped %s, not pos-def %s, failed %s, charge flip %s'
                 % (self.n['muons'], f('killed'), f('killed_L1'), f('killed_D1'),
                    f('killed_other'), f('weight_ne1'), self.sum_w / n, f('route_a'),
-                   f('d1_clipped'), f('d2_clipped'), f('not_pos_def'), f('failed'),
+                   f('d1_clipped'), f('d2_clipped'), f('d3_clipped'), f('not_pos_def'),
+                   f('failed'),
                    f('charge_flip')))
