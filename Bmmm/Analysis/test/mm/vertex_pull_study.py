@@ -150,6 +150,13 @@ OBS = {
     'dimu_sqrtchi2':   ('vtx', 'abs1', r'$\sqrt{\chi^2}$ of the dimuon vertex (1 dof)'),
     'trk_pull_dxy':    ('trk', 'pull', r'muon $d_{xy}$(PV)$/\sigma$'),
     'trk_pull_dz':     ('trk', 'pull', r'muon $d_z$(PV)$/\sigma$'),
+    # lifetime-signed: + when the muon IP points the way a J/psi flying along
+    # its own direction would put it. Prompt: symmetric; non-prompt: + side only.
+    # Fitted on the LEFT half (derived in combine(), like vtx_pull_par_left).
+    'trk_spull_dxy':   ('trk', 'pull', r'muon $d_{xy}$(PV)$/\sigma$, lifetime-signed'),
+    'trk_spull_dz':    ('trk', 'pull', r'muon $d_z$(PV)$/\sigma$, lifetime-signed'),
+    'trk_spull_dxy_left': ('trk', 'pull', r'muon $d_{xy}$(PV)$/\sigma$, lifetime-signed, left half'),
+    'trk_spull_dz_left':  ('trk', 'pull', r'muon $d_z$(PV)$/\sigma$, lifetime-signed, left half'),
 }
 
 BINNINGS = {
@@ -194,6 +201,13 @@ ETA3_EDGES = [0, 0.9, 1.5, 2.5]
 BINNINGS['pt_eta_x_share'] = ('vtx2d', list(np.arange((len(PT3_EDGES) - 1) * (len(ETA3_EDGES) - 1)
                                                       * (len(SH2_EDGES) - 1) + 1).astype(float)),
                               r'J/$\psi$ $p_T$ $\times$ muon $|\eta|$ $\times$ $d_{xy}$ share')
+# 2D binning muon pT x muon |eta|, flattened (index = ipt * NE + ieta), the
+# grid of the t table (make_t_table.py); level 'trk2d': no per-bin plots, read
+# by ip_scales.py
+MU_PT_EDGES = [0, 5, 8, 15, 1e9]
+MU_ETA_EDGES = [0, 0.9, 1.5, 2.5]
+BINNINGS['mu_pt_x_eta'] = ('trk2d', list(np.arange((len(MU_PT_EDGES) - 1) * (len(MU_ETA_EDGES) - 1) + 1)
+                                         .astype(float)), r'muon $p_T$ $\times$ $|\eta|$')
 PROFILES = ('share_along', 'share_chi2', 'pvshare_along', 'pvshare_across')
 
 VTX_COV = ('xx', 'xy', 'xz', 'yy', 'yz', 'zz')
@@ -366,12 +380,29 @@ def track_observables(v, mu, is_mc):
         dx, dy, dzz = to[0] - frm[0], to[1] - frm[1], to[2] - frm[2]
         return dxy0 + dx * s - dy * c, dz0 - dzz + (dx * c + dy * s) * sh
 
+    # lifetime sign: a muon born at D = L u (u: the J/psi direction from the two
+    # muons, L > 0) has dxy = L (-u_x sin phi + u_y cos phi) and
+    # dz = L (u_z - (u_x cos phi + u_y sin phi) sinh eta) wrt the PV
+    pv3 = np.zeros((len(phi), 3))
+    for m in ('mu1', 'mu2'):
+        pt_m, ph_m, et_m = f(m + '_pt'), f(m + '_phi'), f(m + '_eta')
+        pv3 += np.stack([pt_m * np.cos(ph_m), pt_m * np.sin(ph_m), pt_m * np.sinh(et_m)], -1)
+    with np.errstate(all='ignore'):
+        u = pv3 / np.linalg.norm(pv3, axis=1, keepdims=True)
+        sg_xy = np.sign(-u[:, 0] * s + u[:, 1] * c)
+        sg_z = np.sign(u[:, 2] - (u[:, 0] * c + u[:, 1] * s) * sh)
+
     out = {}
     with np.errstate(all='ignore'):
+        # the refit PV's share of each pull's variance (profiled, not histogrammed)
+        out['_pvshare_dxy'] = v_dxy / (s_dxy ** 2 + v_dxy)
+        out['_pvshare_dz'] = v_dz / (s_dz ** 2 + v_dz)
         if not is_mc:
             dxyQ, dzQ = move(dxyP, dzP, P, Q)
             out['trk_pull_dxy'] = dxyQ / np.sqrt(s_dxy ** 2 + v_dxy)
             out['trk_pull_dz'] = dzQ / np.sqrt(s_dz ** 2 + v_dz)
+            out['trk_spull_dxy'] = sg_xy * out['trk_pull_dxy']
+            out['trk_spull_dz'] = sg_z * out['trk_pull_dz']
         else:
             G = [f(mu + '_gen_vx'), f(mu + '_gen_vy'), f(mu + '_gen_vz')]
             T = [f('gen_pv_x'), f('gen_pv_y'), f('gen_pv_z')]
@@ -382,6 +413,9 @@ def track_observables(v, mu, is_mc):
             out['trk_pull_dz'] = dzD / np.sqrt(s_dz ** 2 + v_dz)
             out['trk_pull_dxy:truth'] = dxyG / s_dxy
             out['trk_pull_dz:truth'] = dzG / s_dz
+            for k, sg in (('dxy', sg_xy), ('dz', sg_z)):
+                out['trk_spull_' + k] = sg * out['trk_pull_' + k]
+                out['trk_spull_%s:truth' % k] = sg * out['trk_pull_%s:truth' % k]
     return out
 
 
@@ -495,9 +529,13 @@ def cand_ct(v):
 
 def track_binvars(v, mu):
     f = lambda n: np.asarray(v(n), np.float64)
-    return dict(incl=np.zeros(len(f(mu + '_pt'))), mu_pt=f(mu + '_pt'),
-                mu_abseta=np.abs(f(mu + '_eta')), first_layer=f(mu + '_pix_first_layer'),
-                n_pix_hit=f(mu + '_n_pix_hit'), ct=cand_ct(v))
+    pt, aeta = f(mu + '_pt'), np.abs(f(mu + '_eta'))
+    ne = len(MU_ETA_EDGES) - 1
+    ip = np.clip(np.searchsorted(MU_PT_EDGES, pt, side='right') - 1, 0, len(MU_PT_EDGES) - 2)
+    ie = np.searchsorted(MU_ETA_EDGES, aeta, side='right') - 1
+    pe = np.where(np.isfinite(pt) & (ie >= 0) & (ie < ne), ip * ne + np.clip(ie, 0, ne - 1) + 0.5, np.nan)
+    return dict(incl=np.zeros(len(pt)), mu_pt=pt, mu_abseta=aeta, mu_pt_x_eta=pe,
+                first_layer=f(mu + '_pix_first_layer'), n_pix_hit=f(mu + '_n_pix_hit'), ct=cand_ct(v))
 
 
 # ---------------------------------------------------------------------------
@@ -671,6 +709,7 @@ def fill_view(v, is_mc, view, w, store):
     for mu in ('mu1', 'mu2'):
         to = track_observables(v, mu, is_mc)
         tb = track_binvars(v, mu)
+        store.fill_prof(tb, view, {k[1:]: to.pop(k) for k in [k for k in to if k.startswith('_')]}, w)
         for name, x in to.items():
             base, _, tag = name.partition(':')
             store.fill(base, tb, view + (':truth' if tag else ''), x, w)
@@ -840,8 +879,8 @@ def combine(stores, a):
                 add(k, w, w2)
     # the along pull, to be fitted on its left half (analyse)
     for (o, b, v), wv in list(H.items()):
-        if o == 'vtx_pull_par':
-            H[('vtx_pull_par_left', b, v)] = wv
+        if o in ('vtx_pull_par', 'trk_spull_dxy', 'trk_spull_dz'):
+            H[(o + '_left', b, v)] = wv
     # the ct < 0 half: prompt J/psi only (non-prompt leakage lives at ct > 0)
     be = np.asarray(BINNINGS['ct'][1])
     neg = np.nonzero(be[1:] <= 0)[0]
@@ -858,7 +897,7 @@ def analyse(H, a):
             continue
         kind = OBS[o][1]
         edges = PULL_EDGES if kind == 'pull' else ABS_EDGES
-        if o == 'vtx_pull_par_left':
+        if o.endswith('_left'):
             R[(o, b, v)] = [left_half_fit(w[i], w2[i], edges, a.core) for i in range(len(w))]
         else:
             R[(o, b, v)] = [core_fit(w[i], w2[i], edges, kind, a.core) for i in range(len(w))]
