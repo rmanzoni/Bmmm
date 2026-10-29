@@ -37,34 +37,38 @@ the fake-event tests could not.
 | tracks | packedPFCandidates + lostTracks, pT > 0.7 GeV, \|η\| < 2.4, charged, with track details, not e/μ; 0.005 < ΔR(μ) < 1.2; \|dz(μ) − dz(t)\| < 1 cm and \|dxy(t)\| < 0.6 cm wrt the PV closest in z to the muon |
 | masses (raw momenta) | \|m(KK) − m(φ)\| < 20 MeV; **1.75 < m(KKπ) < 2.15 GeV** (D⁺ and Ds); m(KKπμ) < 8 GeV |
 | charges | none: right-sign, μπ-wrong and KK-wrong candidates are all kept (`charge_class` 0/1/2) |
-| vertices | P(V_φ) > 0.01 and P(V_Ds) > 0.01 in **either** fit scheme |
+| vertices | P(V_φ) > 0.01 and P(V_Ds) > 0.01 in **either** the `phic` or the `free` fit scheme |
 | arbitration | none: every candidate is a row; `cand_idx` numbers them by decreasing pT(KKπμ), `ncands` counts them |
 
-## The two fit schemes
+## The three fit schemes
 
-Every fit-dependent quantity is written twice, with the prefix `cons_` or `free_`.
+Every fit-dependent quantity is written three times, with the prefix `cons_`
+(φ and Ds mass constraints), `phic_` (φ mass constraint only) or `free_` (no
+mass constraint).
 
-| | `cons_` | `free_` |
-|---|---|---|
-| φ vertex (`*_phi_*`) | KK with the φ mass constraint | KK, no constraint |
-| `cons_dsphi_*` | φ + π without the Ds constraint: `cons_dsphi_mass` is m(KKπ) with the φ constraint (the AN v4 definition) | — |
-| Ds vertex (`*_ds_*`) | φ + π with the Ds mass constraint; its momentum enters the Bs kinematics | KK + π, no constraint |
-| Bs vertex (`*_bs_*`) | Ds + μ | KKπ + μ |
+| | `cons_` | `phic_` | `free_` |
+|---|---|---|---|
+| φ vertex (`*_phi_*`) | KK with the φ mass constraint | the same fit as `cons_` | KK, no constraint |
+| Ds vertex (`*_ds_*`) | φ + π with the Ds mass constraint | φ + π, no constraint: `phic_ds_mass` is m(KKπ) with the φ constraint (the AN v4 definition) | KK + π, no constraint |
+| Bs vertex (`*_bs_*`) | Ds + μ | Ds + μ | KKπ + μ |
+
+The Ds momentum of each scheme enters its Bs kinematics.
 
 Scheme-independent masses from the (calibrated) track momenta: `kk_mass`,
 `kkpi_mass`, `mass` (KKπμ), and the reflection masses `refl_k{1,2}_as_pi`
 (D⁺ → Kππ), `refl_k{1,2}_as_p` (Λc → pKπ), `refl_k{1,2}_pi` (D⁰ → Kπ).
 
-The primary vertex (`pv_*`) is shared by the two schemes: the PV closest to the
-line through the Bs vertex (cons, else free) along the KKπμ momentum, refitted
+The primary vertex (`pv_*`) is shared by the three schemes: the PV closest to the
+line through the Bs vertex (cons, else phic, else free; `pv_from_scheme` = 0, 1, 2)
+along the KKπμ momentum, refitted
 with the beamspot constraint and the four tracks removed (the same code as the
 RJpsi and dimuon ntuples). `pv_refit_valid` = 0 means the hybrid PV (beamspot
 x, y, PV z) was used.
 
-Per scheme, Bs momentum hypotheses `coll`, `xyz_bs`, `xyz_ds` (equal velocity
-along PV → V_Bs, PV → V_Ds), `math1/2_bs`, `math1/2_ds` (the two neutrino
-solutions along each direction; `*_math_real_*` = 0 when the discriminant was
-negative and clamped). For each: `pt eta phi beta q2 m_miss2 pt_miss pt_miss_sca
+Per scheme, Bs momentum hypotheses `coll`, `xyz_bs` (equal velocity along the
+Bs flight direction PV → V_Bs), `math1/2_bs` (the two neutrino solutions along
+it; `*_math_real_bs` = 0 when the discriminant was negative and clamped). PV →
+V_Ds is not the Bs direction, so no hypothesis is built along it. For each: `pt eta phi beta q2 m_miss2 pt_miss pt_miss_sca
 e_star_mu e_hash_mu cos_theta_phi_ds cos_theta_mu_w chi`, e.g.
 `cons_math1_bs_q2`. Also `*_cos_theta_k_pi`, `*_mcorr`, `*_p_perp`, the muon
 impact parameters wrt the Ds flight line (`*_mu_ip3d_ds_{pv,sv}`,
@@ -158,6 +162,6 @@ Done here, without CMSSW:
   after the shared-code changes.
 * `RDsKinVtxFitter.h` compiles against stub headers (syntax and types only).
 
-To do on the first real files: run with `--verbose`, compare `cons_` and
-`free_` on signal MC, check the speed (ev/s in the log) before choosing the
+To do on the first real files: run with `--verbose`, compare `cons_`, `phic_`
+and `free_` on signal MC, check the speed (ev/s in the log) before choosing the
 CRAB splitting, and sync a few events against the previous ntuples.

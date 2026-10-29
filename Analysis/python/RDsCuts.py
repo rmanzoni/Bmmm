@@ -8,9 +8,11 @@ Bmmm ntuples (29 Oct 2026):
     wrong-sign ones included;
   * no trigger-matching requirement: the muon's match to the parking objects
     is stored (mu_trig_dr, mu_trig_match, mu_<path>_tag) and applied offline;
-  * the vertex-probability cuts are kept as in the AN, but a candidate passes
-    if EITHER fit scheme (constrained or free, see RDsCandidate) passes them,
-    so the two schemes are compared on the same candidates.
+  * the vertex-probability cuts are kept as in the AN (P(V_phi) with the phi
+    constraint, P(V_Ds) of phi + pi without the Ds constraint), but a
+    candidate passes if EITHER the phi-constrained or the free fit passes
+    them (RDsCandidate.CUT_SCHEMES), so all schemes are compared on the same
+    candidates.
 
 The keys used by the shared BaseInspector muon selection are mu_pt, mu_eta,
 mu_id, mu_dxy; to_pt / to_eta preselect the trigger objects; hlt_dr is the
@@ -48,7 +50,7 @@ cuts['rds'] = {
     'kkpi_max'       : 2.15,    # [GeV]
     'max_mass'       : 8.0,     # [GeV] m(KKpi mu), raw momenta
 
-    # ---- vertex probabilities (AN Sec. 5.3), OR of the two fit schemes ----
+    # ---- vertex probabilities (AN Sec. 5.3), OR of phic and free ----------
     'phi_vtx_prob'   : 0.01,
     'ds_vtx_prob'    : 0.01,
 

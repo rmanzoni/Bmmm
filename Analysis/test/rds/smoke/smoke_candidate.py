@@ -106,9 +106,10 @@ class Tree(object):
 
 
 class FakeFitter(object):
-    def FitConstrained(self, *a):
-        phi = lab['k1'] + lab['k2']; ds = lab['ds']
-        return [Tree(phi, [lab['k1'], lab['k2']], dsv), Tree(phi + lab['pi'], [lab['pi'], phi], dsv),
+    def FitPhiConstrained(self, *a):
+        phi = lab['k1'] + lab['k2']; ds = lab['ds']; dsphi = phi + lab['pi']
+        return [Tree(phi, [lab['k1'], lab['k2']], dsv),
+                Tree(dsphi, [lab['pi'], phi], dsv), Tree(dsphi + lab['mu'], [lab['mu'], dsphi], sv),
                 Tree(ds, [lab['pi'], phi], dsv), Tree(ds + lab['mu'], [lab['mu'], ds], sv)]
     def FitFree(self, *a):
         phi = lab['k1'] + lab['k2']
@@ -238,4 +239,4 @@ print('NaN branches (%d):' % len(nan))
 import collections
 groups = collections.Counter(b.split('_')[0] for b in nan)
 print(dict(groups))
-print([b for b in nan if not b.startswith(('cons_gamma', 'free_gamma', 'hammer'))][:80])
+print([b for b in nan if not b.startswith(('cons_gamma', 'phic_gamma', 'free_gamma', 'hammer'))][:80])

@@ -26,25 +26,27 @@
 // ----------------------------------------------------------------------------
 // Sequential kinematic fits of Bs -> Ds(-> phi(-> K K) pi) mu (nu).
 //
-// Two schemes, run side by side on the same tracks so they can be compared on
-// MC (RDsCandidate):
+// Three schemes, run side by side on the same tracks so they can be compared
+// on MC (RDsCandidate):
 //
-//   FitConstrained   [phi, ds_phi, ds, bs]
-//     phi    : K K with the phi mass constraint                    -> V_phi
-//     ds_phi : phi + pi, NO Ds constraint                          -> m(KKpi)
-//              with the phi constraint (the AN v4 / previous ntuples)
-//     ds     : phi + pi with the Ds mass constraint                -> V_Ds, the
-//              Ds momentum used for the Bs kinematics
-//     bs     : ds + mu, no constraint (neutrinos)                  -> V_Bs
+//   FitPhiConstrained   [phi, ds_phic, bs_phic, ds_cons, bs_cons]
+//     phi     : K K with the phi mass constraint, shared by the two chains
+//     -- phic: phi constraint only
+//     ds_phic : phi + pi, no constraint     -> m(KKpi) with the phi constraint
+//                                              (the AN v4 / previous ntuples)
+//     bs_phic : ds_phic + mu, no constraint (neutrinos)
+//     -- cons: phi and Ds constraints
+//     ds_cons : phi + pi with the Ds mass constraint
+//     bs_cons : ds_cons + mu, no constraint (neutrinos)
 //
-//   FitFree          [kk, kkpi, bs]
-//     kk     : K K, no constraint                                  -> V_KK
-//     kkpi   : KK + pi, no constraint                              -> V_KKpi
-//     bs     : kkpi + mu, no constraint                            -> V_Bs
+//   FitFree             [kk, kkpi, bs]
+//     kk      : K K, no constraint
+//     kkpi    : KK + pi, no constraint
+//     bs      : kkpi + mu, no constraint
 //
 // Every returned vector has the full length; a failed step and every step
-// after it are empty trees (test with tree.get() / isValid() on the Python
-// side). A fit that throws (KinematicFit raises on degenerate input) is a
+// after it in the same chain are empty trees (test with tree.get() /
+// isValid() on the Python side). A fit that throws (KinematicFit raises on degenerate input) is a
 // failed step, not a dead job.
 // ----------------------------------------------------------------------------
 
@@ -58,17 +60,17 @@ class RDsKinVtxFitter {
       return reco::TransientTrack(track, paramField);
     }
 
-    std::vector<RefCountedKinematicTree> FitConstrained(const reco::Track & k1,
-                                                        const reco::Track & k2,
-                                                        const reco::Track & pi,
-                                                        const reco::Track & mu,
-                                                        const double      & mk,
-                                                        const double      & mpi,
-                                                        const double      & mmu,
-                                                        const double      & mphi,
-                                                        const double      & mds)
+    std::vector<RefCountedKinematicTree> FitPhiConstrained(const reco::Track & k1,
+                                                           const reco::Track & k2,
+                                                           const reco::Track & pi,
+                                                           const reco::Track & mu,
+                                                           const double      & mk,
+                                                           const double      & mpi,
+                                                           const double      & mmu,
+                                                           const double      & mphi,
+                                                           const double      & mds)
     {
-        std::vector<RefCountedKinematicTree> out(4, RefCountedKinematicTree());
+        std::vector<RefCountedKinematicTree> out(5, RefCountedKinematicTree());
 
         // phi: K K, phi mass constraint
         std::vector<RefCountedKinematicParticle> kk = {particle(k1, mk), particle(k2, mk)};
@@ -78,21 +80,22 @@ class RDsKinVtxFitter {
         if (!good(out[0])) return out;
         RefCountedKinematicParticle phi = top(out[0]);
 
-        // phi + pi without the Ds constraint (m(KKpi) with the phi constraint)
-        std::vector<RefCountedKinematicParticle> dsPhi = {particle(pi, mpi), phi};
-        out[1] = fit(dsPhi, nullptr);
+        // phic: phi + pi without the Ds constraint, then + mu
+        std::vector<RefCountedKinematicParticle> dsPhicIn = {particle(pi, mpi), phi};
+        out[1] = fit(dsPhicIn, nullptr);
+        if (good(out[1])) {
+            std::vector<RefCountedKinematicParticle> bsPhicIn = {particle(mu, mmu), top(out[1])};
+            out[2] = fit(bsPhicIn, nullptr);
+        }
 
-        // phi + pi with the Ds constraint
-        std::vector<RefCountedKinematicParticle> dsIn = {particle(pi, mpi), phi};
+        // cons: phi + pi with the Ds constraint, then + mu
+        std::vector<RefCountedKinematicParticle> dsConsIn = {particle(pi, mpi), phi};
         ParticleMass dsMass = mds;
         TwoTrackMassKinematicConstraint dsConstr(dsMass);
-        out[2] = fit(dsIn, &dsConstr);
-        if (!good(out[2])) return out;
-        RefCountedKinematicParticle ds = top(out[2]);
-
-        // Ds + mu
-        std::vector<RefCountedKinematicParticle> bsIn = {particle(mu, mmu), ds};
-        out[3] = fit(bsIn, nullptr);
+        out[3] = fit(dsConsIn, &dsConstr);
+        if (!good(out[3])) return out;
+        std::vector<RefCountedKinematicParticle> bsConsIn = {particle(mu, mmu), top(out[3])};
+        out[4] = fit(bsConsIn, nullptr);
         return out;
     }
 

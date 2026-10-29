@@ -3,29 +3,30 @@ Bs -> Ds(-> phi(-> K K) pi) mu (nu) candidate for the R(Ds) ntuples.
 
 Replaces the 2023 prototype. What it does, per candidate:
 
-  1. Two sequential kinematic-fit schemes on the same four tracks
+  1. Three sequential kinematic-fit schemes on the same four tracks
      (RDsKinVtxFitter), stored side by side so they can be compared on MC:
         cons   phi mass constraint on KK, then Ds mass constraint on phi + pi,
-               then Ds + mu. Also phi + pi WITHOUT the Ds constraint ('dsphi'),
-               which gives m(KKpi) with the phi constraint (the AN v4 / previous
-               ntuples definition).
+               then Ds + mu.
+        phic   phi mass constraint on KK only: phi + pi, then KKpi + mu.
+               phic_ds_mass is m(KKpi) with the phi constraint (the AN v4 /
+               previous ntuples definition).
         free   no mass constraint anywhere: KK, KK + pi, KKpi + mu.
-     Every quantity that depends on the fits is written once per scheme, with
-     the prefix cons_ or free_.
+     cons and phic share the same phi fit. Every quantity that depends on the
+     fits is written once per scheme, with the prefix cons_, phic_ or free_.
   2. The primary vertex: the one with the smallest 3D distance from the line
      through the Bs vertex along the visible (KKpi mu) momentum (AN Eq. 3;
-     Bs vertex of the cons scheme, of the free scheme if that failed, the PV
-     closest in z to the muon if both failed), refitted with the beamspot
+     Bs vertex of the first scheme in SCHEMES whose Bs fit succeeded, the PV
+     closest in z to the muon if all failed), refitted with the beamspot
      constraint and the four signal tracks removed (PrimaryVertex, shared
-     with the RJpsi and dimuon ntuples). The same PV serves both schemes.
+     with the RJpsi and dimuon ntuples). The same PV serves all schemes.
   3. Displacements and pointing of the phi, Ds and Bs vertices, the Ds vertex
      relative to the Bs vertex, the muon impact parameters with respect to the
      Ds flight line.
   4. Bs momentum hypotheses (AN Sec. 5.4), per scheme: collinear, equal
-     velocity along PV -> V_Bs and PV -> V_Ds (xyz_bs, xyz_ds) and the two
-     neutrino solutions along each of the two directions (math1/2_bs,
-     math1/2_ds); for each one q2, m_miss2, pT_miss, E*_mu, E#_mu, the Bs pT
-     and the helicity angles (RDsKinematics).
+     velocity along the Bs flight direction PV -> V_Bs (xyz_bs) and the two
+     neutrino solutions along it (math1/2_bs); for each one q2, m_miss2,
+     pT_miss, E*_mu, E#_mu, the Bs pT and the helicity angles (RDsKinematics).
+     PV -> V_Ds is not the Bs direction, so no hypothesis is built along it.
   5. The soft photon of Ds* -> Ds gamma (AN Sec. 5.5), per scheme.
   6. Scheme-independent: raw masses, charges and charge class, reflection
      masses, PF isolation of mu, Ds and KKpi mu against the refitted PV.
@@ -76,12 +77,14 @@ iptools = RJpsiKinVtxFitter()
 
 LorentzVector = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')
 
-SCHEMES = ('cons', 'free')
-# vertices of each scheme, in the order RDsKinVtxFitter returns the trees
-SCHEME_VERTICES = {'cons': ('phi', 'dsphi', 'ds', 'bs'),
-                   'free': ('phi', 'ds', 'bs')}
-DIRECTIONS = ('bs', 'ds')
-HYPOTHESES = ('coll', 'xyz_bs', 'xyz_ds', 'math1_bs', 'math2_bs', 'math1_ds', 'math2_ds')
+# the order sets the scheme the PV is chosen from (choose_pv, pv_from_scheme)
+SCHEMES = ('cons', 'phic', 'free')
+SCHEME_VERTICES = ('phi', 'ds', 'bs')
+# the vertex cuts: phic carries the phi + pi fit without the Ds constraint
+# (the AN definition) and its phi fit is the one cons uses, so OR-ing phic and
+# free covers all three schemes
+CUT_SCHEMES = ('phic', 'free')
+HYPOTHESES = ('coll', 'xyz_bs', 'math1_bs', 'math2_bs')
 HYP_OBS    = ('pt', 'eta', 'phi', 'beta', 'q2', 'm_miss2', 'pt_miss', 'pt_miss_sca',
               'e_star_mu', 'e_hash_mu', 'cos_theta_phi_ds', 'cos_theta_mu_w', 'chi')
 NAN = float('nan')
@@ -301,23 +304,21 @@ class RDsCandidate(PrimaryVertexRefitMixin):
     #####      FITS
     ##########################################################################
     def fit(self):
-        '''Both fit schemes. Fills self.fits[scheme][vertex] with FitInfo.'''
+        '''All fit schemes. Fills self.fits[scheme][vertex] with FitInfo.'''
         t = [o.fit_track() for o in (self.k1, self.k2, self.pi, self.mu)]
-        cons = kinfit.FitConstrained(t[0], t[1], t[2], t[3], M_K, M_PI, M_MU, M_PHI, M_DS)
-        free = kinfit.FitFree(t[0], t[1], t[2], t[3], M_K, M_PI, M_MU)
+        # [phi, ds_phic, bs_phic, ds_cons, bs_cons], the phi fit shared
+        phic = [FitInfo(tree) for tree in
+                kinfit.FitPhiConstrained(t[0], t[1], t[2], t[3], M_K, M_PI, M_MU, M_PHI, M_DS)]
+        free = [FitInfo(tree) for tree in kinfit.FitFree(t[0], t[1], t[2], t[3], M_K, M_PI, M_MU)]
         self.fits = {
-            'cons': dict(zip(SCHEME_VERTICES['cons'], [FitInfo(cons[i]) for i in range(4)])),
-            'free': dict(zip(SCHEME_VERTICES['free'], [FitInfo(free[i]) for i in range(3)])),
+            'cons': dict(zip(SCHEME_VERTICES, (phic[0], phic[3], phic[4]))),
+            'phic': dict(zip(SCHEME_VERTICES, (phic[0], phic[1], phic[2]))),
+            'free': dict(zip(SCHEME_VERTICES, free)),
         }
 
-    def ds_fit_for_cut(self, scheme):
-        '''The Ds vertex the AN cut applies to: phi + pi without the Ds
-        constraint in the cons scheme, KK + pi in the free scheme.'''
-        return self.fits[scheme]['dsphi' if scheme == 'cons' else 'ds']
-
     def passes_vertex_cuts(self, cuts):
-        for s in SCHEMES:
-            f_phi, f_ds = self.fits[s]['phi'], self.ds_fit_for_cut(s)
+        for s in CUT_SCHEMES:
+            f_phi, f_ds = self.fits[s]['phi'], self.fits[s]['ds']
             if f_phi.valid and f_ds.valid and \
                f_phi.prob > cuts['phi_vtx_prob'] and f_ds.prob > cuts['ds_vtx_prob']:
                 return True
@@ -351,15 +352,19 @@ class RDsCandidate(PrimaryVertexRefitMixin):
     #####      DISPLACEMENT
     ##########################################################################
     def displacement(self, info, p4):
-        '''lxy, lxyz (Measurement1D) and cos2d, cos3d of a vertex wrt the PV.'''
+        '''lxy, lxyz (Measurement1D) and cos2d, cos3d of a vertex wrt the PV.
+        Cached on the FitInfo: cons and phic share the same phi fit.'''
         out = {}
         if not info.valid:
             return out
+        if getattr(info, 'disp', None) is not None:
+            return info.disp
         out['lxy']  = ROOT.VertexDistanceXY().distance(self.pv_bs, info.vtx.vertexState())
         out['lxyz'] = ROOT.VertexDistance3D().distance(self.pv_bs, info.vtx.vertexState())
         d = info.position() - self.pv_pos
         out['cos2d'] = _cos(d[:2], p4[1:3])
         out['cos3d'] = _cos(d, p4[1:])
+        info.disp = out
         return out
 
     ##########################################################################
@@ -445,6 +450,8 @@ class RDsCandidate(PrimaryVertexRefitMixin):
         p_mu = self.mu.np4()
         visible = p_ds + p_mu
 
+        # flight directions from the PV. PV -> V_Bs is the Bs direction and the
+        # only one the Bs hypotheses use; PV -> V_Ds only serves the muon IPs
         directions = {}
         for lab, info in (('bs', bs), ('ds', ds)):
             if info.valid:
@@ -452,12 +459,13 @@ class RDsCandidate(PrimaryVertexRefitMixin):
 
         # ---- Bs momentum hypotheses -------------------------------------------
         hyps = {'coll': collinear_p4(visible)}
-        for lab, d in directions.items():
-            hyps['xyz_' + lab] = equal_velocity_p4(d, visible)
+        if 'bs' in directions:
+            d = directions['bs']
+            hyps['xyz_bs'] = equal_velocity_p4(d, visible)
             sols = _nu_solutions(visible, d)
             if sols is not None:
-                hyps['math1_' + lab], hyps['math2_' + lab] = sols[0], sols[1]
-                o['%s_math_real_%s' % (s, lab)] = sols[2]
+                hyps['math1_bs'], hyps['math2_bs'] = sols[0], sols[1]
+                o[s + '_math_real_bs'] = sols[2]
 
         for h, p_b in hyps.items():
             obs = semileptonic_observables(p_b, p_ds, p_mu)

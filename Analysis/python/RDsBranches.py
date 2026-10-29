@@ -15,7 +15,8 @@ Blocks, in schema order:
                  information, IPs, covariance, hit content, jet and gen match
   candidate      scheme-independent quantities (masses, charges, reflections,
                  PV, isolation, cand_idx), then everything that depends on the
-                 kinematic fits, once per scheme with the prefix cons_ / free_
+                 kinematic fits, once per scheme with the prefix cons_ / phic_ /
+                 free_
                  (see RDsCandidate)
   gen            MC event block: signal code, Bs kinematics and flight, gen
                  analysis quantities, Hammer inputs and weights
@@ -32,7 +33,7 @@ from Bmmm.Analysis.JpsiChargedBranches import event_branches as _jpsi_event
 from Bmmm.Analysis.TrackHitContent import hit_content_branches, best_track_kinematics_branches
 from Bmmm.Analysis.BParking2018Trigger import paths
 from Bmmm.Analysis.utils import COV_PARAM_NAMES
-from Bmmm.Analysis.RDsCandidate import SCHEMES, SCHEME_VERTICES, HYPOTHESES, HYP_OBS, DIRECTIONS
+from Bmmm.Analysis.RDsCandidate import SCHEMES, SCHEME_VERTICES, HYPOTHESES, HYP_OBS
 from Bmmm.Analysis.RDsGenHistory import CAND_GEN_NAMES, HAM_BRANCHES, GEN_OBS_NAMES
 from Bmmm.Analysis.HammerDsFF import BRANCH_NAMES as HAMMER_BRANCH_NAMES
 
@@ -156,7 +157,7 @@ _VTX_Q = ('good', 'x', 'y', 'z', 'chi2', 'ndof', 'prob', 'mass', 'pt',
           'cov_xx', 'cov_xy', 'cov_xz', 'cov_yy', 'cov_yz', 'cov_zz')
 
 for _s in SCHEMES:
-    for _v in SCHEME_VERTICES[_s]:
+    for _v in SCHEME_VERTICES:
         for _q in _VTX_Q:
             cand_names.append('%s_%s_%s' % (_s, _v, _q))
     cand_names += ['%s_ds_%s' % (_s, q) for q in
@@ -165,7 +166,7 @@ for _s in SCHEMES:
     # refitted momenta of the four tracks
     for _o in ('k1', 'k2', 'pi', 'mu'):
         cand_names += ['%s_%s_rf_%s' % (_s, _o, q) for q in ('pt', 'eta', 'phi')]
-    cand_names += ['%s_math_real_%s' % (_s, d) for d in DIRECTIONS]
+    cand_names += ['%s_math_real_bs' % _s]
     for _h in HYPOTHESES:
         cand_names += ['%s_%s_%s' % (_s, _h, q) for q in HYP_OBS]
     cand_names += ['%s_cos_theta_k_pi' % _s, '%s_p_perp' % _s, '%s_ds_p_perp' % _s, '%s_mcorr' % _s]

@@ -15,8 +15,9 @@ Per event
   3. tracks (packedPFCandidates + lostTracks): AN Sec. 5.2, around each muon
   4. combinatorics in numpy on the (calibrated) momenta: phi window, widened
      KKpi window, m(KKpi mu) < 8 GeV, any charge combination
-  5. both kinematic-fit schemes per surviving triplet (RDsCandidate); kept if
-     either passes the AN vertex-probability cuts
+  5. the three kinematic-fit schemes per surviving triplet (RDsCandidate);
+     kept if the phi-constrained or the free one passes the AN
+     vertex-probability cuts
   6. every kept candidate is a row (no arbitration); cand_idx numbers them by
      decreasing pT of KKpi mu
 
