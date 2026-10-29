@@ -30,7 +30,8 @@
 // on MC (RDsCandidate):
 //
 //   FitPhiConstrained   [phi, ds_phic, bs_phic, ds_cons, bs_cons]
-//     phi     : K K with the phi mass constraint, shared by the two chains
+//     phi     : K K with the phi mass constraint (phic chain; cons refits it
+//               identically, see below)
 //     -- phic: phi constraint only
 //     ds_phic : phi + pi, no constraint     -> m(KKpi) with the phi constraint
 //                                              (the AN v4 / previous ntuples)
@@ -43,6 +44,11 @@
 //     kk      : K K, no constraint
 //     kkpi    : KK + pi, no constraint
 //     bs      : kkpi + mu, no constraint
+//
+// A composite KinematicParticle must enter only ONE further fit: the fitter
+// links its sub-tree into the new tree, so feeding the same phi to the phic
+// and cons Ds fits rewires the first chain (its Bs tree top came back as the
+// phi). Each chain therefore runs its own phi fit.
 //
 // Every returned vector has the full length; a failed step and every step
 // after it in the same chain are empty trees (test with tree.get() /
@@ -73,23 +79,21 @@ class RDsKinVtxFitter {
         std::vector<RefCountedKinematicTree> out(5, RefCountedKinematicTree());
 
         // phi: K K, phi mass constraint
-        std::vector<RefCountedKinematicParticle> kk = {particle(k1, mk), particle(k2, mk)};
-        ParticleMass phiMass = mphi;  // the constraint ctor takes a non-const reference
-        TwoTrackMassKinematicConstraint phiConstr(phiMass);
-        out[0] = fit(kk, &phiConstr);
+        out[0] = fitPhi(k1, k2, mk, mphi);
         if (!good(out[0])) return out;
-        RefCountedKinematicParticle phi = top(out[0]);
 
         // phic: phi + pi without the Ds constraint, then + mu
-        std::vector<RefCountedKinematicParticle> dsPhicIn = {particle(pi, mpi), phi};
+        std::vector<RefCountedKinematicParticle> dsPhicIn = {particle(pi, mpi), top(out[0])};
         out[1] = fit(dsPhicIn, nullptr);
         if (good(out[1])) {
             std::vector<RefCountedKinematicParticle> bsPhicIn = {particle(mu, mmu), top(out[1])};
             out[2] = fit(bsPhicIn, nullptr);
         }
 
-        // cons: phi + pi with the Ds constraint, then + mu
-        std::vector<RefCountedKinematicParticle> dsConsIn = {particle(pi, mpi), phi};
+        // cons: its own phi fit (see the header), + pi with the Ds constraint, then + mu
+        RefCountedKinematicTree phiCons = fitPhi(k1, k2, mk, mphi);
+        if (!good(phiCons)) return out;
+        std::vector<RefCountedKinematicParticle> dsConsIn = {particle(pi, mpi), top(phiCons)};
         ParticleMass dsMass = mds;
         TwoTrackMassKinematicConstraint dsConstr(dsMass);
         out[3] = fit(dsConsIn, &dsConstr);
@@ -132,6 +136,14 @@ class RDsKinVtxFitter {
         float chi = 0.0, ndf = 0.0, sigma = 1e-6;
         ParticleMass m = mass;
         return pFactory.particle(getTransientTrack(trk), m, chi, ndf, sigma);
+    }
+
+    RefCountedKinematicTree fitPhi(const reco::Track & k1, const reco::Track & k2,
+                                   const double & mk, const double & mphi) {
+        std::vector<RefCountedKinematicParticle> kk = {particle(k1, mk), particle(k2, mk)};
+        ParticleMass phiMass = mphi;  // the constraint ctor takes a non-const reference
+        TwoTrackMassKinematicConstraint phiConstr(phiMass);
+        return fit(kk, &phiConstr);
     }
 
     // nullptr constraint -> plain common-vertex fit

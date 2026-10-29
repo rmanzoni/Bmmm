@@ -11,8 +11,9 @@ Replaces the 2023 prototype. What it does, per candidate:
                phic_ds_mass is m(KKpi) with the phi constraint (the AN v4 /
                previous ntuples definition).
         free   no mass constraint anywhere: KK, KK + pi, KKpi + mu.
-     cons and phic share the same phi fit. Every quantity that depends on the
-     fits is written once per scheme, with the prefix cons_, phic_ or free_.
+     cons and phic have the same phi fit (written once, see fit()). Every
+     quantity that depends on the fits is written once per scheme, with the
+     prefix cons_, phic_ or free_.
   2. The primary vertex: the one with the smallest 3D distance from the line
      through the Bs vertex along the visible (KKpi mu) momentum (AN Eq. 3;
      Bs vertex of the first scheme in SCHEMES whose Bs fit succeeded, the PV
@@ -306,7 +307,8 @@ class RDsCandidate(PrimaryVertexRefitMixin):
     def fit(self):
         '''All fit schemes. Fills self.fits[scheme][vertex] with FitInfo.'''
         t = [o.fit_track() for o in (self.k1, self.k2, self.pi, self.mu)]
-        # [phi, ds_phic, bs_phic, ds_cons, bs_cons], the phi fit shared
+        # [phi, ds_phic, bs_phic, ds_cons, bs_cons]; cons refits phi identically
+        # (RDsKinVtxFitter), so phic[0] stands for both
         phic = [FitInfo(tree) for tree in
                 kinfit.FitPhiConstrained(t[0], t[1], t[2], t[3], M_K, M_PI, M_MU, M_PHI, M_DS)]
         free = [FitInfo(tree) for tree in kinfit.FitFree(t[0], t[1], t[2], t[3], M_K, M_PI, M_MU)]
@@ -353,7 +355,7 @@ class RDsCandidate(PrimaryVertexRefitMixin):
     ##########################################################################
     def displacement(self, info, p4):
         '''lxy, lxyz (Measurement1D) and cos2d, cos3d of a vertex wrt the PV.
-        Cached on the FitInfo: cons and phic share the same phi fit.'''
+        Cached on the FitInfo: cons and phic use the same phi FitInfo.'''
         out = {}
         if not info.valid:
             return out
