@@ -72,7 +72,8 @@ class RDsKinVtxFitter {
 
         // phi: K K, phi mass constraint
         std::vector<RefCountedKinematicParticle> kk = {particle(k1, mk), particle(k2, mk)};
-        TwoTrackMassKinematicConstraint phiConstr(mphi);
+        ParticleMass phiMass = mphi;  // the constraint ctor takes a non-const reference
+        TwoTrackMassKinematicConstraint phiConstr(phiMass);
         out[0] = fit(kk, &phiConstr);
         if (!good(out[0])) return out;
         RefCountedKinematicParticle phi = top(out[0]);
@@ -83,7 +84,8 @@ class RDsKinVtxFitter {
 
         // phi + pi with the Ds constraint
         std::vector<RefCountedKinematicParticle> dsIn = {particle(pi, mpi), phi};
-        TwoTrackMassKinematicConstraint dsConstr(mds);
+        ParticleMass dsMass = mds;
+        TwoTrackMassKinematicConstraint dsConstr(dsMass);
         out[2] = fit(dsIn, &dsConstr);
         if (!good(out[2])) return out;
         RefCountedKinematicParticle ds = top(out[2]);
