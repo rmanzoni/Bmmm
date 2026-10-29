@@ -102,6 +102,9 @@ class RDsInspector(BParking2018TriggerMixin, BaseInspector):
     PU_BLOCK         = False    # the Run 3 card does not apply; nti is stored
     EXTRA_HANDLES    = extra_handles
     HAMMER_FACTORY   = staticmethod(make_hammer_ds_session)
+    # ~1100 branches: a buffered row is ~150 kB, so the shared 50000 rows took
+    # ~7 GB on a full MiniAOD file and the SLURM jobs were OOM-killed
+    WRITE_EVERY      = 5000
 
     # ==================================================================
     #  SETUP

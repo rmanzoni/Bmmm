@@ -64,6 +64,7 @@ class BaseInspector(object):
     MUON_BRANCHES   = None     # per-muon getters
     SAFE_GET        = None     # safe_get helper
     EVENT_GEN_KEYS  = ()       # event-level branches filled by setup_event_gen (e.g. bc_branches)
+    WRITE_EVERY     = WRITE_EVERY  # rows buffered before a flush (NtupleWriter); lower it for wide schemas
     HAMMER          = None     # HammerFF.HammerSession, built by main() when --hammer is given
     PU              = None     # PileupWeights.PileupSession, built by main() when --pu is given
     LUMI_MASK       = None     # LumiMask.LumiMask, built by main() from --lumi-mask (data only)
@@ -146,7 +147,7 @@ class BaseInspector(object):
 
     def _flush_extra(self, fout, force=False):
         for name, rows in getattr(self, 'extra_rows', {}).items():
-            if rows and (force or len(rows) >= WRITE_EVERY):
+            if rows and (force or len(rows) >= self.WRITE_EVERY):
                 flush(fout, rows, self._extra_tree_branches[name], tree=name)
 
     # ==================================================================
@@ -355,7 +356,7 @@ class BaseInspector(object):
                 row = {**trigger_tofill, **event_tofill, **cand_tofill}
                 row_list.append(row)
 
-            if len(row_list) >= WRITE_EVERY:
+            if len(row_list) >= self.WRITE_EVERY:
                 flush(fout, row_list, branches)
 
         flush(fout, row_list, branches)

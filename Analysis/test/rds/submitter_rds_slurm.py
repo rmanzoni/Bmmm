@@ -14,11 +14,18 @@ Run from a shell where `cmsenv` was done in the CMSSW area the jobs must use
     python3 submitter_rds_slurm.py --mode mc   --files files_signal.txt     --out-dir rds_signal_v1 \\
         --trk-calib $CMSSW_BASE/src/Bmmm/Analysis/data/trkcalib/rds_trkcalib_2018BParking_v4.json \\
         --cov-scale <table.json>
+    python3 submitter_rds_slurm.py ... --copy-input       # xrdcp each input to /scratch first
     python3 submitter_rds_slurm.py ... --dry-run          # write the job scripts, do not submit
     python3 submitter_rds_slurm.py ... --resubmit 3,17    # only these chunks
 
 File lists: one LFN (/store/..., read through --redirector), /pnfs path (read
 through the PSI door) or root:// URL per line.
+
+--copy-input copies each remote input to the job's /scratch area with xrdcp
+(3 attempts) before processing it, and deletes it afterwards. Use it for
+samples with no replica close to PSI: streaming the UL18 MiniAOD through the
+global redirector ran at ~0.3 ev/s (~30 h per file), the copy takes ~25 min
+for a 2.3 GB file and the processing ~30 min.
 '''
 
 import os
@@ -31,6 +38,8 @@ parser.add_argument('--out-dir', required=True)
 parser.add_argument('--files-per-job', type=int, default=1)
 parser.add_argument('--queue', default='standard', choices=('short', 'standard', 'long'))
 parser.add_argument('--time', type=int, default=720, help='minutes')
+parser.add_argument('--mem', type=int, default=4000,
+                    help='MB per job (the cluster default, 1920, is too little for a full MiniAOD file)')
 parser.add_argument('--redirector', default='root://cms-xrd-global.cern.ch/',
                     help='for /store/... LFNs; /pnfs paths go through the PSI door')
 parser.add_argument('--nodelist', default='', help="e.g. 't3wn[80-91]'")
@@ -39,6 +48,7 @@ parser.add_argument('--trk-calib', default='', help='MC only, see TrackMomentumC
 parser.add_argument('--cov-scale', default='')
 parser.add_argument('--hammer', default='', help='MC only, Hammer card')
 parser.add_argument('--maxevents', type=int, default=-1)
+parser.add_argument('--copy-input', action='store_true', help='xrdcp each input to /scratch first')
 parser.add_argument('--resubmit', default='', help='comma-separated chunk indices')
 parser.add_argument('--dry-run', action='store_true')
 args = parser.parse_args()
@@ -113,13 +123,33 @@ for ijob, ichunk in enumerate(chunks):
         '',
     ]
     for idx, ifile in enumerate(ichunk):
-        lines += [
-            'python3 -u %s --inputFiles=%s --destination=%s --filename=%s_chunk%d_part%d '
-            '--logfreq=1000 --logger=%s/logs/logger_chunk%d_part%d %s'
-            % (cfg, ifile, scratch, out_file_name, ijob, idx, local_dir, ijob, idx, ' '.join(flags)),
-            'if [ $? -ne 0 ]; then echo ">>>> FAILED: part%d of chunk%d (%s)"; FAILED_PARTS=$((FAILED_PARTS+1)); fi'
-            % (idx, ijob, ifile),
-        ]
+        infile = ifile
+        if args.copy_input and ifile.startswith('root://'):
+            infile = '%s/input_chunk%d_part%d.root' % (scratch, ijob, idx)
+            lines += [
+                'COPIED=0',
+                'for attempt in 1 2 3; do',
+                '  xrdcp -f %s %s && COPIED=1 && break' % (ifile, infile),
+                '  echo ">>>> xrdcp attempt $attempt failed for %s"; sleep 60' % ifile,
+                'done',
+            ]
+        run = ('python3 -u %s --inputFiles=%s --destination=%s --filename=%s_chunk%d_part%d '
+               '--logfreq=1000 --logger=%s/logs/logger_chunk%d_part%d %s'
+               % (cfg, infile, scratch, out_file_name, ijob, idx, local_dir, ijob, idx, ' '.join(flags)))
+        fail = ('echo ">>>> FAILED: part%d of chunk%d (%s)"; FAILED_PARTS=$((FAILED_PARTS+1))'
+                % (idx, ijob, ifile))
+        if infile != ifile:
+            lines += [
+                'if [ $COPIED -eq 1 ]; then',
+                '  %s' % run,
+                '  if [ $? -ne 0 ]; then %s; fi' % fail,
+                'else',
+                '  %s' % fail,
+                'fi',
+                'rm -f %s' % infile,
+            ]
+        else:
+            lines += [run, 'if [ $? -ne 0 ]; then %s; fi' % fail]
     out = '%s/%s_chunk%d.root' % (scratch, out_file_name, ijob)
     lines += [
         'if [ $FAILED_PARTS -gt 0 ]; then echo ">>>> $FAILED_PARTS part(s) failed: no merge, no copy"; exit 1; fi',
@@ -136,7 +166,7 @@ for ijob, ichunk in enumerate(chunks):
                     '-o %s/logs/chunk%d.log' % (local_dir, ijob),
                     '-e %s/errs/chunk%d.err' % (local_dir, ijob),
                     '--job-name=%d_%s' % (ijob, args.out_dir),
-                    '--time=%d' % args.time, '--nodes=1 --ntasks=1']
+                    '--time=%d' % args.time, '--mem=%d' % args.mem, '--nodes=1 --ntasks=1']
                    + (['--nodelist=%s' % args.nodelist] if args.nodelist else []) + [script])
     print(cmd)
     if not args.dry_run:
