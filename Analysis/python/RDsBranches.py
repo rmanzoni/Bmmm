@@ -170,10 +170,12 @@ for _s in SCHEMES:
     for _h in HYPOTHESES:
         cand_names += ['%s_%s_%s' % (_s, _h, q) for q in HYP_OBS]
     cand_names += ['%s_cos_theta_k_pi' % _s, '%s_p_perp' % _s, '%s_ds_p_perp' % _s, '%s_mcorr' % _s]
+    # the muon vs the Bs flight axis and vs the Ds trajectory (RDsCandidate)
     for _r in ('pv', 'sv'):
-        cand_names += ['%s_mu_ip3d_ds_%s%s' % (_s, _r, x) for x in ('', '_err', '_sig')]
-    cand_names += ['%s_mu_dl3d_ds%s' % (_s, x) for x in ('', '_err', '_sig')]
-    cand_names += ['%s_mu_dist_to_ds_dir' % _s]
+        cand_names += ['%s_mu_ip3d_bs_%s%s' % (_s, _r, x) for x in ('', '_err', '_sig')]
+        cand_names += ['%s_mu_dist_along_bs_dir_%s' % (_s, _r)]
+    cand_names += ['%s_mu_dist_to_bs_dir' % _s]
+    cand_names += ['%s_mu_doca_ds' % _s, '%s_mu_doca_ds_sig' % _s, '%s_mu_poca_along_ds' % _s]
     cand_names += ['%s_gamma_%s' % (_s, q) for q in
                    ('n', 'e_coll', 'pt', 'eta', 'phi', 'dr', 'm_ds_gamma', 'dm', 'e_coll_over_pt',
                     'coll_q2', 'coll_m_miss2', 'xyz_bs_q2', 'xyz_bs_m_miss2')]

@@ -70,11 +70,37 @@ Bs flight direction PV → V_Bs), `math1/2_bs` (the two neutrino solutions along
 it; `*_math_real_bs` = 0 when the discriminant was negative and clamped). PV →
 V_Ds is not the Bs direction, so no hypothesis is built along it. For each: `pt eta phi beta q2 m_miss2 pt_miss pt_miss_sca
 e_star_mu e_hash_mu cos_theta_phi_ds cos_theta_mu_w chi`, e.g.
-`cons_math1_bs_q2`. Also `*_cos_theta_k_pi`, `*_mcorr`, `*_p_perp`, the muon
-impact parameters wrt the Ds flight line (`*_mu_ip3d_ds_{pv,sv}`,
-`*_mu_dl3d_ds` = the AN "IP3D", `*_mu_dist_to_ds_dir`), the Ds vertex wrt the
+`cons_math1_bs_q2`. Also `*_cos_theta_k_pi`, `*_mcorr`, `*_p_perp`, the Ds vertex wrt the
 Bs vertex (`*_ds_lxy_bs`, `*_ds_cos3d_bs`), and the soft photon (`*_gamma_*`,
 AN Sec. 5.5, with q² and m²_miss recomputed with Ds + γ).
+
+### The Bs vertex in the τ channels, and the muon observables
+
+V_Bs (`*_bs_*`) is the Ds + μ vertex, for every candidate. In Bs → Ds(*) τ ν,
+τ → μ ν ν the muon comes from the τ decay point, so V_Bs is not the Bs decay
+vertex there: it is pulled downstream along the flight (by ~30–150 µm on the
+signal MC, with a ~2× worse longitudinal resolution) and its χ² is worse. The
+reconstruction cannot depend on the channel it is measuring, so the definition
+is kept and the τ flight is turned into observables; the MC models it in the
+templates. Do not cut tightly on the Bs vertex probability.
+
+Per scheme, the muon relative to
+
+* the Bs flight axis, PV → V_Bs (as the RJpsi `mu_ip3d_*` / `mu_dist_*`):
+  `*_mu_ip3d_bs_{pv,sv}{,_err,_sig}` (lifetime-signed IP3D wrt the PV and wrt
+  V_Bs; the latter is small by construction, the muon being in that fit),
+  `*_mu_dist_along_bs_dir_{pv,sv}` (IPTools `jetTrackDistance`, along the axis
+  from the reference vertex) and `*_mu_dist_to_bs_dir` (line to line);
+* the Ds trajectory, V_Ds along the Ds momentum of the Ds fit (taken before the
+  Bs fit, so muon-free). It passes through the true Bs decay vertex: the muon
+  meets it there in the μ channels and misses it by the τ impact parameter in
+  the τ ones.
+  `*_mu_doca_ds` — distance of closest approach muon–Ds trajectory;
+  `*_mu_poca_along_ds` — where that is along the Ds momentum, from V_Ds
+  (negative upstream; minus the Ds flight length in the μ channels);
+  `*_mu_doca_ds_sig` = √χ²(Ds + μ vertex): with one degree of freedom that is
+  the DOCA significance, with the full covariances (IPTools gives no error on
+  the line-to-line distance).
 
 ## Production-time corrections (MC)
 

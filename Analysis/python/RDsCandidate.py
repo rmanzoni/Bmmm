@@ -21,8 +21,11 @@ Replaces the 2023 prototype. What it does, per candidate:
      constraint and the four signal tracks removed (PrimaryVertex, shared
      with the RJpsi and dimuon ntuples). The same PV serves all schemes.
   3. Displacements and pointing of the phi, Ds and Bs vertices, the Ds vertex
-     relative to the Bs vertex, the muon impact parameters with respect to the
-     Ds flight line.
+     relative to the Bs vertex. The muon relative to the Bs flight axis (IP3D
+     wrt PV and V_Bs, distances along and to the axis) and to the muon-free Ds
+     trajectory (DOCA, its position along the Ds, DOCA significance), the
+     tau-sensitive observables: V_Bs is the Ds + mu vertex for every
+     candidate, which in the tau channels is not the Bs decay vertex.
   4. Bs momentum hypotheses (AN Sec. 5.4), per scheme: collinear, equal
      velocity along the Bs flight direction PV -> V_Bs (xyz_bs) and the two
      neutrino solutions along it (math1/2_bs); for each one q2, m_miss2,
@@ -403,6 +406,9 @@ class RDsCandidate(PrimaryVertexRefitMixin):
         t = [o.fit_track() for o in (self.k1, self.k2, self.pi, self.mu)]
         bs_phic, ds_cons, bs_cons, bs_free = [FitInfo(tree) for tree in kinfit.FitRest(
             self._cut_trees, t[0], t[1], t[2], t[3], M_K, M_PI, M_MU, M_PHI, M_DS)]
+        # the muon-free Ds momenta (before the Bs fits), for the Ds trajectory
+        m = np.array(list(kinfit.DsMomentaBeforeBs()), dtype=float)
+        self.ds_p3_before_bs = {'phic': m[0:3], 'cons': m[3:6], 'free': m[6:9]}
         # Read the cut trees again: the Bs fit updates the Ds of the tree it
         # was built from (the KinematicTree is linked), so the Ds four-momentum
         # and children are the ones refitted at the Bs vertex, as for cons_ds.
@@ -557,12 +563,12 @@ class RDsCandidate(PrimaryVertexRefitMixin):
         p_mu = self.mu.np4()
         visible = p_ds + p_mu
 
-        # flight directions from the PV. PV -> V_Bs is the Bs direction and the
-        # only one the Bs hypotheses use; PV -> V_Ds only serves the muon IPs
+        # the Bs flight direction, PV -> V_Bs (V_Bs = the Ds + mu vertex: in the
+        # tau channels the mu comes from the tau decay, so it is not the Bs
+        # decay vertex; the same definition is used for every candidate)
         directions = {}
-        for lab, info in (('bs', bs), ('ds', ds)):
-            if info.valid:
-                directions[lab] = info.position() - self.pv_pos
+        if bs.valid:
+            directions['bs'] = bs.position() - self.pv_pos
 
         # ---- Bs momentum hypotheses -------------------------------------------
         hyps = {'coll': collinear_p4(visible)}
@@ -593,23 +599,42 @@ class RDsCandidate(PrimaryVertexRefitMixin):
                 if lab == '':
                     o[s + '_mcorr'] = np.sqrt(max(mass2(p4), 0.) + perp * perp) + perp
 
-        # ---- muon impact parameters wrt the Ds flight line ---------------------
+        # ---- muon vs the Bs flight axis (as JpsiChargedCandidate.compute_ip and
+        #      compute_jet_track_distance, with the single Bs vertex) ------------
         mu_trk = self.mu.fit_track()
-        if 'ds' in directions:
-            d = directions['ds']
-            refs = {'pv': self.pv_bs, 'sv': ds.reco_vertex()}
+        if 'bs' in directions:
+            d = directions['bs']
+            refs = {'pv': self.pv_bs, 'sv': bs.reco_vertex()}
+            jtd = None
             for ref, vtx in refs.items():
+                # lifetime-signed IP3D; wrt V_Bs it is small by construction,
+                # the mu being in that fit
                 ip = iptools.signedIP3D(mu_trk, d[0], d[1], d[2], vtx)
-                o['%s_mu_ip3d_ds_%s' % (s, ref)]         = ip.value()
-                o['%s_mu_ip3d_ds_%s_err' % (s, ref)]     = ip.error()
-                o['%s_mu_ip3d_ds_%s_sig' % (s, ref)]     = ip.significance()
-            # AN "IP3D": signed decay length of the mu wrt V_Ds along the Ds flight
-            dl = iptools.signedDecayLength3D(mu_trk, d[0], d[1], d[2], refs['sv'])
-            o[s + '_mu_dl3d_ds']     = dl.value()
-            o[s + '_mu_dl3d_ds_err'] = dl.error()
-            o[s + '_mu_dl3d_ds_sig'] = dl.significance()
-            jtd = iptools.jetTrackDistance(mu_trk, d[0], d[1], d[2], refs['pv'])
-            o[s + '_mu_dist_to_ds_dir'] = abs(jtd.second.value())
+                o['%s_mu_ip3d_bs_%s' % (s, ref)]     = ip.value()
+                o['%s_mu_ip3d_bs_%s_err' % (s, ref)] = ip.error()
+                o['%s_mu_ip3d_bs_%s_sig' % (s, ref)] = ip.significance()
+                jtd = iptools.jetTrackDistance(mu_trk, d[0], d[1], d[2], vtx)
+                o['%s_mu_dist_along_bs_dir_%s' % (s, ref)] = jtd.first
+            # line-to-line, independent of the anchor (IPTools returns it negative)
+            o[s + '_mu_dist_to_bs_dir'] = abs(jtd.second.value())
+
+        # ---- muon vs the Ds trajectory (V_Ds along the muon-free Ds momentum),
+        #      which passes through the true Bs decay vertex: the mu meets it
+        #      there in the mu channels and misses it by the tau IP in the tau
+        #      ones ----------------------------------------------------------------
+        p3 = self.ds_p3_before_bs[s]
+        if ds.valid and np.all(np.isfinite(p3)):
+            jtd = iptools.jetTrackDistance(mu_trk, p3[0], p3[1], p3[2], ds.reco_vertex())
+            o[s + '_mu_doca_ds'] = abs(jtd.second.value())
+            # position of the closest approach along the Ds momentum, from V_Ds:
+            # negative upstream, -(Ds flight length) in the mu channels.
+            # IPTools' .first is minus that.
+            o[s + '_mu_poca_along_ds'] = -jtd.first
+            # IPTools has no error on the line-to-line distance; the Ds + mu
+            # vertex fit (1 ndof) has chi2 = (DOCA / sigma)^2 to first order,
+            # with the full covariances
+            if bs.valid and bs.chi2 >= 0:
+                o[s + '_mu_doca_ds_sig'] = float(np.sqrt(bs.chi2))
 
         # ---- soft photon -------------------------------------------------------
         self._photon(s, photons, p_ds, p_mu, directions, cuts)

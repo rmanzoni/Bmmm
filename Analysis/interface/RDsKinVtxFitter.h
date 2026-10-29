@@ -22,6 +22,7 @@
 
 #include <vector>
 #include <exception>
+#include <limits>
 
 // ----------------------------------------------------------------------------
 // Sequential kinematic fits of Bs -> Ds(-> phi(-> K K) pi) mu (nu).
@@ -49,6 +50,12 @@
 //   FitVertexCut   [phi, ds_phic, kk, kkpi]             the cut fits
 //   FitRest        [bs_phic, ds_cons, bs_cons, bs_free] continues the chains
 //                  from the FitVertexCut trees
+//
+// The Bs fit also updates, in place, the Ds of the tree it is built from (the
+// Ds refitted at the Bs vertex, so it carries the muon information). FitRest
+// therefore records each Ds momentum just BEFORE its Bs fit, the muon-free Ds
+// trajectory: DsMomentaBeforeBs() = [phic, cons, free] x (px, py, pz), NaN
+// where that Ds fit failed. The Ds vertex position is not changed.
 //
 // A composite KinematicParticle must enter only ONE further fit: the fitter
 // links its sub-tree into the new tree, so feeding the same phi to the phic
@@ -109,9 +116,11 @@ class RDsKinVtxFitter {
                                                  const double      & mds)
     {
         std::vector<RefCountedKinematicTree> out(4, RefCountedKinematicTree());
+        dsMomenta_.assign(9, std::numeric_limits<double>::quiet_NaN());
 
         // phic: ds_phic + mu
         if (good(cut[1])) {
+            keepMomentum(top(cut[1]), 0);
             std::vector<RefCountedKinematicParticle> bsPhicIn = {particle(mu, mmu), top(cut[1])};
             out[0] = fit(bsPhicIn, nullptr);
         }
@@ -125,6 +134,7 @@ class RDsKinVtxFitter {
                 TwoTrackMassKinematicConstraint dsConstr(dsMass);
                 out[1] = fit(dsConsIn, &dsConstr);
                 if (good(out[1])) {
+                    keepMomentum(top(out[1]), 1);
                     std::vector<RefCountedKinematicParticle> bsConsIn = {particle(mu, mmu), top(out[1])};
                     out[2] = fit(bsConsIn, nullptr);
                 }
@@ -133,13 +143,26 @@ class RDsKinVtxFitter {
 
         // free: kkpi + mu
         if (good(cut[3])) {
+            keepMomentum(top(cut[3]), 2);
             std::vector<RefCountedKinematicParticle> bsFreeIn = {particle(mu, mmu), top(cut[3])};
             out[3] = fit(bsFreeIn, nullptr);
         }
         return out;
     }
 
+    // the Ds momenta of the last FitRest call, before the Bs fits (see the header)
+    const std::vector<double> & DsMomentaBeforeBs() const { return dsMomenta_; }
+
   private:
+    std::vector<double> dsMomenta_;
+
+    void keepMomentum(const RefCountedKinematicParticle & p, const unsigned int i) {
+        GlobalVector mom = p->currentState().globalMomentum();
+        dsMomenta_[3 * i]     = mom.x();
+        dsMomenta_[3 * i + 1] = mom.y();
+        dsMomenta_[3 * i + 2] = mom.z();
+    }
+
     OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
 
     RefCountedKinematicParticle particle(const reco::Track & trk, const double & mass) {

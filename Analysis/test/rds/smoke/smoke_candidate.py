@@ -110,6 +110,9 @@ class FakeFitter(object):
         phi = lab['k1'] + lab['k2']; dsphi = phi + lab['pi']
         return [Tree(phi, [lab['k1'], lab['k2']], dsv), Tree(dsphi, [lab['pi'], phi], dsv),
                 Tree(phi, [lab['k1'], lab['k2']], dsv), Tree(dsphi, [lab['pi'], phi], dsv)]
+    def DsMomentaBeforeBs(self):
+        phi = lab['k1'] + lab['k2']; dsphi = phi + lab['pi']
+        return [*dsphi[1:], *lab['ds'][1:], *dsphi[1:]]
     def FitRest(self, *a):
         phi = lab['k1'] + lab['k2']; ds = lab['ds']; dsphi = phi + lab['pi']
         return [Tree(dsphi + lab['mu'], [lab['mu'], dsphi], sv),
