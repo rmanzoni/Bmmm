@@ -75,9 +75,10 @@ def rows_to_columns(rows, branches):
     return out
 
 
-def flush(fout, row_list, branches):
-    '''Append the buffered rows to the TTree and clear the buffer in place.'''
+def flush(fout, row_list, branches, tree='tree'):
+    '''Append the buffered rows to the TTree `tree` (default 'tree') and clear
+    the buffer in place.'''
     if not row_list:
         return
-    fout['tree'].extend(rows_to_columns(row_list, branches))
+    fout[tree].extend(rows_to_columns(row_list, branches))
     row_list.clear()

@@ -7,31 +7,46 @@
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
 #include "MagneticField/Engine/interface/MagneticField.h"
-#include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
-#include "TrackingTools/PatternTools/interface/ClosestApproachInRPhi.h"
-#include "TrackingTools/PatternTools/interface/TSCBLBuilderNoMaterial.h"
-#include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
-//#include "MagneticField/ParametrizedEngine/src/OAEParametrizedMagneticField.h"
 #include "OAEParametrizedMagneticField.h"
 
-#include "RecoVertex/KinematicFitPrimitives/interface/KinematicParticleFactoryFromTransientTrack.h" 
-#include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h" 
+#include "RecoVertex/KinematicFitPrimitives/interface/KinematicParticleFactoryFromTransientTrack.h"
+#include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/MultiTrackKinematicConstraint.h"
 #include "RecoVertex/KinematicFit/interface/KinematicConstrainedVertexFitter.h"
-#include "RecoVertex/KinematicFit/interface/KinematicParticleVertexFitter.h"
-#include "RecoVertex/KinematicFit/interface/KinematicParticleFitter.h"
-#include "RecoVertex/KinematicFit/interface/MassKinematicConstraint.h"
-#include "RecoVertex/KinematicFitPrimitives/interface/KinematicConstraint.h" 
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicParticle.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"
-#include "RecoVertex/KinematicFitPrimitives/interface/Matrices.h"
 
-
-// RM: dirrrrrrty
 #include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
 #include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
 
+#include <vector>
+#include <exception>
+
+// ----------------------------------------------------------------------------
+// Sequential kinematic fits of Bs -> Ds(-> phi(-> K K) pi) mu (nu).
+//
+// Two schemes, run side by side on the same tracks so they can be compared on
+// MC (RDsCandidate):
+//
+//   FitConstrained   [phi, ds_phi, ds, bs]
+//     phi    : K K with the phi mass constraint                    -> V_phi
+//     ds_phi : phi + pi, NO Ds constraint                          -> m(KKpi)
+//              with the phi constraint (the AN v4 / previous ntuples)
+//     ds     : phi + pi with the Ds mass constraint                -> V_Ds, the
+//              Ds momentum used for the Bs kinematics
+//     bs     : ds + mu, no constraint (neutrinos)                  -> V_Bs
+//
+//   FitFree          [kk, kkpi, bs]
+//     kk     : K K, no constraint                                  -> V_KK
+//     kkpi   : KK + pi, no constraint                              -> V_KKpi
+//     bs     : kkpi + mu, no constraint                            -> V_Bs
+//
+// Every returned vector has the full length; a failed step and every step
+// after it are empty trees (test with tree.get() / isValid() on the Python
+// side). A fit that throws (KinematicFit raises on degenerate input) is a
+// failed step, not a dead job.
+// ----------------------------------------------------------------------------
 
 class RDsKinVtxFitter {
 
@@ -39,131 +54,103 @@ class RDsKinVtxFitter {
     RDsKinVtxFitter() {};
     virtual ~RDsKinVtxFitter() {};
 
-//    struct FitResults {
-//        RefCountedKinematicTree PhiTree = 0;
-//        RefCountedKinematicTree DsTree  = 0;
-//        RefCountedKinematicTree BsTree  = 0;
-//    };
-
-    // constructed from reco::TrackRef
-    reco::TransientTrack getTransientTrack(const reco::TrackRef& trackRef) {    
-      reco::TransientTrack transientTrack(trackRef, paramField);
-      return transientTrack;
+    reco::TransientTrack getTransientTrack(const reco::Track& track) {
+      return reco::TransientTrack(track, paramField);
     }
 
-    // constructed from reco::Track
-    reco::TransientTrack getTransientTrack(const reco::Track& track) {    
-      reco::TransientTrack transientTrack(track, paramField);
-      return transientTrack;
-    }
-
-    // constructed from reco::Track
-    //RefCountedKinematicTree Fit(const reco::Track & k1, 
-    //FitResults Fit(const reco::Track & k1  , 
-    //std::tuple<RefCountedKinematicTree, RefCountedKinematicTree, RefCountedKinematicTree> Fit(const reco::Track & k1  , 
-    auto Fit(const reco::Track & k1  , 
-             const reco::Track & k2  ,
-             const reco::Track & pi  ,
-             const reco::Track & mu  ,
-             const double      & mk  ,
-             const double      & mpi ,
-             const double      & mmu ,
-             const double      & mphi,
-             const double      & mds )
+    std::vector<RefCountedKinematicTree> FitConstrained(const reco::Track & k1,
+                                                        const reco::Track & k2,
+                                                        const reco::Track & pi,
+                                                        const reco::Track & mu,
+                                                        const double      & mk,
+                                                        const double      & mpi,
+                                                        const double      & mmu,
+                                                        const double      & mphi,
+                                                        const double      & mds)
     {
-    
-        //define a factory
-        KinematicParticleFactoryFromTransientTrack pFactory;
-        
-        //define the vector for the particles to be fitted
-        std::vector<RefCountedKinematicParticle> phiToFit;
-        std::vector<RefCountedKinematicParticle> dsToFit ;
-        std::vector<RefCountedKinematicParticle> bsToFit ;
+        std::vector<RefCountedKinematicTree> out(4, RefCountedKinematicTree());
 
-        // add the final states
-        ParticleMass kMass   = mk  ;
-        ParticleMass piMass  = mpi ;
-        ParticleMass muMass  = mmu ;
-        ParticleMass phiMass = mphi;
-        ParticleMass dsMass  = mds ;
-    
-        float chi   = 0.0;
-        float ndf   = 0.0;
-        float sigma = 1e-6;
-        //float phiMassSigma = 1e-6;
-        //float dsMassSigma  = 1e-6;
-        //float muMassSigma  = 1e-6;
+        // phi: K K, phi mass constraint
+        std::vector<RefCountedKinematicParticle> kk = {particle(k1, mk), particle(k2, mk)};
+        TwoTrackMassKinematicConstraint phiConstr(mphi);
+        out[0] = fit(kk, &phiConstr);
+        if (!good(out[0])) return out;
+        RefCountedKinematicParticle phi = top(out[0]);
 
-        //--------------------------------------------------------------------------------
-        // create empty results container
-        //FitResults results;
-        
-        //auto results = std::make_tuple(RefCountedKinematicTree(), RefCountedKinematicTree(), RefCountedKinematicTree());
+        // phi + pi without the Ds constraint (m(KKpi) with the phi constraint)
+        std::vector<RefCountedKinematicParticle> dsPhi = {particle(pi, mpi), phi};
+        out[1] = fit(dsPhi, nullptr);
 
-        //--------------------------------------------------------------------------------
-        // create fitter object
-        KinematicConstrainedVertexFitter kcvFitter;
+        // phi + pi with the Ds constraint
+        std::vector<RefCountedKinematicParticle> dsIn = {particle(pi, mpi), phi};
+        TwoTrackMassKinematicConstraint dsConstr(mds);
+        out[2] = fit(dsIn, &dsConstr);
+        if (!good(out[2])) return out;
+        RefCountedKinematicParticle ds = top(out[2]);
 
-        //--------------------------------------------------------------------------------
-        // fit phi1020
-        phiToFit.push_back(pFactory.particle(getTransientTrack(k1), kMass , chi, ndf, sigma));
-        phiToFit.push_back(pFactory.particle(getTransientTrack(k2), kMass , chi, ndf, sigma));
-        
-        // constraints
-        MultiTrackKinematicConstraint* phiConstr = new TwoTrackMassKinematicConstraint(phiMass); //, phiMassSigma);
-        
-        // fit
-        RefCountedKinematicTree phiTree = kcvFitter.fit(phiToFit, phiConstr);
-        //return phiTree;
-        // return void results if failed
-        if (!phiTree->isValid()) return std::make_tuple(RefCountedKinematicTree(), RefCountedKinematicTree(), RefCountedKinematicTree());
+        // Ds + mu
+        std::vector<RefCountedKinematicParticle> bsIn = {particle(mu, mmu), ds};
+        out[3] = fit(bsIn, nullptr);
+        return out;
+    }
 
-        phiTree -> movePointerToTheTop();
-        RefCountedKinematicParticle              phiParticle = phiTree->currentParticle()    ;
-        RefCountedKinematicVertex                phiVertex   = phiTree->currentDecayVertex() ;
-        std::vector<RefCountedKinematicParticle> phiDaus     = phiTree->finalStateParticles();
+    std::vector<RefCountedKinematicTree> FitFree(const reco::Track & k1,
+                                                 const reco::Track & k2,
+                                                 const reco::Track & pi,
+                                                 const reco::Track & mu,
+                                                 const double      & mk,
+                                                 const double      & mpi,
+                                                 const double      & mmu)
+    {
+        std::vector<RefCountedKinematicTree> out(3, RefCountedKinematicTree());
 
-        //std::cout << "we should have 2 of them: " << phiDaus.size() << std::endl;
+        std::vector<RefCountedKinematicParticle> kk = {particle(k1, mk), particle(k2, mk)};
+        out[0] = fit(kk, nullptr);
+        if (!good(out[0])) return out;
+        RefCountedKinematicParticle kkp = top(out[0]);
 
-        //--------------------------------------------------------------------------------
-        // fit Ds
-        dsToFit.push_back(pFactory.particle(getTransientTrack(pi), piMass, chi, ndf, sigma));
-        dsToFit.push_back(phiParticle);
+        std::vector<RefCountedKinematicParticle> kkpiIn = {particle(pi, mpi), kkp};
+        out[1] = fit(kkpiIn, nullptr);
+        if (!good(out[1])) return out;
+        RefCountedKinematicParticle kkpi = top(out[1]);
 
-        // constraints
-        MultiTrackKinematicConstraint* dsConstr = new TwoTrackMassKinematicConstraint(dsMass); // , dsMassSigma);
-
-        // fit
-        RefCountedKinematicTree dsTree = kcvFitter.fit(dsToFit, dsConstr);
-        if (!dsTree->isValid()) return std::make_tuple(phiTree, RefCountedKinematicTree(), RefCountedKinematicTree());
-
-        dsTree -> movePointerToTheTop();
-        RefCountedKinematicParticle              dsParticle = dsTree->currentParticle()    ;
-        RefCountedKinematicVertex                dsVertex   = dsTree->currentDecayVertex() ;
-        std::vector<RefCountedKinematicParticle> dsDaus     = dsTree->finalStateParticles();
-
-        //--------------------------------------------------------------------------------
-        // fit Ds
-        bsToFit .push_back(pFactory.particle(getTransientTrack(mu), muMass, chi, ndf, sigma));
-        bsToFit.push_back(dsParticle);
-
-        // fit
-        RefCountedKinematicTree bsTree = kcvFitter.fit(bsToFit); // no constraint for bs bc missing momentum
-        if (!bsTree->isValid()) return std::make_tuple(phiTree, dsTree, RefCountedKinematicTree()); 
-
-        bsTree -> movePointerToTheTop();
-        RefCountedKinematicParticle              bsParticle = bsTree->currentParticle();
-        RefCountedKinematicVertex                bsVertex   = bsTree->currentDecayVertex();
-        std::vector<RefCountedKinematicParticle> bsDaus     = bsTree->finalStateParticles();
-
-        //--------------------------------------------------------------------------------
-        // return results
-        
-        return std::make_tuple(phiTree, dsTree, bsTree);
-
-    };
+        std::vector<RefCountedKinematicParticle> bsIn = {particle(mu, mmu), kkpi};
+        out[2] = fit(bsIn, nullptr);
+        return out;
+    }
 
   private:
     OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
 
+    RefCountedKinematicParticle particle(const reco::Track & trk, const double & mass) {
+        KinematicParticleFactoryFromTransientTrack pFactory;
+        float chi = 0.0, ndf = 0.0, sigma = 1e-6;
+        ParticleMass m = mass;
+        return pFactory.particle(getTransientTrack(trk), m, chi, ndf, sigma);
+    }
+
+    // nullptr constraint -> plain common-vertex fit
+    RefCountedKinematicTree fit(std::vector<RefCountedKinematicParticle> & parts,
+                                MultiTrackKinematicConstraint * constraint) {
+        try {
+            KinematicConstrainedVertexFitter kcvFitter;
+            RefCountedKinematicTree tree = constraint ? kcvFitter.fit(parts, constraint)
+                                                      : kcvFitter.fit(parts);
+            if (tree == 0 || tree->isEmpty() || !tree->isValid()) return RefCountedKinematicTree();
+            return tree;
+        } catch (std::exception & e) {
+            return RefCountedKinematicTree();
+        } catch (...) {
+            return RefCountedKinematicTree();
+        }
+    }
+
+    static bool good(const RefCountedKinematicTree & tree) {
+        return tree.get() != nullptr && !tree->isEmpty() && tree->isValid();
+    }
+
+    static RefCountedKinematicParticle top(RefCountedKinematicTree & tree) {
+        tree->movePointerToTheTop();
+        return tree->currentParticle();
+    }
 };

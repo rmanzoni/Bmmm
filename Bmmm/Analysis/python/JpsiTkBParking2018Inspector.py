@@ -44,41 +44,16 @@ What is different, and why
 '''
 
 import numpy as np
-from collections import OrderedDict
-from PhysicsTools.HeppyCore.utils.deltar import deltaR, bestMatch
 
-from Bmmm.Analysis.utils import drop_hlt_version
 from Bmmm.Analysis.JpsiTkInspector import JpsiTkInspector
 from Bmmm.Analysis.JpsiTkBranches import branches as _run3_branches
 from Bmmm.Analysis.JpsiTkBranches import paths as _run3_paths
-from Bmmm.Analysis.MuMuBranches import paths as _mm_paths
-
-##########################################################################################
-#####      2018 PARKING PATHS
-##########################################################################################
-BPARKING2018_PATH_NAMES = (
-    'HLT_Mu7_IP4'     ,
-    'HLT_Mu8_IP3'     ,
-    'HLT_Mu8_IP5'     ,
-    'HLT_Mu8_IP6'     ,
-    'HLT_Mu8p5_IP3p5' ,
-    'HLT_Mu9_IP4'     ,
-    'HLT_Mu9_IP5'     ,
-    'HLT_Mu9_IP6'     ,
-    'HLT_Mu10p5_IP3p5',
-    'HLT_Mu12_IP6'    ,
+# the parking path list, the matching and the fired-path bookkeeping live in
+# BParking2018Trigger, shared with the R(Ds) ntuplizer; BPARKING2018_PATH_NAMES
+# and paths are re-exported here for existing imports
+from Bmmm.Analysis.BParking2018Trigger import (
+    BPARKING2018_PATH_NAMES, paths, BParking2018TriggerMixin,
 )
-
-# fail loud: MuMuBranches can be restricted with BMMM_MM_HLT_PATHS, and a job
-# that silently lost a path would select a different trigger without saying so
-_missing = [p for p in BPARKING2018_PATH_NAMES if p not in _mm_paths]
-if _missing:
-    raise RuntimeError(
-        'JpsiTkBParking2018Inspector: MuMuBranches.paths lacks %s. Is '
-        'BMMM_MM_HLT_PATHS set in this shell? Unset it for the 2018 parking ntuples.'
-        % _missing)
-
-paths = OrderedDict((p, list(_mm_paths[p])) for p in BPARKING2018_PATH_NAMES)
 
 ##########################################################################################
 #####      BRANCH LIST: Run 3 J/psi + track schema, trigger block swapped
@@ -97,61 +72,23 @@ if len(branches) != len(set(branches)):
     raise RuntimeError('JpsiTkBParking2018Inspector: duplicated branch names')
 
 
-class JpsiTkBParking2018Inspector(JpsiTkInspector):
+class JpsiTkBParking2018Inspector(BParking2018TriggerMixin, JpsiTkInspector):
 
     DESCRIPTION = ('J/psi + track (B+ -> J/psi K+ / Bc+ -> J/psi pi+) ntuplizer, '
                    '2018 B-parking (HLT_Mu*_IP*)')
     PATHS       = paths
     BRANCHES    = branches
 
-    def trig_match(self, icand, cuts, good_tobjs, objects):
-        '''>= 1 of `objects` (the two J/psi muons) within hlt_dr of an HLT object
-        of any FIRED parking path. good_tobjs only holds objects of fired paths,
-        already filtered on the path's filter label by the base looper.'''
-        for path in self.PATHS:
-            for to in good_tobjs.get(path, []):
-                for io in objects:
-                    if deltaR(io, to) < cuts['hlt_dr']:
-                        return True
-        return False
+    # trig_match: BParking2018TriggerMixin (>= 1 J/psi muon matched to an
+    # object of any fired parking path; informational, not a cut)
 
     def fill_candidate(self, icand, event, options, cuts, gen_state, good_tobjs):
         cand_tofill = super(JpsiTkBParking2018Inspector, self).fill_candidate(
             icand, event, options, cuts, gen_state, good_tobjs)
 
         # per-muon, per-path tag: 1/0 for a FIRED path, NaN (the template) for a
-        # path that did not fire. The decision is read from TriggerResults, not
-        # inferred from good_tobjs: a path can fire with none of its objects
-        # passing the to_pt / to_eta preselection, and that is a 0, not a NaN.
-        hlt_dr2 = cuts['hlt_dr'] ** 2
-        for path in self._fired_paths(event):
-            tobjs = good_tobjs.get(path, [])
-            label = self.PATHS[path][0]
-            for idx, imu in enumerate(icand.jpsi_muons, 1):
-                matched = False
-                if tobjs:
-                    to, dr2 = bestMatch(imu, tobjs)
-                    matched = (to is not None and dr2 < hlt_dr2 and to.hasFilterLabel(label))
-                cand_tofill['mu%d_%s_tag' % (idx, path)] = float(matched)
+        # path that did not fire
+        tags = self.path_tags(icand.jpsi_muons, event, good_tobjs, cuts['hlt_dr'])
+        for (idx, path), val in tags.items():
+            cand_tofill['mu%d_%s_tag' % (idx, path)] = val
         return cand_tofill
-
-    def _fired_paths(self, event):
-        '''Parking paths that fired in this event, computed once per event (the
-        FWLite event object is reused across the loop, hence the explicit key).'''
-        aux = event.eventAuxiliary()
-        key = (aux.run(), aux.luminosityBlock(), aux.event())
-        if getattr(self, '_fired_key', None) != key:
-            trg_names = event.object().triggerNames(event.trg_res)
-            n_results = event.trg_res.size()
-            fired = set()
-            for iname in trg_names.triggerNames():
-                iname = str(iname)
-                path  = drop_hlt_version(iname)
-                if path not in self.PATHS:
-                    continue
-                idx = trg_names.triggerIndex(iname)
-                if idx < n_results and event.trg_res.accept(idx):
-                    fired.add(path)
-            self._fired_key   = key
-            self._fired_cache = fired
-        return self._fired_cache

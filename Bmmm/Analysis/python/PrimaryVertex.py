@@ -146,11 +146,21 @@ def passes_pv_track_filter(cand, trk, beamspot):
     return True
 
 
+def signal_objects(cand):
+    '''The objects whose tracks are removed from the PV refit and from the
+    'clean' isolation sums: cand.signal_objects when the candidate defines it
+    (e.g. RDsCandidate: the muon, the two kaons and the pion), cand.muons
+    otherwise (every J/psi and dimuon channel, unchanged).'''
+    objs = getattr(cand, 'signal_objects', None)
+    return cand.muons if objs is None else objs
+
+
 class PrimaryVertexRefitMixin(object):
     '''
-    refit_primary_vertex + the signal-muon proximity match, for any candidate
-    class exposing self.muons (the signal muons), self.pv (the chosen
-    reco::Vertex) and self.pv_idx (its index in the vertex collection).
+    refit_primary_vertex + the signal-track proximity match, for any candidate
+    class exposing self.muons (the signal muons) -- or self.signal_objects, for
+    a final state that is not only muons --, self.pv (the chosen reco::Vertex)
+    and self.pv_idx (its index in the vertex collection).
     '''
 
     def is_signal_muon_cand(self, cand,
@@ -162,7 +172,7 @@ class PrimaryVertexRefitMixin(object):
         candidate are in different collections, so this is a proximity match,
         identical in spirit to the C++ PV-refit removal.
         '''
-        for imu in self.muons:
+        for imu in signal_objects(self):
             if cand.charge() != imu.charge():
                 continue
             if (deltaR(imu.eta(), imu.phi(), cand.eta(), cand.phi()) < dr_max and
@@ -209,7 +219,7 @@ class PrimaryVertexRefitMixin(object):
             # signal muons to remove from the refit. Same for either track
             # selection below, so build them once.
             mu_tracks = ROOT.std.vector('reco::Track')()
-            for imu in self.muons:
+            for imu in signal_objects(self):
                 mu_tracks.push_back(imu.bestTrack())
 
             def _refit(selector, apply_filter):

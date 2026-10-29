@@ -661,6 +661,71 @@ class CorrectionlibCovScaler(CovScaler):
             vals[COV_PARAM_NAMES.index(key)] = float(self.cset[name].evaluate(pt, abs_eta))
         return tuple(vals)
 
+class MorphCovScaler(CovScaler):
+    '''sigma_dxy quantile morph (test/mm/derive_sigma_correction_v3.py) as a
+    per-track dxy scale factor.
+
+    The morph is a correctionlib correction (pt, abs_eta, sigma_dxy) ->
+    corrected sigma_dxy, where sigma_dxy is the transverse IP error with
+    respect to the BEAMSPOT (the <obj>_bs_dxy_e branch it was derived on): the
+    track error and the beamspot width in quadrature. Only the track part is a
+    track property, so the beamspot part is kept and the track part rescaled:
+
+        b^2        = sigma_bs^2 - sigma_trk^2           beamspot contribution
+        sigma_trk' = sqrt(sigma_corr^2 - b^2)
+        scale      = sigma_trk' / sigma_trk
+
+    When sigma_corr^2 <= b^2 (the morph asks for less than the beamspot alone)
+    the ratio sigma_corr / sigma_bs is used instead and the track is counted in
+    n_clamped. The beamspot comes from set_beamspot(), once per event.
+    '''
+    def __init__(self, path, name):
+        import correctionlib  # lazy: not a dependency of the rest of the package
+        cset = correctionlib.CorrectionSet.from_file(path)
+        if name not in cset:
+            raise KeyError('correction %r not in %s' % (name, path))
+        self.corr = cset[name]
+        self.name = name
+        self.beamspot = None
+        self.n_clamped = 0
+
+    def set_beamspot(self, beamspot):
+        self.beamspot = beamspot
+
+    def scales(self, trk):
+        if self.beamspot is None:
+            raise RuntimeError('MorphCovScaler: set_beamspot() was not called for this event')
+        from Bmmm.Analysis.PrimaryVertex import build_beamspot_vertex
+        bsv     = build_beamspot_vertex(self.beamspot, trk.vz())
+        sig_bs  = trk.dxyError(bsv.position(), bsv.error())
+        sig_trk = trk.dxyError()
+        corr    = float(self.corr.evaluate(trk.pt(), abs(trk.eta()), sig_bs))
+        b2      = max(sig_bs * sig_bs - sig_trk * sig_trk, 0.)
+        new2    = corr * corr - b2
+        if new2 > 0. and sig_trk > 0.:
+            scale = np.sqrt(new2) / sig_trk
+        else:
+            self.n_clamped += 1
+            scale = corr / sig_bs if sig_bs > 0. else 1.
+        vals = list(COV_NO_SCALE)
+        vals[COV_PARAM_NAMES.index('dxy')] = float(scale)
+        return tuple(vals)
+
+
+def _morph_correction_name(path, requested=None):
+    '''The name of the sigma_dxy morph correction in a correctionlib file
+    (a correction with a 'sigma_dxy' input), or None if there is none.'''
+    with (gzip.open(path, 'rt') if path.endswith('.gz') else open(path)) as fin:
+        payload = json.load(fin)
+    if 'schema_version' not in payload:
+        return None
+    morphs = [c['name'] for c in payload.get('corrections', [])
+              if 'sigma_dxy' in [i['name'] for i in c.get('inputs', [])]]
+    if requested is not None:
+        return requested if requested in morphs else None
+    morphs = [m for m in morphs if not m.endswith(('_up', '_down'))]
+    return morphs[0] if len(morphs) == 1 else None
+
 ##########################################################################################
 #####      TRACK COVARIANCE CORRECTION: full matrix (covflow)
 ##########################################################################################
@@ -1150,6 +1215,9 @@ def make_cov_scaler(spec):
         'table.json:dxy=sigma_dxy_scale'
                                 -> CorrectionlibCovScaler with an explicit
                                    parameter -> correction-name mapping
+        'morph.json'            -> MorphCovScaler, when the file holds ONE
+        'morph.json:dxy=<name>'    correction with a 'sigma_dxy' input (the
+                                   quantile morph of derive_sigma_correction_v3)
     '''
     if spec is None or not spec.strip():
         return None
@@ -1159,9 +1227,15 @@ def make_cov_scaler(spec):
     if ':' in spec and spec.split(':', 1)[0].endswith(('.json', '.json.gz')):
         path, mapping = spec.split(':', 1)
         corrections = dict(tok.split('=', 1) for tok in mapping.split(',') if tok)
+        # a sigma_dxy quantile morph (3 inputs) rather than a scale table
+        if list(corrections) == ['dxy'] and _morph_correction_name(path, corrections['dxy']):
+            return MorphCovScaler(path, corrections['dxy'])
         return CorrectionlibCovScaler(path, corrections)
 
     if spec.endswith(('.json', '.json.gz')):
+        morph = _morph_correction_name(spec)
+        if morph is not None:
+            return MorphCovScaler(spec, morph)
         with (gzip.open(spec, 'rt') if spec.endswith('.gz') else open(spec)) as fin:
             payload = json.load(fin)
         if 'schema_version' in payload:

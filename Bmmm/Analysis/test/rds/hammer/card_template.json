@@ -1,0 +1,16 @@
+{
+  "_comment": "TEMPLATE, NOT A WORKING CARD. Every string marked FILL must come from the Hammer setup that produced the AN v4 weights (Patricia). Keys are documented in Bmmm/Analysis/python/HammerDsFF.py.",
+  "name": "Bs->Ds(*) ISGW2 -> BCL/BGL (FILL)",
+  "covariance_status": "unknown",
+  "decay_chains": [["FILL: Bs -> Ds mu nu"], ["FILL: Bs -> Ds tau nu", "FILL: tau -> mu nu nu"],
+                   ["FILL: Bs -> Ds* mu nu", "FILL: Ds* -> Ds gamma"],
+                   ["FILL: Bs -> Ds* tau nu", "FILL: tau -> mu nu nu", "FILL: Ds* -> Ds gamma"]],
+  "ff_input": {"FILL: Ds process key": "ISGW2", "FILL: Ds* process key": "ISGW2"},
+  "groups": {
+    "ds":   {"process": "FILL", "xtoy": "FILL", "ff_target": "BCLVar", "n_coords": 6,
+             "options": ["FILL: central BCL coefficients", "FILL: 1-sigma eigen-direction matrix"]},
+    "dsst": {"process": "FILL", "xtoy": "FILL", "ff_target": "BGLVar", "n_coords": 10,
+             "options": ["FILL: central BGL coefficients", "FILL: 1-sigma eigen-direction matrix"]}
+  },
+  "dsst_decay_vertex": true
+}

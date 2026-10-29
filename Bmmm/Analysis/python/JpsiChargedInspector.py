@@ -69,6 +69,13 @@ class BaseInspector(object):
     LUMI_MASK       = None     # LumiMask.LumiMask, built by main() from --lumi-mask (data only)
     MIN_MUONS       = 2        # minimum selected muons
 
+    # ----- optional extensions (defaults leave every existing channel unchanged) -----
+    PU_BLOCK         = True    # the Run 3 pu_weight_* block is in the schema (False: absent, --pu refused)
+    EXTRA_HANDLES    = None    # OrderedDict of extra products read every event (name -> (label, Handle))
+    EXTRA_HANDLES_MC = None    # same, MC only
+    EVENT_EXTRA_KEYS = ()      # event-level branches filled by fill_event_extra
+    HAMMER_FACTORY   = staticmethod(make_hammer_session)   # --hammer spec -> session (Bc by default)
+
     def __init__(self):
         cuts = self.CUTS[self.CHANNEL]
         self._JET_MATCH_DR2 = cuts['jet_dr'] ** 2
@@ -78,12 +85,13 @@ class BaseInspector(object):
         # the pu_weight_* block is filled once per event in the looper, not by an
         # EVENT_BRANCHES getter, so it has to be declared an event key here or the
         # NaN candidate template would overwrite it in the row merge.
-        missing_pu = [b for b in PU_BRANCH_NAMES if b not in self.BRANCHES]
+        pu_names = PU_BRANCH_NAMES if self.PU_BLOCK else []
+        missing_pu = [b for b in pu_names if b not in self.BRANCHES]
         if missing_pu:
             raise RuntimeError('%s: the branch list lacks the pileup-weight block %s'
                                % (type(self).__name__, missing_pu))
         self._EVENT_KEYS   = (set(self.EVENT_BRANCHES.keys()) | set(self.EVENT_GEN_KEYS)
-                              | set(PU_BRANCH_NAMES))
+                              | set(pu_names) | set(self.EVENT_EXTRA_KEYS))
         self._CAND_KEYS    = [b for b in self.BRANCHES
                               if b not in self._TRIGGER_KEYS and b not in self._EVENT_KEYS]
         self._CAND_TEMPLATE = dict.fromkeys(self._CAND_KEYS, np.nan)
@@ -105,6 +113,41 @@ class BaseInspector(object):
 
     def fill_candidate(self, icand, event, options, cuts, gen_state, good_tobjs):
         raise NotImplementedError
+
+    # ----- optional hooks: no-ops by default, so existing channels are unchanged -----
+    def add_arguments(self, parser):
+        '''Channel-specific command-line options, added before parsing.'''
+        pass
+
+    def setup(self, options):
+        '''Called once in main(), after the common setup and before the loop.'''
+        pass
+
+    def extra_trees(self):
+        '''{tree name: branch list} of trees written next to 'tree' (e.g. a
+        per-event gen tree). Rows go into self.extra_rows[name].'''
+        return {}
+
+    def process_event_gen(self, event, options):
+        '''Called for EVERY event that passed the lumi mask, right after the
+        products are read and before the trigger decision: the place to fill
+        per-event rows of the extra trees (e.g. the MC gen tree, which must see
+        every event whatever the trigger or the reconstruction did).'''
+        pass
+
+    def fill_event_extra(self, event, options, event_tofill):
+        '''Event-level branches beyond EVENT_BRANCHES, filled once per event
+        that has candidates. Declare their names in EVENT_EXTRA_KEYS.'''
+        pass
+
+    def finish(self, options):
+        '''Called once after the loop (summaries).'''
+        pass
+
+    def _flush_extra(self, fout, force=False):
+        for name, rows in getattr(self, 'extra_rows', {}).items():
+            if rows and (force or len(rows) >= WRITE_EVERY):
+                flush(fout, rows, self._extra_tree_branches[name], tree=name)
 
     # ==================================================================
     #  SHARED per-candidate helpers
@@ -141,6 +184,7 @@ class BaseInspector(object):
 
             if i > options.maxevents:
                 flush(fout, row_list, branches)
+                self._flush_extra(fout, force=True)
                 return i - 1, cutflow
 
             if i % options.logfreq == 0:
@@ -165,6 +209,11 @@ class BaseInspector(object):
                 event.getByLabel(v[0], v[1])
                 setattr(event, k, v[1].product())
 
+            # optional, channel-specific products: fail-soft (None when absent)
+            for k, v in (self.EXTRA_HANDLES or {}).items():
+                event.getByLabel(v[0], v[1])
+                setattr(event, k, v[1].product() if v[1].isValid() else None)
+
             event.mc = False
 
             if options.mc:
@@ -172,9 +221,15 @@ class BaseInspector(object):
                 for k, v in handles_mc.items():
                     event.getByLabel(v[0], v[1])
                     setattr(event, k, v[1].product())
+                for k, v in (self.EXTRA_HANDLES_MC or {}).items():
+                    event.getByLabel(v[0], v[1])
+                    setattr(event, k, v[1].product() if v[1].isValid() else None)
                 event.pu_at_bx0 = [ipu for ipu in event.pu if ipu.getBunchCrossing() == 0][0]
 
             cutflow['all processed events'] += 1
+
+            self.process_event_gen(event, options)
+            self._flush_extra(fout)
 
             ##################################################################
             #####      TRIGGERS -- filled ONCE per event
@@ -270,9 +325,12 @@ class BaseInspector(object):
             # pileup weights: fixed pu_weight_<year>{,_up,_down} block, NaN unless
             # --pu. Same nti as the `nti` branch and same PileupSession call as
             # test/rjpsi/pileup/add_pu_weights.py, hence identical weights.
-            event_tofill.update(PU_NAN_ROW)
+            if self.PU_BLOCK:
+                event_tofill.update(PU_NAN_ROW)
             if self.PU is not None:
                 event_tofill.update(self.PU.weights(event.pu_at_bx0.getTrueNumInteractions()))
+
+            self.fill_event_extra(event, options, event_tofill)
 
             gen_state = self.setup_event_gen(event, options, event_tofill)
 
@@ -301,6 +359,7 @@ class BaseInspector(object):
                 flush(fout, row_list, branches)
 
         flush(fout, row_list, branches)
+        self._flush_extra(fout, force=True)
         return i, cutflow
 
     # ==================================================================
@@ -373,6 +432,7 @@ class BaseInspector(object):
                                  "'none'. MANDATORY for data -- without it the job refuses "
                                  "to start -- and refused with --mc. See "
                                  "Bmmm.Analysis.LumiMask.")
+        self.add_arguments(parser)
         args = parser.parse_args()
         return namedtuple('options', args.__dict__.keys())(*args.__dict__.values())
 
@@ -418,11 +478,14 @@ class BaseInspector(object):
         if hammer_spec and not options.mc:
             raise RuntimeError('--hammer without --mc: the form-factor weights '
                                'are a generator-truth quantity and exist only for MC.')
-        self.HAMMER = make_hammer_session(hammer_spec)
+        self.HAMMER = self.HAMMER_FACTORY(hammer_spec)
 
         # pileup weights, off by default; built here so a missing card or an
         # unknown campaign kills the job before the first event.
         pu_spec = getattr(options, 'pu', '')
+        if pu_spec and not self.PU_BLOCK:
+            raise RuntimeError('--pu: %s has no pu_weight_* block (its pileup '
+                               'weights are not the Run 3 card ones).' % type(self).__name__)
         if pu_spec and not options.mc:
             raise RuntimeError('--pu without --mc: pileup weights map MC onto data '
                                'and do not exist for data.')
@@ -444,10 +507,18 @@ class BaseInspector(object):
             maxevents=options.maxevents if options.maxevents >= 0 else events.size()
         )
 
+        self.setup(options)
+
         branches = self.BRANCHES
         fout = uproot.recreate(options.destination + '/' + options.filename + '.root',
                                compression=uproot.ZSTD(5))
         fout.mktree('tree', build_branch_types(branches))
+
+        self._extra_tree_branches = dict(self.extra_trees())
+        self.extra_rows = {}
+        for name, tree_branches in self._extra_tree_branches.items():
+            fout.mktree(name, build_branch_types(tree_branches))
+            self.extra_rows[name] = []
 
         row_list    = []
         start       = time()
@@ -461,6 +532,7 @@ class BaseInspector(object):
             events, options, handles, handles_mc, row_list, start, fout, branches)
 
         flush(fout, row_list, branches)
+        self._flush_extra(fout, force=True)
 
         n_written = fout['tree'].num_entries
         print('\nnumber of selected candidates', n_written)
@@ -484,6 +556,8 @@ class BaseInspector(object):
 
         if self.LUMI_MASK is not None:
             print(self.LUMI_MASK.summary())
+
+        self.finish(options)
 
         finish = time()
         print('done in %.1f hours' % ((finish - start) / 3600.))
