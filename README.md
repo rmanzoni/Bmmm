@@ -1,14 +1,15 @@
 # Bmmm
 
 ## installation
+The repository root is the `Bmmm` package itself: clone it into `src/Bmmm`.
+This leaves `src/` free for `git cms-init` / `git cms-addpkg`.
+
 ```
-cmsrel CMSSW_10_6_28
-cd CMSSW_10_6_28/src
+cmsrel CMSSW_16_0_8
+cd CMSSW_16_0_8/src
 cmsenv
-git init
-git remote add origin git@github.com:rmanzoni/Bmmm.git
-git fetch origin
-git checkout main
+git cms-init          # optional, only if you need to check out CMSSW packages
+git clone -b rds_ntuplizer git@github.com:rmanzoni/Bmmm.git Bmmm
 scram b
 ```
 
