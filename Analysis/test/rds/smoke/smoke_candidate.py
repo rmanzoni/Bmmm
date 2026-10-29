@@ -106,15 +106,15 @@ class Tree(object):
 
 
 class FakeFitter(object):
-    def FitPhiConstrained(self, *a):
+    def FitVertexCut(self, *a):
+        phi = lab['k1'] + lab['k2']; dsphi = phi + lab['pi']
+        return [Tree(phi, [lab['k1'], lab['k2']], dsv), Tree(dsphi, [lab['pi'], phi], dsv),
+                Tree(phi, [lab['k1'], lab['k2']], dsv), Tree(dsphi, [lab['pi'], phi], dsv)]
+    def FitRest(self, *a):
         phi = lab['k1'] + lab['k2']; ds = lab['ds']; dsphi = phi + lab['pi']
-        return [Tree(phi, [lab['k1'], lab['k2']], dsv),
-                Tree(dsphi, [lab['pi'], phi], dsv), Tree(dsphi + lab['mu'], [lab['mu'], dsphi], sv),
-                Tree(ds, [lab['pi'], phi], dsv), Tree(ds + lab['mu'], [lab['mu'], ds], sv)]
-    def FitFree(self, *a):
-        phi = lab['k1'] + lab['k2']
-        return [Tree(phi, [lab['k1'], lab['k2']], dsv), Tree(phi + lab['pi'], [lab['pi'], phi], dsv),
-                Tree(phi + lab['pi'] + lab['mu'], [lab['mu'], phi + lab['pi']], sv)]
+        return [Tree(dsphi + lab['mu'], [lab['mu'], dsphi], sv),
+                Tree(ds, [lab['pi'], phi], dsv), Tree(ds + lab['mu'], [lab['mu'], ds], sv),
+                Tree(dsphi + lab['mu'], [lab['mu'], dsphi], sv)]
 
 
 class FakeIP(object):

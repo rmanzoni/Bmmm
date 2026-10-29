@@ -222,22 +222,32 @@ class PrimaryVertexRefitMixin(object):
             for imu in signal_objects(self):
                 mu_tracks.push_back(imu.bestTrack())
 
-            def _refit(selector, apply_filter):
+            # optional per-event cache of the PV track sets, set by candidates
+            # that share an event (RDsCandidate): the set depends only on the
+            # event, the PV index and the selection, not on the candidate (the
+            # signal tracks are removed inside the C++ refit)
+            cache = getattr(self, 'pv_track_cache', None)
+
+            def _refit(selector, apply_filter, key):
                 # collect the PV track set (selector, with optional quality filter),
                 # run the beamspot-constrained AVF refit with the signal muons
                 # removed, and return (VALID reco::Vertex, ntrk) or (None, ntrk).
-                pv_tracks = ROOT.std.vector('reco::Track')()
-                for coll in (pf, lost):
-                    if coll is None:
-                        continue
-                    for cand in coll:
-                        if not cand.hasTrackDetails():
+                pv_tracks = cache.get(key) if cache is not None else None
+                if pv_tracks is None:
+                    pv_tracks = ROOT.std.vector('reco::Track')()
+                    for coll in (pf, lost):
+                        if coll is None:
                             continue
-                        trk = cand.pseudoTrack()  # built once; filter + refit input
-                        if apply_filter and not passes_pv_track_filter(cand, trk, beamspot):
-                            continue
-                        if selector(cand):
-                            pv_tracks.push_back(trk)
+                        for cand in coll:
+                            if not cand.hasTrackDetails():
+                                continue
+                            trk = cand.pseudoTrack()  # built once; filter + refit input
+                            if apply_filter and not passes_pv_track_filter(cand, trk, beamspot):
+                                continue
+                            if selector(cand):
+                                pv_tracks.push_back(trk)
+                    if cache is not None:
+                        cache[key] = pv_tracks
                 ntrk = pv_tracks.size()
                 if ntrk < PV_REFIT_MIN_TRK:
                     return None, ntrk
@@ -257,7 +267,7 @@ class PrimaryVertexRefitMixin(object):
             # TkFilterParameters, so no closest-z and no re-filter.
             refit, ntrk = _refit(
                 lambda cand: cand.fromPV(self.pv_idx) == PV_USED_IN_FIT,
-                apply_filter=False)
+                apply_filter=False, key=('used_in_fit', self.pv_idx))
 
             # ---- z-consistency guard ---------------------------------------------
             # the refit MUST sit on the chosen PV. A large |z(refit) - z(pv)| means
@@ -274,7 +284,8 @@ class PrimaryVertexRefitMixin(object):
                                key=lambda i: abs(vtx_z[i] - vz)) == self.pv_idx
                 # closest-z picks tracks nearest pv_idx by construction, so it is
                 # not subject to the misalignment above; accept its result as-is.
-                refit, ntrk = _refit(_closest_is_pv, apply_filter=True)
+                refit, ntrk = _refit(_closest_is_pv, apply_filter=True,
+                                     key=('closest_z', self.pv_idx))
 
             if refit is not None:
                 self.pv_refit       = refit

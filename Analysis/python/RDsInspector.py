@@ -50,7 +50,7 @@ from Bmmm.Analysis.RDsBranches import (
     cand_names, gen_event_names, gen_tree_branches, L1_SEEDS, safe_get,
     EVENT_EXTRA_KEYS, EVENT_GEN_KEYS, BS_GEN_NAMES,
 )
-from Bmmm.Analysis.RDsCandidate import RDsCandidate, RDsTrack, TrackRecord
+from Bmmm.Analysis.RDsCandidate import RDsCandidate, RDsTrack, TrackRecord, EventArrays
 from Bmmm.Analysis.RDsCuts import cuts
 from Bmmm.Analysis.RDsKinematics import M_K, M_PI, M_MU, kkpi_triplets
 from Bmmm.Analysis.RDsGenHistory import (
@@ -332,11 +332,14 @@ class RDsInspector(BParking2018TriggerMixin, BaseInspector):
             for a, b, c in triplets:
                 i, j, k = sel[a], sel[b], sel[c]
                 cand = RDsCandidate(mu, as_k[i], as_k[j], as_pi[k])
-                cand.fit()
+                cand.fit_vertex_cut()
                 if not cand.passes_vertex_cuts(cuts):
                     continue
+                cand.fit_rest()
                 cutflow['\tcandidates passing the vertex cuts'] += 1
                 cands.append(cand)
+        # read once, shared by every candidate of the event (RDsCandidate.compute)
+        self._event_arrays = EventArrays(event.vtx, event.pf, self._photons) if cands else None
         return cands
 
     def sort_candidates(self, cands):
@@ -349,7 +352,8 @@ class RDsInspector(BParking2018TriggerMixin, BaseInspector):
     #  ONE ROW PER CANDIDATE
     # ==================================================================
     def fill_candidate(self, icand, event, options, cuts, gen_state, good_tobjs):
-        icand.compute(event.vtx, event.bs, event.pf, event.ltrk, self._photons, cuts)
+        icand.compute(event.vtx, event.bs, event.pf, event.ltrk, self._photons, cuts,
+                      evt=getattr(self, '_event_arrays', None))
         icand.out['cand_idx'] = icand.cand_idx
 
         mu = icand.mu

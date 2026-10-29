@@ -161,6 +161,14 @@ def semileptonic_observables(p_b, p_ds, p_mu):
     return out
 
 
+def cross3(a, b):
+    '''np.cross for two 3-vectors, without its per-call overhead (same
+    operations, so bit-identical).'''
+    return np.array([a[1] * b[2] - a[2] * b[1],
+                     a[2] * b[0] - a[0] * b[2],
+                     a[0] * b[1] - a[1] * b[0]])
+
+
 def minkowski(a, b):
     return a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3]
 
@@ -212,11 +220,11 @@ def helicity_angles(p_b, p_ds, p_phi, p_pi, p_k, p_mu):
         z  = unit3(boost(p_ds, b_b)[1:])
         hb = boost(p_phi, b_b)[1:]
         lb = boost(p_mu, b_b)[1:]
-        nv = unit3(np.cross(hb, z))
-        nl = unit3(np.cross(lb, z))
+        nv = unit3(cross3(hb, z))
+        nl = unit3(cross3(lb, z))
         if np.any(nv) and np.any(nl):
             cc  = float(np.clip(np.dot(nv, nl), -1., 1.))
-            ss  = float(np.dot(np.cross(nl, nv), z))
+            ss  = float(np.dot(cross3(nl, nv), z))
             chi = float(np.arctan2(ss, cc))
     out['chi'] = chi
     return out
