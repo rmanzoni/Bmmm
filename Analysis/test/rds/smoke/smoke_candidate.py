@@ -106,18 +106,15 @@ class Tree(object):
 
 
 class FakeFitter(object):
-    def FitVertexCut(self, *a):
-        phi = lab['k1'] + lab['k2']; dsphi = phi + lab['pi']
-        return [Tree(phi, [lab['k1'], lab['k2']], dsv), Tree(dsphi, [lab['pi'], phi], dsv),
-                Tree(phi, [lab['k1'], lab['k2']], dsv), Tree(dsphi, [lab['pi'], phi], dsv)]
-    def DsMomentaBeforeBs(self):
-        phi = lab['k1'] + lab['k2']; dsphi = phi + lab['pi']
-        return [*dsphi[1:], *lab['ds'][1:], *dsphi[1:]]
-    def FitRest(self, *a):
-        phi = lab['k1'] + lab['k2']; ds = lab['ds']; dsphi = phi + lab['pi']
-        return [Tree(dsphi + lab['mu'], [lab['mu'], dsphi], sv),
-                Tree(ds, [lab['pi'], phi], dsv), Tree(ds + lab['mu'], [lab['mu'], ds], sv),
-                Tree(dsphi + lab['mu'], [lab['mu'], dsphi], sv)]
+    def FitTwoTracks(self, *a):
+        phi = lab['k1'] + lab['k2']
+        return Tree(phi, [lab['k1'], lab['k2']], dsv)
+    def AddTrack(self, tree, trk, m, mconstr):
+        top = tree.top
+        if abs(m - K.M_PI) < 1e-9:     # + pi: the Ds, with or without its mass constraint
+            ds = lab['ds'] if mconstr > 0 else top + lab['pi']
+            return Tree(ds, [lab['pi'], top], dsv)
+        return Tree(top + lab['mu'], [lab['mu'], top], sv)
 
 
 class FakeIP(object):

@@ -11,9 +11,9 @@
 #include "OAEParametrizedMagneticField.h"
 
 #include "RecoVertex/KinematicFitPrimitives/interface/KinematicParticleFactoryFromTransientTrack.h"
-#include "RecoVertex/KinematicFit/interface/TwoTrackMassKinematicConstraint.h"
-#include "RecoVertex/KinematicFitPrimitives/interface/MultiTrackKinematicConstraint.h"
-#include "RecoVertex/KinematicFit/interface/KinematicConstrainedVertexFitter.h"
+#include "RecoVertex/KinematicFit/interface/MassKinematicConstraint.h"
+#include "RecoVertex/KinematicFit/interface/KinematicParticleFitter.h"
+#include "RecoVertex/KinematicFit/interface/KinematicParticleVertexFitter.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicParticle.h"
 #include "RecoVertex/KinematicFitPrimitives/interface/RefCountedKinematicTree.h"
 
@@ -22,50 +22,47 @@
 
 #include <vector>
 #include <exception>
-#include <limits>
 
 // ----------------------------------------------------------------------------
-// Sequential kinematic fits of Bs -> Ds(-> phi(-> K K) pi) mu (nu).
+// Kinematic fits of Bs -> Ds(-> phi(-> K K) pi) mu (nu), one step per call:
 //
-// Three schemes, run side by side on the same tracks so they can be compared
-// on MC (RDsCandidate):
+//   FitTwoTracks(k1, k2, mk, mconstr)   K K, with the mass constraint mconstr
+//                                       (mconstr <= 0: no constraint)
+//   AddTrack(tree, trk, m, mconstr)     the top particle of `tree` + trk to a
+//                                       common vertex, with the mass constraint
+//                                       mconstr on the pair (<= 0: none)
 //
-//   phic  phi mass constraint only
-//     phi     : K K with the phi mass constraint
-//     ds_phic : phi + pi, no constraint     -> m(KKpi) with the phi constraint
-//                                              (the AN v4 / previous ntuples)
-//     bs_phic : ds_phic + mu, no constraint (neutrinos)
-//   cons  phi and Ds mass constraints
-//     phi     : refitted identically to the phic one (see below)
-//     ds_cons : phi + pi with the Ds mass constraint
-//     bs_cons : ds_cons + mu, no constraint (neutrinos)
-//   free  no mass constraint
-//     kk      : K K
-//     kkpi    : KK + pi
-//     bs_free : kkpi + mu
+// Each step is the sequential recipe of the KinematicFit package (Prokofiev and
+// Speer): a Kalman vertex fit of the inputs (KinematicParticleVertexFitter),
+// then, for a mass constraint, KinematicParticleFitter with
+// MassKinematicConstraint on the resulting particle. The constrained particle
+// is what enters the next step. The constraint updates the top particle and its
+// decay vertex, whose chi2 and ndof become vertex + mass (2 ndof for two
+// inputs); the daughters keep their vertex-fit momenta.
 //
-// Two stages, so that the candidates failing the vertex cuts (most of them)
-// only pay for the fits the cuts need:
+// It replaces KinematicConstrainedVertexFitter (one Lagrange-multiplier fit of
+// vertex and constraint), whose unconstrained fits broke on nearly collinear
+// inputs: it starts the vertex from a 100 cm^2 variance and gets the ~1e-6 cm^2
+// covariance as a difference of terms of that size, so on the full signal MC
+// ~20% of the Bs vertices and ~15% of the free KK and KK pi ones came back
+// valid with a negative chi2 or a covariance that was not positive definite.
+// With the Kalman fit there are none.
 //
-//   FitVertexCut   [phi, ds_phic, kk, kkpi]             the cut fits
-//   FitRest        [bs_phic, ds_cons, bs_cons, bs_free] continues the chains
-//                  from the FitVertexCut trees
+// RDsCandidate chains them into three schemes (phic: phi constraint only; cons:
+// phi and Ds constraints; free: none), each KK -> KK pi -> KK pi mu.
 //
-// The Bs fit also updates, in place, the Ds of the tree it is built from (the
-// Ds refitted at the Bs vertex, so it carries the muon information). FitRest
-// therefore records each Ds momentum just BEFORE its Bs fit, the muon-free Ds
-// trajectory: DsMomentaBeforeBs() = [phic, cons, free] x (px, py, pz), NaN
-// where that Ds fit failed. The Ds vertex position is not changed.
+// It reads every tree BEFORE the tree enters the next fit: that fit updates,
+// in place, the top particle of the tree it is built from (the Ds of the Ds
+// tree comes back refitted at the Bs vertex, i.e. with the muon information
+// in it), so a tree read afterwards would not show its own fit. The vertex
+// position is not changed.
 //
-// A composite KinematicParticle must enter only ONE further fit: the fitter
-// links its sub-tree into the new tree, so feeding the same phi to the phic
-// and cons Ds fits rewires the first chain (its Bs tree top came back as the
-// phi). Each chain therefore runs its own phi fit.
+// For the same reason a composite must enter only ONE further fit (feeding one
+// phi to two Ds fits rewired the first chain): cons runs its own phi fit.
 //
-// Every returned vector has the full length; a failed step and every step
-// after it in the same chain are empty trees (test with tree.get() /
-// isValid() on the Python side). A fit that throws (KinematicFit raises on
-// degenerate input) is a failed step, not a dead job.
+// A failed fit, a fit that throws (KinematicFit raises on degenerate input)
+// or a call on an empty input tree returns an empty tree (test with
+// tree.get() / isValid() on the Python side), never a dead job.
 // ----------------------------------------------------------------------------
 
 class RDsKinVtxFitter {
@@ -78,91 +75,26 @@ class RDsKinVtxFitter {
       return reco::TransientTrack(track, paramField);
     }
 
-    std::vector<RefCountedKinematicTree> FitVertexCut(const reco::Track & k1,
-                                                      const reco::Track & k2,
-                                                      const reco::Track & pi,
-                                                      const double      & mk,
-                                                      const double      & mpi,
-                                                      const double      & mphi)
+    RefCountedKinematicTree FitTwoTracks(const reco::Track & k1,
+                                         const reco::Track & k2,
+                                         const double      & mk,
+                                         const double      & mconstr)
     {
-        std::vector<RefCountedKinematicTree> out(4, RefCountedKinematicTree());
-
-        // phic: phi with the mass constraint, + pi without the Ds constraint
-        out[0] = fitPhi(k1, k2, mk, mphi);
-        if (good(out[0])) {
-            std::vector<RefCountedKinematicParticle> dsPhicIn = {particle(pi, mpi), top(out[0])};
-            out[1] = fit(dsPhicIn, nullptr);
-        }
-
-        // free: K K, + pi
-        std::vector<RefCountedKinematicParticle> kk = {particle(k1, mk), particle(k2, mk)};
-        out[2] = fit(kk, nullptr);
-        if (good(out[2])) {
-            std::vector<RefCountedKinematicParticle> kkpiIn = {particle(pi, mpi), top(out[2])};
-            out[3] = fit(kkpiIn, nullptr);
-        }
-        return out;
+        std::vector<RefCountedKinematicParticle> parts = {particle(k1, mk), particle(k2, mk)};
+        return fitWithMass(parts, mconstr);
     }
 
-    std::vector<RefCountedKinematicTree> FitRest(std::vector<RefCountedKinematicTree> & cut,
-                                                 const reco::Track & k1,
-                                                 const reco::Track & k2,
-                                                 const reco::Track & pi,
-                                                 const reco::Track & mu,
-                                                 const double      & mk,
-                                                 const double      & mpi,
-                                                 const double      & mmu,
-                                                 const double      & mphi,
-                                                 const double      & mds)
+    RefCountedKinematicTree AddTrack(RefCountedKinematicTree & tree,
+                                     const reco::Track       & trk,
+                                     const double            & m,
+                                     const double            & mconstr)
     {
-        std::vector<RefCountedKinematicTree> out(4, RefCountedKinematicTree());
-        dsMomenta_.assign(9, std::numeric_limits<double>::quiet_NaN());
-
-        // phic: ds_phic + mu
-        if (good(cut[1])) {
-            keepMomentum(top(cut[1]), 0);
-            std::vector<RefCountedKinematicParticle> bsPhicIn = {particle(mu, mmu), top(cut[1])};
-            out[0] = fit(bsPhicIn, nullptr);
-        }
-
-        // cons: its own phi fit (see the header), + pi with the Ds constraint, + mu
-        if (good(cut[0])) {
-            RefCountedKinematicTree phiCons = fitPhi(k1, k2, mk, mphi);
-            if (good(phiCons)) {
-                std::vector<RefCountedKinematicParticle> dsConsIn = {particle(pi, mpi), top(phiCons)};
-                ParticleMass dsMass = mds;  // the constraint ctor takes a non-const reference
-                TwoTrackMassKinematicConstraint dsConstr(dsMass);
-                out[1] = fit(dsConsIn, &dsConstr);
-                if (good(out[1])) {
-                    keepMomentum(top(out[1]), 1);
-                    std::vector<RefCountedKinematicParticle> bsConsIn = {particle(mu, mmu), top(out[1])};
-                    out[2] = fit(bsConsIn, nullptr);
-                }
-            }
-        }
-
-        // free: kkpi + mu
-        if (good(cut[3])) {
-            keepMomentum(top(cut[3]), 2);
-            std::vector<RefCountedKinematicParticle> bsFreeIn = {particle(mu, mmu), top(cut[3])};
-            out[3] = fit(bsFreeIn, nullptr);
-        }
-        return out;
+        if (!good(tree)) return RefCountedKinematicTree();
+        std::vector<RefCountedKinematicParticle> parts = {particle(trk, m), top(tree)};
+        return fitWithMass(parts, mconstr);
     }
-
-    // the Ds momenta of the last FitRest call, before the Bs fits (see the header)
-    const std::vector<double> & DsMomentaBeforeBs() const { return dsMomenta_; }
 
   private:
-    std::vector<double> dsMomenta_;
-
-    void keepMomentum(const RefCountedKinematicParticle & p, const unsigned int i) {
-        GlobalVector mom = p->currentState().globalMomentum();
-        dsMomenta_[3 * i]     = mom.x();
-        dsMomenta_[3 * i + 1] = mom.y();
-        dsMomenta_[3 * i + 2] = mom.z();
-    }
-
     OAEParametrizedMagneticField *paramField = new OAEParametrizedMagneticField("3_8T");
 
     RefCountedKinematicParticle particle(const reco::Track & trk, const double & mass) {
@@ -172,23 +104,22 @@ class RDsKinVtxFitter {
         return pFactory.particle(getTransientTrack(trk), m, chi, ndf, sigma);
     }
 
-    RefCountedKinematicTree fitPhi(const reco::Track & k1, const reco::Track & k2,
-                                   const double & mk, const double & mphi) {
-        std::vector<RefCountedKinematicParticle> kk = {particle(k1, mk), particle(k2, mk)};
-        ParticleMass phiMass = mphi;  // the constraint ctor takes a non-const reference
-        TwoTrackMassKinematicConstraint phiConstr(phiMass);
-        return fit(kk, &phiConstr);
-    }
+    // width of the mass constraints: effectively exact, far below any resolution
+    static constexpr float MASS_CONSTRAINT_SIGMA = 1e-5;   // GeV
 
-    // nullptr constraint -> plain common-vertex fit
-    RefCountedKinematicTree fit(std::vector<RefCountedKinematicParticle> & parts,
-                                MultiTrackKinematicConstraint * constraint) {
+    // vertex fit, then the mass constraint on the top particle if mconstr > 0
+    RefCountedKinematicTree fitWithMass(std::vector<RefCountedKinematicParticle> & parts,
+                                        const double & mconstr) {
         try {
-            KinematicConstrainedVertexFitter kcvFitter;
-            RefCountedKinematicTree tree = constraint ? kcvFitter.fit(parts, constraint)
-                                                      : kcvFitter.fit(parts);
-            if (tree == 0 || tree->isEmpty() || !tree->isValid()) return RefCountedKinematicTree();
-            return tree;
+            KinematicParticleVertexFitter vtxFitter;
+            RefCountedKinematicTree tree = vtxFitter.fit(parts);
+            if (!good(tree)) return RefCountedKinematicTree();
+            if (mconstr <= 0.) return tree;
+            ParticleMass mass = mconstr;
+            MassKinematicConstraint constr(mass, MASS_CONSTRAINT_SIGMA);
+            KinematicParticleFitter constrFitter;
+            tree = constrFitter.fit(&constr, tree);
+            return good(tree) ? tree : RefCountedKinematicTree();
         } catch (std::exception & e) {
             return RefCountedKinematicTree();
         } catch (...) {

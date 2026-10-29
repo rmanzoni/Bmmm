@@ -21,7 +21,7 @@ the fake-event tests could not.
 | `python/RDsKinematics.py` | ROOT-free kinematics: masses, Bs hypotheses, q², helicity angles, reflections, combinatorics |
 | `python/RDsGenHistory.py` | generator truth: signal decay, Bs flight, candidate classification (AN Sec. 6.1) |
 | `python/RDsBranches.py`, `python/RDsCuts.py` | schema and preselection |
-| `interface/RDsKinVtxFitter.h` | the two sequential fit schemes |
+| `interface/RDsKinVtxFitter.h` | the single kinematic-fit steps the three schemes are chained from |
 | `python/TrackMomentumCalib.py` | momcal correction at production (MC) |
 | `python/L1Seeds2018.py` | L1 seed decisions and prescales |
 | `python/HammerDsFF.py`, `test/rds/hammer/` | Bs → Ds(*) form-factor weights, production time or afterwards |
@@ -53,6 +53,44 @@ mass constraint).
 | Bs vertex (`*_bs_*`) | Ds + μ | Ds + μ | KKπ + μ |
 
 The Ds momentum of each scheme enters its Bs kinematics.
+
+**Every vertex is read from its own fit.** A fit updates, in place, the top
+particle of the tree it is built from: after the Bs fit the Ds of the Ds tree is
+the Ds refitted at the Bs vertex, carrying the muon information (it moved by a
+median of 4 MeV, by up to 12 GeV). Each tree is therefore read before it enters
+the next fit, so `*_ds_*`, the Ds-tree children and the Ds trajectory are the Ds
+of the Ds fit, and `*_phi_*` the φ of the φ fit. A composite enters one further
+fit only (`cons` runs its own φ fit, identical to the `phic` one).
+
+**The fitters.** Every step is the sequential recipe of the CMSSW KinematicFit
+package (Prokofiev and Speer): a Kalman vertex fit of the inputs
+(`KinematicParticleVertexFitter`), then, where a mass is constrained,
+`KinematicParticleFitter` with `MassKinematicConstraint` (σ = 10 keV, i.e.
+exact) on the resulting particle, which is what enters the next step. The
+constraint updates the top particle and its decay vertex: `*_phi_{chi2,ndof,prob}`
+of `cons`/`phic` and `cons_ds_*` are vertex + mass (2 ndof for two inputs), as
+the vertex cut requires. The daughters keep their vertex-fit momenta, so
+`*_{k1,k2}_rf_*` and the π of `cons_ds` are not mass-constrained.
+
+This replaced `KinematicConstrainedVertexFitter` (one Lagrange-multiplier fit
+of vertex and constraint), which broke numerically on the unconstrained fits.
+It starts the vertex from a 100 cm² variance ("huge error method") and obtains
+the ~1e-6 cm² final covariance as the difference of two terms of that size,
+after inverting a matrix that mixes them with ~1e-8 track terms. On nearly
+collinear inputs (boosted Ds, small ΔR(Ds, μ)) the rounding exceeded the true
+transverse variance, and χ² came from the same algebra; its convergence test
+divides by that covariance, so it could even stop on a broken one. On the
+signal MC ~20% of the Bs vertices and ~15% of the free KK and KKπ ones came back
+"valid" with χ² < 0 or a covariance that was not positive definite, and a
+negative χ² gives P = 1, so broken vertices passed the vertex cuts: ~37% of the
+non-signal candidates were there only because of that.
+
+**Failed fits.** `*_<vtx>_good` = 0 and every other quantity of that vertex and
+of the vertices after it in the chain are NaN when the fit failed or was not
+run, and also, as a safety net, when a fit returned as valid has χ² < 0 or a
+vertex covariance that is not positive definite (none with the current
+fitters). `*_<vtx>_status` says which: 0 good, 1 no fit (failed or not run),
+2 χ² < 0, 3 covariance not positive definite.
 
 Scheme-independent masses from the (calibrated) track momenta: `kk_mass`,
 `kkpi_mass`, `mass` (KKπμ), and the reflection masses `refl_k{1,2}_as_pi`
@@ -101,6 +139,135 @@ Per scheme, the muon relative to
   `*_mu_doca_ds_sig` = √χ²(Ds + μ vertex): with one degree of freedom that is
   the DOCA significance, with the full covariances (IPTools gives no error on
   the line-to-line distance).
+
+## Branch reference
+
+`tree` has one row per candidate; `tree_gen` (MC) one row per processed event,
+with `run lumi event npu nti gen_pv_{x,y,z}` and the *Generator truth* blocks.
+Everything is float32 except `run`, `lumi`, `event` (int64); a value that could
+not be computed is NaN. Placeholders:
+
+| placeholder | values |
+|---|---|
+| `<s>` | fit scheme: `cons`, `phic`, `free` |
+| `<v>` | vertex of a scheme: `phi`, `ds`, `bs` |
+| `<o>` | object: `mu`, `k1`, `k2`, `pi` (`k1` the leading kaon) |
+| `<t>` | track: `k1`, `k2`, `pi` |
+| `<h>` | Bs momentum hypothesis: `coll`, `xyz_bs`, `math1_bs`, `math2_bs` |
+| `<q>` | hypothesis observable: `pt eta phi beta q2 m_miss2 pt_miss pt_miss_sca e_star_mu e_hash_mu cos_theta_phi_ds cos_theta_mu_w chi` |
+| `<i>` | isolated object: `mu`, `ds` (KKπ), `b` (KKπμ) |
+| `<rr>` | isolation cone: `03`, `04` |
+| `<path>` | the ten parking paths `HLT_Mu7_IP4` … `HLT_Mu12_IP6` |
+| `<seed>` | the ten L1 seeds `L1_SingleMu6er1p5` … `L1_SingleMu25` |
+| `<par>` | track parameter: `qoverp`, `lambda`, `phi`, `dxy`, `dsz` |
+| `<ij>` | the 15 pairs `<par>_<par>` of the upper triangle, e.g. `qoverp_lambda` |
+| `<g>` | gen observable: `q2 m_miss2 pt_miss e_star_mu e_hash_mu cos_theta_k_pi cos_theta_phi_ds cos_theta_mu_w chi` |
+| `<p>` | Hammer particle: `dsx ds dsg lep nu taumu taunut taunum` |
+| `<NN>` | form-factor eigenvector: `00` … `09` |
+
+### Event (repeated on every candidate of the event)
+
+| branches | content |
+|---|---|
+| `run`, `lumi`, `event` | event identifiers (int64) |
+| `ncands` | candidates of the event (rows with the same run, lumi, event) |
+| `npv` | reconstructed primary vertices |
+| `npu`, `nti` | MC: in-time pile-up interactions, true mean number of interactions; NaN in data |
+| `bs_{x0,y0,z0}`, `bs_{x0,y0,z0}e` | beamspot position and its errors |
+| `era`, `bph_part` | data: 2018 era (1–4 = A–D), ParkingBPH part (1–6); NaN in MC |
+| `gen_pv_{x,y,z}` | MC: generated primary vertex |
+| `<seed>`, `<seed>_ps` | L1 seed decision and prescale |
+| `<path>`, `<path>_ps` | HLT path decision and prescale |
+| `<path>_{l1min,l1max}_ps` | smallest and largest L1 prescale among the seeds of that path |
+
+### Muon `mu_*` and tracks `k1_*`, `k2_*`, `pi_*`
+
+| branches | content |
+|---|---|
+| `<o>_{pt,eta,phi,e,mass,charge}` | kinematics; pT and E with the momentum calibration (MC), the mass the hypothesis assigns |
+| `<t>_{px,py,pz}` | calibrated momentum components |
+| `<o>_pt_raw` | pT before the momentum calibration |
+| `<o>_calib_{f,z}` | calibration factor p'/p and its Gaussian number (1, NaN without `--trk-calib`) |
+| `mu_id_{loose,soft,medium,tight,soft_mva,pf,global,tracker,standalone}` | muon identification flags |
+| `mu_id_soft_mva_raw` | soft-MVA output |
+| `mu_pfiso{03,04}`, `mu_pfreliso{03,04}` | standard PAT PF isolation of the muon (default PV), absolute and relative |
+| `mu_pfiso{03,04}_{ch,cp,nh,ph,pu}` | its components: charged hadrons, charged particles, neutral hadrons, photons, pile-up |
+| `<o>_{dxy,dz}`, `<o>_{dxy,dz}_{e,sig}` | transverse and longitudinal IP wrt the candidate PV (`pv_*`), error, significance, from the track the fits used |
+| `<o>_bs_dxy`, `<o>_bs_dxy_{e,sig}` | transverse IP wrt the beamspot |
+| `<o>_{dxy,dz,bs_dxy}_e_raw` | the same errors from the raw track (before `--cov-scale`) |
+| `<t>_pdgid`, `<t>_from_pv`, `<t>_pv_assoc_q`, `<t>_high_purity`, `<t>_lost_inner_hits` | packed-candidate information: PF id, PV association and its quality, high-purity flag, lost inner hits |
+| `<t>_is_lost` | 1 if from `lostTracks`, 0 if from `packedPFCandidates` |
+| `<o>_n_pix_{hit,b_hit,e_hit}`, `<o>_n_pix_layer`, `<o>_n_trk_layer` | valid pixel hits (all, barrel, endcap), pixel layers, tracker layers with a measurement |
+| `<o>_pix_first_{b_layer,e_disk,layer}` | innermost barrel layer, endcap disk, and both in one code (`TrackHitContent.py`) |
+| `<o>_n_pix_{miss,inact}_inner` | pixel layers missing before the first hit, on active / inactive modules |
+| `<o>_pix_{valid,miss,inact}_mask`, `<o>_pix_hit_count` | per-layer bit masks and packed hit counts (`TrackHitContent.py`) |
+| `<o>_best_trk_{pt,eta}`, `mu_best_trk_type` | the best track's pT, η; for the muon its type |
+| `<o>_cov_<ij>` | 5×5 curvilinear covariance of the track, before corrections |
+| `<o>_cov_pos_def`, `<o>_cov_fixed` | covariance positive definite as packed; repaired before the fits |
+| `<o>_cov_scale_<par>` | `--cov-scale` factor applied to σ of each parameter (1 without it) |
+| `<o>_jet_{pt,eta,phi,e}` | matched jet (ΔR < 0.2) |
+| `mu_gen_{pt,eta,phi,e,pdgid}`, `<t>_gen_{pt,eta,phi,pdgid}` | MC: matched generator particle |
+| `<o>_gen_dr`, `<o>_gen_mother_pdgid` | MC: ΔR of the match, pdgId of the matched particle's mother |
+| `mu_trig_dr`, `mu_trig_match` | ΔR to the closest parking trigger object; 1 if < 0.05 |
+| `mu_<path>_tag` | path fired and the muon matched to its object (1), fired and not matched (0), not fired (NaN) |
+
+### Candidate, scheme-independent
+
+| branches | content |
+|---|---|
+| `cand_idx` | rank of the candidate in the event by decreasing pT(KKπμ) |
+| `mass`, `pt`, `eta`, `phi` | KKπμ, calibrated track momenta |
+| `charge`, `kk_charge`, `mupi_charge` | total, KK and μπ charges |
+| `charge_class` | 0 right sign, 1 μπ wrong sign, 2 KK wrong sign |
+| `kk_mass`, `kkpi_mass` | m(KK), m(KKπ), calibrated track momenta |
+| `refl_k{1,2}_as_{pi,p}`, `refl_k{1,2}_pi` | m(KKπ) with that kaon as a pion (D⁺ → Kππ) or a proton (Λc → pKπ); m(Kπ) of that kaon and the pion (D⁰ → Kπ) |
+| `dr_{kk,phi_pi,ds_mu}`, `dr_mu_{k1,k2,pi}`, `max_dr_mu_tk` | ΔR between the pieces |
+| `pv_idx`, `pv_from_scheme` | the chosen PV in the vertex collection; scheme whose Bs vertex chose it (0 cons, 1 phic, 2 free, −1 none: closest in z to the muon) |
+| `pv_refit_{valid,ntrk}` | PV refitted (beamspot-constrained, signal tracks removed); its tracks. 0: hybrid PV (beamspot x, y, PV z) |
+| `pv_{x,y,z}`, `pv_{ntrk,chi2,ndof}`, `pv_cov_{xx,xy,xz,yy,yz,zz}` | the PV used everywhere |
+| `bs_{x,y}` | beamspot at the z of the PV |
+| `<i>_iso_{ch,ch_clean,pu,nh,ph}_<rr>` | PF isolation wrt the refitted PV: charged hadrons from the PV (`clean`: signal tracks removed), charged from other vertices, neutral hadrons, photons |
+| `<i>_iso{,_clean}_<rr>`, `<i>_reliso{,_clean}_<rr>` | ch + max(0, nh + ph − ½ pu), absolute and relative. `ds` and `b` include their own tracks; use `clean` |
+| `gen_cand` | MC truth of the four tracks: 0–3 signal (Ds μ, Ds* μ, Ds τ, Ds* τ), 10 Bs feed-down, 11 Bs double charm, 12–15 Ds from B⁰, B⁺, Λb, other b, 20 Ds and μ from different b, 21 μ not from a b, 30 KKπ not from one Ds, −1 fewer than four tracks matched |
+| `gen_ds_true`, `gen_charm_pdgid`, `gen_ds_{mother,b}_pdgid` | MC: KKπ from one Ds; their common charm ancestor; the Ds mother and b ancestor |
+| `gen_mu_{mother,b}_pdgid`, `gen_mu_from_tau`, `gen_same_b`, `gen_n_matched` | MC: muon mother and b ancestor; muon from a τ; Ds and μ from the same b; tracks matched (0–4) |
+
+### Per fit scheme `<s>_*`
+
+| branches | content |
+|---|---|
+| `<s>_<v>_good`, `<s>_<v>_status` | fit usable (1/0); 0 good, 1 no fit, 2 χ² < 0, 3 covariance not positive definite |
+| `<s>_<v>_{x,y,z}`, `<s>_<v>_cov_{xx,xy,xz,yy,yz,zz}` | vertex position and covariance |
+| `<s>_<v>_{chi2,ndof,prob}` | vertex fit quality |
+| `<s>_<v>_{mass,pt}` | the particle of that fit (φ, Ds, Ds + μ), from its own fit |
+| `<s>_<v>_{lxy,lxyz}`, `<s>_<v>_{lxy,lxyz}_{err,sig}` | 2D / 3D distance from the PV |
+| `<s>_<v>_cos{2d,3d}` | cosine between PV → vertex and the momentum of that fit |
+| `<s>_ds_{lxy,lxyz}_bs`, `<s>_ds_lxy_bs_{err,sig}`, `<s>_ds_lxyz_bs_sig`, `<s>_ds_cos{2d,3d}_bs` | Ds vertex relative to the Bs vertex |
+| `<s>_{k1,k2,pi,mu}_rf_{pt,eta,phi}` | track momenta refitted in the φ (k1, k2), Ds (π) and Bs (μ) fits |
+| `<s>_<h>_<q>` | Bs momentum hypothesis and the observables with it: Bs pT, η, φ, β; q² = (B − Ds)², m²_miss = (B − Ds − μ)², pT_miss (vector, scalar), E\*_μ (Bs frame), E#_μ (W* frame), helicity angles cos θ_φ(Ds), cos θ_μ(W), χ |
+| `<s>_math_real_bs` | 1 if the neutrino solutions are real, 0 if the discriminant was negative (then `math1` = `math2` are meaningless) |
+| `<s>_cos_theta_k_pi` | helicity angle of the φ decay (no Bs dependence) |
+| `<s>_p_perp`, `<s>_ds_p_perp`, `<s>_mcorr` | momentum of KKπμ / Ds transverse to PV → V_Bs; corrected mass √(m² + p⊥²) + p⊥ |
+| `<s>_mu_ip3d_bs_{pv,sv}`, `<s>_mu_ip3d_bs_{pv,sv}_{err,sig}` | muon IP3D wrt the PV / V_Bs, signed along PV → V_Bs |
+| `<s>_mu_dist_along_bs_dir_{pv,sv}`, `<s>_mu_dist_to_bs_dir` | muon closest approach to the Bs axis: position along it from the PV / V_Bs; line-to-line distance |
+| `<s>_mu_doca_ds`, `<s>_mu_doca_ds_sig`, `<s>_mu_poca_along_ds` | muon vs the Ds trajectory (see above): distance of closest approach, its significance (√χ² of the Ds + μ vertex), position along the Ds from V_Ds |
+| `<s>_gamma_{n,e_coll}` | photons with \|m(Dsγ) − m(Ds*)\| < 100 MeV; expected collinear photon energy |
+| `<s>_gamma_{pt,eta,phi,dr,m_ds_gamma,dm,e_coll_over_pt}` | the one closest to the Ds in ΔR: kinematics, ΔR, m(Dsγ), m(Dsγ) − m(Ds), E_coll / pT |
+| `<s>_gamma_{coll,xyz_bs}_{q2,m_miss2}` | q² and m²_miss with Ds + γ in place of the Ds |
+
+### Generator truth (MC, also in `tree_gen`)
+
+| branches | content |
+|---|---|
+| `gen_sig` | signal decay in the event: 0 Ds μ ν, 1 Ds* μ ν, 2 Ds τ ν, 3 Ds* τ ν, −1 none |
+| `gen_n_bs` | Bs in the event |
+| `gen_bs_{pt,eta,phi,y,mass,pdgid,beta,gamma}` | the signal Bs |
+| `gen_bs_{lxyz,lxy,ct}`, `gen_bs_sv_{x,y,z}` | its flight and decay vertex |
+| `gen_<g>` | the analysis quantities with the true Bs momentum (Ds, not Ds*; visible muon) |
+| `gen_vis_{mu,kp,km,pi}_{pt,eta,phi}` | the visible final-state particles |
+| `gen_ham_<p>_{pt,eta,phi,mass,pdgid}` | Hammer inputs, before FSR: Ds(*) from the Bs, the Ds and γ of Ds* → Ds γ, lepton, neutrino, and for τ the μ and two neutrinos |
+| `hammer_weight`, `hammer_ff_ev<NN>_{up,dn}` | form-factor weight to the target scheme and its eigenvector variations |
+| `hammer_status` | 0 ok, 1 not signal, 2 inputs missing, 3 declined by Hammer, 4 non-finite |
 
 ## Production-time corrections (MC)
 

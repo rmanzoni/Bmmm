@@ -233,12 +233,30 @@ def _kin_np4(kin_particle):
     return np.array([np.sqrt(px * px + py * py + pz * pz + m * m), px, py, pz])
 
 
+def _pos_def_3x3(m):
+    '''Sylvester's criterion on a 3x3 symmetric matrix (callable m(i, j)).'''
+    a, b, c = m(0, 0), m(0, 1), m(0, 2)
+    d, e, f = m(1, 1), m(1, 2), m(2, 2)
+    return a > 0 and a * d - b * b > 0 and \
+        a * (d * f - e * e) - b * (b * f - c * e) + c * (b * e - c * d) > 0
+
+
 class FitInfo(object):
     '''What is read off one kinematic tree: the top particle four-momentum,
-    the decay vertex and its quality, the refitted children.'''
+    the decay vertex and its quality, the refitted children. Read right after
+    the fit that made the tree, before the tree enters another fit (see
+    RDsKinVtxFitter).
+
+    A fit returned as valid is still a failed fit here if its chi2 is negative
+    or its vertex covariance is not positive definite: the former
+    KinematicConstrainedVertexFitter produced both for ~20% of the
+    unconstrained fits (RDsKinVtxFitter). The Kalman fit that replaced it
+    produces none; the check stays as a safety net. status: 0 good, 1 no fit
+    (failed or not run), 2 negative chi2, 3 covariance not positive definite.'''
 
     def __init__(self, tree):
         self.valid = _tree_valid(tree)
+        self.status = 0 if self.valid else 1
         self.p4 = None
         self.vtx = None
         self.chi2 = self.ndof = self.prob = NAN
@@ -246,10 +264,17 @@ class FitInfo(object):
         if not self.valid:
             return
         tree.movePointerToTheTop()
-        self.p4  = _kin_np4(tree.currentParticle())
         self._vtx_ref = tree.currentDecayVertex()   # keeps the vertex alive
         self.vtx = self._vtx_ref.get()
-        self.chi2 = self.vtx.chiSquared()
+        chi2 = self.vtx.chiSquared()
+        if chi2 < 0:
+            self.valid, self.status, self.vtx = False, 2, None
+            return
+        if not _pos_def_3x3(self.vtx.error().matrix()):
+            self.valid, self.status, self.vtx = False, 3, None
+            return
+        self.p4  = _kin_np4(tree.currentParticle())
+        self.chi2 = chi2
         self.ndof = self.vtx.degreesOfFreedom()
         self.prob = float(chdtrc(self.ndof, self.chi2)) if self.ndof > 0 else NAN
         if tree.movePointerToTheFirstChild():
@@ -385,40 +410,40 @@ class RDsCandidate(PrimaryVertexRefitMixin):
         self.fit_vertex_cut()
         self.fit_rest()
 
+    def _add(self, info, trk, m, mconstr=-1.):
+        '''info's tree + trk (RDsKinVtxFitter.AddTrack), read at once. A chain
+        stops at a failed fit.'''
+        if not info.valid:
+            return FitInfo(None)
+        return FitInfo(kinfit.AddTrack(info.tree, trk, m, mconstr))
+
     def fit_vertex_cut(self):
-        '''The fits passes_vertex_cuts needs: phi and Ds of phic and free
-        (RDsKinVtxFitter.FitVertexCut). Fills self.fits[scheme][vertex] with
-        FitInfo; the Bs vertices and the cons Ds stay invalid until fit_rest.'''
+        '''The fits passes_vertex_cuts needs: phi and Ds of phic and free.
+        Fills self.fits[scheme][vertex] with FitInfo; the Bs vertices and the
+        cons Ds stay unfitted (status 1) until fit_rest.'''
         k1, k2, pi = (o.fit_track() for o in (self.k1, self.k2, self.pi))
-        self._cut_trees = kinfit.FitVertexCut(k1, k2, pi, M_K, M_PI, M_PHI)
-        phi, ds_phic, kk, kkpi = [FitInfo(tree) for tree in self._cut_trees]
+        phi  = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, M_PHI))
+        kk   = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, -1.))
         none = FitInfo(None)
-        # cons refits phi identically (RDsKinVtxFitter), so the phic one stands for both
+        # cons refits phi identically (fit_rest), so the phic one stands for both
         self.fits = {
             'cons': dict(zip(SCHEME_VERTICES, (phi, none, none))),
-            'phic': dict(zip(SCHEME_VERTICES, (phi, ds_phic, none))),
-            'free': dict(zip(SCHEME_VERTICES, (kk, kkpi, none))),
+            'phic': dict(zip(SCHEME_VERTICES, (phi, self._add(phi, pi, M_PI), none))),
+            'free': dict(zip(SCHEME_VERTICES, (kk, self._add(kk, pi, M_PI), none))),
         }
 
     def fit_rest(self):
         '''The remaining fits, for the candidates that pass the vertex cuts:
-        the three Bs vertices and the cons Ds (RDsKinVtxFitter.FitRest).'''
-        t = [o.fit_track() for o in (self.k1, self.k2, self.pi, self.mu)]
-        bs_phic, ds_cons, bs_cons, bs_free = [FitInfo(tree) for tree in kinfit.FitRest(
-            self._cut_trees, t[0], t[1], t[2], t[3], M_K, M_PI, M_MU, M_PHI, M_DS)]
-        # the muon-free Ds momenta (before the Bs fits), for the Ds trajectory
-        m = np.array(list(kinfit.DsMomentaBeforeBs()), dtype=float)
-        self.ds_p3_before_bs = {'phic': m[0:3], 'cons': m[3:6], 'free': m[6:9]}
-        # Read the cut trees again: the Bs fit updates the Ds of the tree it
-        # was built from (the KinematicTree is linked), so the Ds four-momentum
-        # and children are the ones refitted at the Bs vertex, as for cons_ds.
-        # The vertices, and so the cut quantities, do not change.
-        phi, ds_phic, kk, kkpi = [FitInfo(tree) for tree in self._cut_trees]
-        self.fits = {
-            'cons': dict(zip(SCHEME_VERTICES, (phi, ds_cons, bs_cons))),
-            'phic': dict(zip(SCHEME_VERTICES, (phi, ds_phic, bs_phic))),
-            'free': dict(zip(SCHEME_VERTICES, (kk, kkpi, bs_free))),
-        }
+        the three Bs vertices and the cons Ds.'''
+        k1, k2, pi, mu = (o.fit_track() for o in (self.k1, self.k2, self.pi, self.mu))
+        f = self.fits
+        for s in ('phic', 'free'):
+            f[s]['bs'] = self._add(f[s]['ds'], mu, M_MU)
+        # cons: its own phi fit (a composite enters one further fit only)
+        if f['cons']['phi'].valid:
+            phi_cons = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, M_PHI))
+            f['cons']['ds'] = self._add(phi_cons, pi, M_PI, M_DS)
+            f['cons']['bs'] = self._add(f['cons']['ds'], mu, M_MU)
 
     def passes_vertex_cuts(self, cuts):
         for s in CUT_SCHEMES:
@@ -500,6 +525,7 @@ class RDsCandidate(PrimaryVertexRefitMixin):
         for name, info in fits.items():
             pre = '%s_%s_' % (s, name)
             o[pre + 'good'] = float(info.valid)
+            o[pre + 'status'] = float(info.status)
             if not info.valid:
                 continue
             pos = info.position()
@@ -622,8 +648,8 @@ class RDsCandidate(PrimaryVertexRefitMixin):
         #      which passes through the true Bs decay vertex: the mu meets it
         #      there in the mu channels and misses it by the tau IP in the tau
         #      ones ----------------------------------------------------------------
-        p3 = self.ds_p3_before_bs[s]
-        if ds.valid and np.all(np.isfinite(p3)):
+        if ds.valid:
+            p3 = ds.p4[1:]
             jtd = iptools.jetTrackDistance(mu_trk, p3[0], p3[1], p3[2], ds.reco_vertex())
             o[s + '_mu_doca_ds'] = abs(jtd.second.value())
             # position of the closest approach along the Ds momentum, from V_Ds:

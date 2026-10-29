@@ -152,7 +152,7 @@ for _obj in ('mu', 'ds', 'b'):
                    'iso', 'iso_clean', 'reliso', 'reliso_clean'):
             cand_names.append('%s_%s_%s' % (_obj, _q, _rr))
 
-_VTX_Q = ('good', 'x', 'y', 'z', 'chi2', 'ndof', 'prob', 'mass', 'pt',
+_VTX_Q = ('good', 'status', 'x', 'y', 'z', 'chi2', 'ndof', 'prob', 'mass', 'pt',
           'lxy', 'lxy_err', 'lxy_sig', 'lxyz', 'lxyz_err', 'lxyz_sig', 'cos2d', 'cos3d',
           'cov_xx', 'cov_xy', 'cov_xz', 'cov_yy', 'cov_yz', 'cov_zz')
 
