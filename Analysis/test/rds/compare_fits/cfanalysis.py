@@ -387,43 +387,177 @@ def multidim(layout, d, m, w, n_ref=1e5):
     return out
 
 
+# the photon in the multidimensional fits. Each axis is (which, observable),
+# which = 'g' the photon hypothesis (Ds + gamma in place of the Ds, only q2 and
+# m_miss2 stored), 'b' its base hypothesis (gamma_xyz_bs -> xyz_bs). Stored as
+# multidim[s][<gamma hyp>][name] (photon only, or photon + E*mu of the base,
+# which has no photon version) and multidim[s][<base>+gamma][name] (photon and
+# base observables together).
+GAMMA_MULTIDIM = {
+    'q2_mmiss2'      : (('g', 'q2'), ('g', 'm_miss2')),
+    'q2_estar'       : (('g', 'q2'), ('b', 'e_star_mu')),
+    'q2_mmiss2_estar': (('g', 'q2'), ('g', 'm_miss2'), ('b', 'e_star_mu')),
+}
+GAMMA_MIXED = {
+    'q2g_mmiss2'          : (('g', 'q2'), ('b', 'm_miss2')),
+    'q2g_mmiss2_estar'    : (('g', 'q2'), ('b', 'm_miss2'), ('b', 'e_star_mu')),
+    'q2_q2g_mmiss2'       : (('b', 'q2'), ('g', 'q2'), ('b', 'm_miss2')),
+    'q2_q2g_mmiss2_estar' : (('b', 'q2'), ('g', 'q2'), ('b', 'm_miss2'), ('b', 'e_star_mu')),
+}
+MULTIDIM_BINS_ALL = {2: 12, 3: 6, 4: 5}
+_MISSING = -1e30
+
+
+def _fisher_axes(d, m, w, cls, branches, nb, n_ref, own_missing=()):
+    """Fisher precision for a binning of the given branches. Branches in
+    own_missing get one bin of their own for the events where they are
+    undefined (no photon) instead of sending the whole event to the overflow
+    bin, so those events keep the information of the other axes."""
+    cols_all, edges = [], []
+    for b in branches:
+        x = d[b]
+        e = equal_pop_edges(x[m], nb, w[m])
+        if b in own_missing:
+            x = np.where(np.isfinite(x), x, _MISSING)
+            e = np.concatenate([[-np.inf, 0.5 * _MISSING], e[1:]])
+        cols_all.append(x)
+        edges.append(e)
+    cols = [[x[m & (cls == c)] for x in cols_all] for c in CLASSES]
+    ws = [w[m & (cls == c)] for c in CLASSES]
+    return dict((k, _f(v)) for k, v in fisher_ratios(cols, ws, edges, n_ref=n_ref).items())
+
+
+def multidim_gamma(layout, d, m, w, n_ref=1e5):
+    """The photon hypotheses in the multidimensional fits (see GAMMA_MULTIDIM).
+    Returns {scheme: {hypothesis: {set: fisher}}}, to be merged into the
+    multidim results."""
+    cls = d['gen_cand'].astype(int)
+    out = {}
+    for s in layout.schemes:
+        for g in layout.gamma_hyps[s]:
+            base = g[len('gamma_'):]
+            for key, sets in ((g, GAMMA_MULTIDIM), ('%s+gamma' % base, GAMMA_MIXED)):
+                for name, axes in sets.items():
+                    bs, gb = [], []
+                    for which, q in axes:
+                        h = g if which == 'g' else base
+                        bs.append(hyp_branch(s, h, q))
+                        if which == 'g':
+                            gb.append(bs[-1])
+                    if not all(b in d for b in bs):
+                        continue
+                    out.setdefault(s, {}).setdefault(key, {})[name] = _fisher_axes(
+                        d, m, w, cls, bs, MULTIDIM_BINS_ALL[len(bs)], n_ref, own_missing=gb)
+    return out
+
+
 ##########################################################################################
 #####      BDT
 ##########################################################################################
 
-TOPO_FOR_BDT = ('mu_doca_ds_sig', 'mu_doca_ds', 'mu_poca_along_ds', 'mu_ip3d_bs_pv_sig',
+TOPO_NOGAMMA = ('mu_doca_ds_sig', 'mu_doca_ds', 'mu_poca_along_ds', 'mu_ip3d_bs_pv_sig',
                 'mu_dist_to_bs_dir', 'bs_prob', 'bs_lxyz_sig', 'ds_lxyz_bs_sig', 'mcorr',
-                'p_perp', 'cos_theta_k_pi', 'gamma_pt', 'gamma_dm', 'gamma_e_coll_over_pt')
-BDT_HYP_SETS = {
-    'coll'    : ('coll',),
-    'xyz'     : ('xyz_bs',),
-    'math'    : ('math1_bs', 'math2_bs'),
-    'all_hyps': ('coll', 'xyz_bs', 'math1_bs', 'math2_bs'),
-}
+                'p_perp', 'cos_theta_k_pi')
+TOPO_GAMMA = ('gamma_pt', 'gamma_dm', 'gamma_e_coll_over_pt')
+TOPO_FOR_BDT = TOPO_NOGAMMA + TOPO_GAMMA
 BDT_HYP_OBS = ('q2', 'm_miss2', 'pt_miss', 'e_star_mu', 'e_hash_mu',
                'cos_theta_phi_ds', 'cos_theta_mu_w', 'chi', 'pt')
 
+# Feature groups a BDT set is built from. Hypothesis groups: (hypothesis,
+# observables) of the scheme; topology groups: scheme observables; 'common':
+# the scheme-independent observables.
+BDT_GROUPS = {
+    'q3'            : dict(hyps=(('xyz_bs', ('q2', 'm_miss2', 'e_star_mu')),)),   # the 3D fit's inputs
+    'coll_obs'      : dict(hyps=(('coll', BDT_HYP_OBS),)),
+    'xyz_obs'       : dict(hyps=(('xyz_bs', BDT_HYP_OBS),)),
+    'math_obs'      : dict(hyps=(('math1_bs', BDT_HYP_OBS), ('math2_bs', BDT_HYP_OBS))),
+    'gamma_obs'     : dict(hyps=(('gamma_xyz_bs', ('q2', 'm_miss2')),)),
+    'gamma_coll_obs': dict(hyps=(('gamma_coll', ('q2', 'm_miss2')),)),
+    'gamma_topo'    : dict(topo=TOPO_GAMMA),
+    'topo'          : dict(topo=TOPO_NOGAMMA),          # includes bs_prob
+    'bs_prob'       : dict(topo=('bs_prob',)),
+    'common'        : dict(common=True),
+}
+# named sets: expressions of groups, '+' adds, '-' removes, left to right. The
+# first four are the original sets (Bs hypotheses + every topology observable +
+# common). Any expression of groups is accepted as a set name, e.g.
+# 'xyz_obs+bs_prob' or 'all-math_obs'.
+BDT_SETS = {
+    'coll'    : 'coll_obs+topo+gamma_topo+common',
+    'xyz'     : 'xyz_obs+topo+gamma_topo+common',
+    'math'    : 'math_obs+topo+gamma_topo+common',
+    'all_hyps': 'coll_obs+xyz_obs+math_obs+topo+gamma_topo+common',
+    'all'     : 'coll_obs+xyz_obs+math_obs+gamma_obs+gamma_coll_obs+topo+gamma_topo+common',
+}
+# how much each group adds to xyz_bs, and how much is lost without it
+BDT_ABLATION = ('q3', 'xyz_obs', 'q3+gamma_obs+gamma_topo', 'xyz_obs+bs_prob', 'xyz_obs+math_obs',
+                'xyz_obs+topo', 'xyz_obs+gamma_obs+gamma_topo', 'xyz_obs+common', 'xyz', 'all',
+                'all-math_obs', 'all-bs_prob', 'all-topo', 'all-gamma_obs-gamma_coll_obs-gamma_topo',
+                'all-common', 'all-coll_obs')
+
+
+def _bdt_expr(name):
+    '''[(sign, group)] of a set name or expression; named sets may appear inside
+    an expression ('all-math_obs').'''
+    expr = BDT_SETS.get(name, name)
+    terms, sign, cur = [], '+', ''
+    for ch in expr + '+':
+        if ch in '+-':
+            if cur:
+                terms.append((sign, cur))
+            sign, cur = ch, ''
+        else:
+            cur += ch
+    out = []
+    for sg, t in terms:
+        if t in BDT_GROUPS:
+            out.append((sg, t))
+        elif t in BDT_SETS and t != name:
+            sub = _bdt_expr(t)
+            out += sub if sg == '+' else [('-' if s2 == '+' else '+', g) for s2, g in sub]
+        else:
+            raise ValueError('BDT set %r: unknown group %r (groups: %s; sets: %s)'
+                             % (name, t, ', '.join(BDT_GROUPS), ', '.join(BDT_SETS)))
+    return out
+
+
+def _group_features(layout, ss, g):
+    spec = BDT_GROUPS[g]
+    feats = []
+    if spec.get('common'):
+        feats += list(layout.common_obs())
+    for h, qs in spec.get('hyps', ()):
+        if h in layout.hyps[ss] or h in layout.gamma_hyps[ss]:
+            avail = layout.hyp_obs(ss, h)
+            feats += [hyp_branch(ss, h, q) for q in qs if q in avail]
+    feats += ['%s_%s' % (ss, q) for q in spec.get('topo', ()) if q in layout.scheme_obs(ss)]
+    return feats
+
 
 def bdt_features(layout, s, hyp_set):
-    '''Branches of the BDT of scheme s with the Bs hypotheses of hyp_set: their
-    observables, the scheme's topology observables, the common ones. s None:
-    every scheme together (hyp_set 'all_hyps').'''
+    '''Branches of the BDT set hyp_set (a name of BDT_SETS or an expression of
+    BDT_GROUPS) for scheme s; s None: every scheme together.'''
     schemes = layout.schemes if s is None else [s]
-    feats = list(layout.common_obs())
-    for ss in schemes:
-        for h in BDT_HYP_SETS[hyp_set]:
-            if h not in layout.hyps[ss]:
-                continue
-            feats += [hyp_branch(ss, h, q) for q in BDT_HYP_OBS if q in layout.hyp_obs(ss, h)]
-        feats += ['%s_%s' % (ss, q) for q in TOPO_FOR_BDT if q in layout.scheme_obs(ss)]
+    feats = []
+    for sg, g in _bdt_expr(hyp_set):
+        fs = []
+        for ss in schemes:
+            fs += _group_features(layout, ss, g)
+        if g == 'common':
+            fs = list(dict.fromkeys(fs))
+        if sg == '+':
+            feats += [f for f in fs if f not in feats]
+        else:
+            feats = [f for f in feats if f not in fs]
     return [f for f in feats if f in layout.keys]
 
 
-def bdt(layout, d, m, w, sets=('coll', 'xyz', 'math', 'all_hyps'), combined=True,
+def bdt(layout, d, m, w, sets=('coll', 'xyz', 'math', 'all_hyps'), combined=True, schemes=None,
         max_per_class=100000, folds=2, n_ref=1e5, seed=1, log=print):
     '''A multiclass gradient-boosted classifier of the four signal channels
-    per scheme and set of Bs hypotheses (sklearn HistGradientBoosting, fixed
-    hyperparameters, out-of-fold predictions). Reported:
+    per scheme and set of inputs (sklearn HistGradientBoosting, fixed
+    hyperparameters, out-of-fold predictions; sets: names of BDT_SETS or
+    expressions of BDT_GROUPS). Reported:
         auc_tau_vs_mu        p(Ds tau) + p(Ds* tau), tau vs mu channels
         auc_ds_tau_vs_mu     the same within the Ds channels, and Ds*
         auc_dsst_vs_ds_mu    p(Ds*) between the two mu channels
@@ -459,8 +593,9 @@ def bdt(layout, d, m, w, sets=('coll', 'xyz', 'math', 'all_hyps'), combined=True
     cw = dict((c, len(y) / (4. * max(np.sum(y == c), 1))) for c in CLASSES)
     sw = np.array([cw[c] for c in y])
 
-    jobs = [(s, hs) for s in layout.schemes for hs in sets]
-    if combined and len(layout.schemes) > 1:
+    schemes = [s for s in (schemes or layout.schemes) if s in layout.schemes]
+    jobs = [(s, hs) for s in schemes for hs in sets]
+    if combined and len(schemes) > 1:
         jobs.append((None, 'all_hyps'))
     out, scores = {}, {}
     for s, hs in jobs:

@@ -102,7 +102,13 @@ def parse():
     ap.add_argument('--nbins', type=int, default=20, help='bins of the 1D precision estimate')
     ap.add_argument('--no-bdt', action='store_true')
     ap.add_argument('--bdt-max', type=int, default=50000, help='BDT candidates per channel')
-    ap.add_argument('--bdt-sets', default='coll,xyz,math,all_hyps')
+    ap.add_argument('--bdt-sets', default='coll,xyz,math,all_hyps',
+                    help='comma-separated BDT input sets: names (%s) or expressions of feature groups with + and - '
+                         '(groups: %s), e.g. xyz_obs+bs_prob,all-math_obs; "ablation" adds the ablation series on '
+                         'xyz_bs' % (', '.join(A.BDT_SETS), ', '.join(A.BDT_GROUPS)))
+    ap.add_argument('--bdt-schemes', default=None, help='comma-separated schemes the BDTs are trained for (default all; '
+                    'the all-schemes BDT only with more than one)')
+    ap.add_argument('--bdt-folds', type=int, default=2, help='folds of the out-of-fold BDT predictions')
     ap.add_argument('--pdf', action='store_true', help='PDF of every plot too')
     return ap.parse_args()
 
@@ -130,6 +136,14 @@ def main():
     log('compare_fits %s' % ' '.join(sys.argv[1:]))
     if not args.no_bdt and not sklearn_ok(log):
         args.no_bdt = True
+    sets = []
+    for x in args.bdt_sets.split(','):
+        for y in (A.BDT_ABLATION if x == 'ablation' else (x,)):
+            if y and y not in sets:
+                sets.append(y)
+    for x in sets:
+        A._bdt_expr(x)            # fails now, not after an hour, on a typo
+    args.bdt_set_list = sets
     N = 9
     res = {}
 
@@ -196,11 +210,20 @@ def main():
     # ---- 5. multidimensional ---------------------------------------------------
     log.begin('expected precision, 2D and 3D', 5, N)
     res['multidim'] = A.multidim(layout, d, mc, w, n_ref=args.n_ref)
+    for sch, hs in A.multidim_gamma(layout, d, mc, w, n_ref=args.n_ref).items():
+        res['multidim'].setdefault(sch, {}).update(hs)
     res['multidim_generator'] = A.multidim_generator(d, mc, w, n_ref=args.n_ref)
     res['degeneracy'] = A.degeneracy(layout, d, mc)
     for name, f in res['multidim_generator'].items():
         log('  generator level %-16s sigma tau/mu %.4f  R(Ds) %.4f  R(Ds*) %.4f' % (
             name, f['r_taumu'] or np.nan, f['r_ds'] or np.nan, f['r_dsst'] or np.nan))
+    for s in layout.schemes:
+        for h, sets_ in res['multidim'].get(s, {}).items():
+            if 'gamma' not in h:
+                continue
+            for name, f in sets_.items():
+                log('  %-5s %-14s %-20s sigma tau/mu %.4f  R(Ds) %.4f  R(Ds*) %.4f  (min MC bin %s)' % (
+                    s, h, name, f['r_taumu'] or np.nan, f['r_ds'] or np.nan, f['r_dsst'] or np.nan, f.get('min_mc')))
     for s in layout.schemes:
         deg = [h for h, r in res['degeneracy'].get(s, {}).items() if (r.get('max_abs') or 0) > 0.99]
         if deg:
@@ -213,8 +236,9 @@ def main():
         res['bdt'] = {}
     else:
         log.begin('BDT', 6, N)
-        res['bdt'], scores = A.bdt(layout, d, mc, w, sets=tuple(args.bdt_sets.split(',')),
-                                   max_per_class=args.bdt_max, n_ref=args.n_ref, log=log)
+        res['bdt'], scores = A.bdt(layout, d, mc, w, sets=tuple(args.bdt_set_list),
+                                   schemes=args.bdt_schemes.split(',') if args.bdt_schemes else None,
+                                   max_per_class=args.bdt_max, folds=args.bdt_folds, n_ref=args.n_ref, log=log)
     checkpoint()
 
     # ---- 7. plots ----------------------------------------------------------------
@@ -327,6 +351,18 @@ def make_plots(args, L, d, m, mc, res, scores, cutflow, log):
             entries.insert(0, ('GENERATOR  [%s]' % lab, '#999999', f))
     do('fisher_multidim', P.fisher_bars, entries, 'fisher_multidim',
        'Expected precision, fit to 2D / 3D distributions: generator level (grey), then the best 38 by N(tau)/N(mu)')
+    # the photon in the 2D / 3D fits, with the xyz_bs references, sorted by R(Ds)
+    ent = []
+    for s in L.schemes:
+        for h, sets_ in sorted(res['multidim'].get(s, {}).items()):
+            if 'gamma' not in h and h != 'xyz_bs':
+                continue
+            for name, f in sets_.items():
+                if f and f.get('r_ds') is not None:
+                    ent.append(('%s:%s  [%s]' % (s, h, name), P.color(s), f))
+    ent.sort(key=lambda e: e[2]['r_ds'])
+    do('fisher_gamma', P.fisher_bars, ent[:38], 'fisher_gamma',
+       'Expected precision with the photon hypotheses (q2g: q$^2$ with D$_s\\gamma$), sorted by R(D$_s$)')
     if res.get('bdt'):
         ent = []
         for name, r in res['bdt'].items():
@@ -335,10 +371,10 @@ def make_plots(args, L, d, m, mc, res, scores, cutflow, log):
             ent.append((name, col, r['fisher']))
         ent.sort(key=lambda e: e[2]['r_taumu'] if e[2].get('r_taumu') is not None else 9)
         do('fisher_bdt', P.fisher_bars, ent, 'fisher_bdt', 'Expected precision, fit to the BDT outputs')
-        do('bdt_scores', P.bdt_scores, scores, [n for n in scores if n.endswith(':all_hyps')])
+        do('bdt_scores', P.bdt_scores, scores, [n for n in scores if n.endswith((':all_hyps', ':all'))])
         cur = []
         for name, (idx, p_tau, _) in scores.items():
-            if not name.endswith(':all_hyps'):
+            if not name.endswith((':all_hyps', ':all', ':xyz', ':q3')):
                 continue
             y = d['gen_cand'][idx].astype(int)
             s = name.split(':')[0]

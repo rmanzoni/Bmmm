@@ -67,11 +67,36 @@ free). It only checks that the code runs; its physics numbers mean nothing.
 
 The BDT stage needs scikit-learn built against the same numpy as the one
 imported. In a CMSSW environment with numpy 2 installed by `pip install
---user`, the CMSSW scikit-learn (built against numpy 1) does not import; the
-suite checks this at the start and skips the BDTs with a warning. To have
-them, run with the CMSSW numpy (`PYTHONNOUSERSITE=1 python3 compare_fits.py ...`,
-if uproot is available there) or in a separate environment
-(`python3 -m venv cf; . cf/bin/activate; pip install numpy scipy matplotlib uproot scikit-learn`).
+--user` (e.g. in `PYTHONUSERBASE`), that numpy shadows the CMSSW numpy 1.x
+and the CMSSW scikit-learn (built against numpy 1) does not import; the
+suite checks this at the start and skips the BDTs with a warning. CMSSW has
+everything else (uproot, scipy, matplotlib), so the fix is to hide the user
+site:
+
+```bash
+source cfenv.sh            # cmsenv + PYTHONNOUSERSITE=1 (bash or zsh)
+export OMP_NUM_THREADS=32  # the BDT otherwise starts one thread per core (128 at T3)
+python3 compare_fits.py ... --bdt-sets ablation --bdt-schemes free --bdt-folds 4 --bdt-max 120000
+```
+
+BDT input sets (`--bdt-sets`) are names or expressions of feature groups,
+`+` adds and `-` removes, left to right:
+
+| group | features |
+|---|---|
+| `q3` | q², m²miss, E*μ of `xyz_bs` (the 3D fit's inputs) |
+| `xyz_obs`, `coll_obs`, `math_obs` | every observable of `xyz_bs`, `coll`, `math1_bs`+`math2_bs` |
+| `gamma_obs`, `gamma_coll_obs` | q², m²miss of `gamma_xyz_bs`, `gamma_coll` |
+| `gamma_topo` | photon pT, Δm, E_coll/pT |
+| `topo` | the scheme's vertex / topology observables (includes `bs_prob`) |
+| `bs_prob` | P(V_Bs) alone |
+| `common` | the scheme-independent observables |
+
+Named sets: `coll`, `xyz`, `math`, `all_hyps` (the original ones: their
+hypotheses + `topo` + `gamma_topo` + `common`) and `all` (everything).
+`ablation` runs the series in `cfanalysis.BDT_ABLATION`: each group added to
+`xyz_obs`, and each removed from `all`. `--bdt-schemes` restricts the schemes,
+`--bdt-folds` the folds of the out-of-fold predictions.
 
 Tests: `python3 -m unittest test_compare_fits -v`.
 
@@ -122,6 +147,10 @@ The precision is computed for:
 - every single observable (20 bins);
 - (q², m²miss) and (q², E*μ), 12 × 12 bins;
 - (q², m²miss, E*μ), 6 × 6 × 6 bins;
+- the photon hypotheses: (q², m²miss) of `gamma_*`, with E*μ of the base
+  hypothesis, and mixed with it (`<base>+gamma`: q2g = q² with the photon,
+  e.g. (q², q2g, m²miss, E*μ) in 5⁴ bins). Events without a photon candidate
+  get their own bin on the photon axes;
 - the generator-level values of the same sets, as the reference for a perfect reconstruction;
 - the outputs (p_τ, p_Ds*) of a multiclass BDT, 10 × 10 bins.
 

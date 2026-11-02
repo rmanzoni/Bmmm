@@ -113,6 +113,25 @@ def bdt_table(res):
     return header, rows
 
 
+def gamma_table(res, layout):
+    """The photon hypotheses in the multidimensional fits, next to the xyz_bs
+    references. Sorted by sigma R(Ds)."""
+    header = ['scheme', 'hypothesis', 'observables', 'σ τ/μ', 'σR(Ds)', 'σR(Ds*)',
+              '× counting R(Ds)', 'bins', 'min MC bin', 'bins < 10 MC']
+    rows = []
+    for s in layout.schemes:
+        for h, sets in sorted((_get(res, 'multidim', s) or {}).items()):
+            if 'gamma' not in h and h != 'xyz_bs':
+                continue
+            for name, f in sets.items():
+                if not f:
+                    continue
+                rows.append([s, h, name, f.get('r_taumu'), f.get('r_ds'), f.get('r_dsst'), f.get('dil_ds'),
+                             f.get('nbins'), f.get('min_mc'), f.get('frac_low')])
+    rows.sort(key=lambda r: r[4] if r[4] is not None else 9.)
+    return header, rows
+
+
 def top_observables(res, n=40):
     header = ['observable', 'scheme', 'hypothesis', 'AUC τ/μ', 'AUC Dsτ/Dsμ', 'AUC Ds*τ/Ds*μ',
               'AUC Ds*/Ds (μ)', 'σ τ/μ 1D', 'σR(Ds) 1D', 'σR(Ds*) 1D']
@@ -191,7 +210,7 @@ def write(outdir, res, layout, figures, meta):
     _long_csv(os.path.join(outdir, 'results_long.csv'), res)
 
     tabs = dict(key=key_table(res, layout), scheme=scheme_table(res, layout),
-                bdt=bdt_table(res), top=top_observables(res), cutflow=cutflow_table(res))
+                bdt=bdt_table(res), gamma=gamma_table(res, layout), top=top_observables(res), cutflow=cutflow_table(res))
 
     md = ['# Fit-scheme comparison, R(Ds) signal MC', '',
           'Input: `%s` (%s)' % (meta['input'], meta['when']), '',
@@ -201,6 +220,8 @@ def write(outdir, res, layout, figures, meta):
           '## Per scheme', '', _md_table(*tabs['scheme']), '']
     if tabs['bdt'][1]:
         md += ['## BDT', '', _md_table(*tabs['bdt']), '']
+    if tabs['gamma'][1]:
+        md += ['## Photon hypotheses in the 2D / 3D fits', '', _md_table(*tabs['gamma']), '']
     md += ['## Cutflow', '', _md_table(*tabs['cutflow']), '']
     with open(os.path.join(outdir, 'summary.md'), 'w') as f:
         f.write('\n'.join(md))
@@ -244,8 +265,8 @@ def write(outdir, res, layout, figures, meta):
         'the τ decay: the long bias).')
     H.append(_html_table(*tabs['scheme'], best_cols={1: 'max', 2: 'max', 7: 'min', 9: 'min', 11: 'min', 12: 'min', 13: 'min'}))
     if tabs['bdt'][1]:
-        sec('Multivariate', 'A multiclass BDT of the four channels per scheme and set of Bs hypotheses, the same '
-            'inputs otherwise (scheme topology + common observables); out-of-fold predictions. σR from a fit to the '
+        sec('Multivariate', 'A multiclass BDT of the four channels per scheme and set of inputs (names in README: e.g. xyz = '
+            'xyz_bs observables + topology + photon + common; a+b-c adds and removes feature groups); out-of-fold predictions. σR from a fit to the '
             '(p(τ), p(D<sub>s</sub><sup>*</sup>)) plane.')
         H.append(_html_table(*tabs['bdt'], best_cols={2: 'max', 6: 'min', 7: 'min', 8: 'min'}))
         fig('fisher_bdt')
@@ -253,6 +274,12 @@ def write(outdir, res, layout, figures, meta):
         fig('bdt_scores')
     sec('Expected precision per observable set')
     fig('fisher_multidim')
+    if tabs['gamma'][1]:
+        sec('The photon in the 2D / 3D fits', 'gamma_xyz_bs: D<sub>s</sub>γ in place of the D<sub>s</sub> (q², '
+            'm²miss only; E*μ from xyz_bs). xyz_bs+gamma: photon and xyz_bs observables together, q2g = q² with '
+            'the photon. Events without a photon candidate have their own bin on the photon axes.')
+        H.append(_html_table(*tabs['gamma'], best_cols={3: 'min', 4: 'min', 5: 'min'}))
+        fig('fisher_gamma')
     fig('fisher_1d_taumu')
     fig('fisher_1d_ds')
     fig('fisher_1d_dsst')
