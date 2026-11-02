@@ -190,15 +190,48 @@ class Layout(object):
 #####      READING
 ##########################################################################################
 
-def _fingerprint(path, tree, branches, extra):
-    st = None
+def _stat(path):
     try:
         s = os.stat(path)
-        st = (s.st_size, int(s.st_mtime))
+        return (s.st_size, int(s.st_mtime))
     except OSError:
-        pass
-    h = hashlib.sha1(json.dumps([path, tree, st, sorted(branches), extra]).encode()).hexdigest()
-    return h[:16]
+        return None
+
+
+def _fingerprint(paths, tree, branches, extra):
+    if len(paths) == 1:     # the key of the single-file versions, so old caches stay valid
+        key = [paths[0], tree, _stat(paths[0]), sorted(branches), extra]
+    else:
+        key = [[(p, _stat(p)) for p in paths], tree, sorted(branches), extra]
+    return hashlib.sha1(json.dumps(key).encode()).hexdigest()[:16]
+
+
+def input_files(spec, tree='tree', log=print):
+    '''The ROOT files of `spec`: a file or URL, a directory (its *.root),
+    a glob, or a comma-separated list of any of these. With more than one
+    file, files that do not open or lack `tree` (e.g. still being copied)
+    are skipped.'''
+    import glob
+    out = []
+    for part in [x for x in spec.split(',') if x]:
+        if os.path.isdir(part):
+            out += sorted(glob.glob(os.path.join(part, '*.root')))
+        elif any(c in part for c in '*?['):
+            out += sorted(glob.glob(part))
+        else:
+            out.append(part)
+    if len(out) <= 1:
+        return out
+    import uproot
+    good = []
+    for f in out:
+        try:
+            with uproot.open(f) as r:
+                r[tree].num_entries
+            good.append(f)
+        except Exception as e:
+            log('skipping %s: %s' % (f, str(e).splitlines()[0] if str(e) else type(e).__name__))
+    return good
 
 
 def _rss_gb():
@@ -242,7 +275,8 @@ def _read_block(job):
 def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=100000, jobs=4, seed=1,
          cache_dir=None, log=print):
     '''(Layout, dict of numpy arrays, info) for the truth-matched signal
-    candidates (gen_cand 0..3) of `path`.
+    candidates (gen_cand 0..3) of `path` (a file, directory, glob or
+    comma-separated list, see input_files; blocks are drawn from all files).
 
     The file is read in blocks of `block` entries taken in random order, so
     that any part of it is an unbiased sample of the whole, and the reading
@@ -252,15 +286,23 @@ def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=1000
     and the options above), so a re-run does not read the file again.'''
     import uproot
     t0 = time.time()
-    with uproot.open(path) as f:
-        t = f[tree]
-        layout = Layout(t.keys())
-        branches = layout.branches()
-        n_tot = t.num_entries if max_entries is None else min(t.num_entries, max_entries)
-    log('file %s: %s entries; reading %d branches' % (path, n_tot, len(branches)))
+    paths = input_files(path, tree, log=log)
+    if not paths:
+        raise IOError('no readable ROOT file in %s' % path)
+    n_file = []
+    for i, p in enumerate(paths):
+        with uproot.open(p) as f:
+            t = f[tree]
+            if i == 0:
+                layout = Layout(t.keys())
+                branches = layout.branches()
+            n_file.append(t.num_entries)
+    n_tot = sum(n_file) if max_entries is None else min(sum(n_file), max_entries)
+    log('%s: %s entries; reading %d branches'
+        % ('file %s' % paths[0] if len(paths) == 1 else '%d files in %s' % (len(paths), path), n_tot, len(branches)))
     log(layout.summary())
 
-    key = _fingerprint(path, tree, branches, [max_entries, max_candidates, block, seed])
+    key = _fingerprint(paths, tree, branches, [max_entries, max_candidates, block, seed])
     cache = os.path.join(cache_dir, 'cache_%s.npz' % key) if cache_dir else None
     if cache and os.path.isfile(cache):
         log('reading the cached selection %s' % cache)
@@ -269,9 +311,13 @@ def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=1000
             info = json.loads(str(z['__info__'])) if '__info__' in z.files else {}
         return layout, data, info
 
-    starts = np.arange(0, n_tot, block)
-    order = np.random.default_rng(seed).permutation(len(starts))
-    blocks = [(path, tree, branches, int(starts[i]), int(min(starts[i] + block, n_tot))) for i in order]
+    allb, left = [], n_tot              # blocks never cross a file boundary
+    for p, n in zip(paths, n_file):
+        n = min(n, left)
+        left -= n
+        allb += [(p, tree, branches, int(a), int(min(a + block, n))) for a in range(0, n, block)]
+    order = np.random.default_rng(seed).permutation(len(allb))
+    blocks = [allb[i] for i in order]
     target = max_candidates if max_candidates and max_candidates > 0 else None
     log('%d blocks of %d entries, random order; %s; %d parallel reader(s)'
         % (len(blocks), block, 'stop at %d signal candidates' % target if target else 'whole file', jobs))
@@ -327,7 +373,7 @@ def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=1000
                         break
     data = dict((b, np.concatenate(v) if v else np.zeros(0)) for b, v in parts.items())
     del parts
-    info = dict(entries_total=int(n_tot), entries_read=st['n_done'],
+    info = dict(files=len(paths), entries_total=int(n_tot), entries_read=st['n_done'],
                 fraction_read=st['n_done'] / float(max(n_tot, 1)), candidates_kept=st['n_sel'],
                 blocks_read=st['n_blocks'], block=block, seed=seed)
     log('read %.1f%% of the file in %.0f s: %d signal candidates, %.1f GB in memory'

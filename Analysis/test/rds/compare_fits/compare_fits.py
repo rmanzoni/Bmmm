@@ -81,7 +81,7 @@ class Log(object):
 
 def parse():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('input', help='R(Ds) ntuple (path or root:// URL)')
+    ap.add_argument('input', help='R(Ds) ntuple: path or root:// URL, a directory of chunks, a glob, or a comma-separated list')
     ap.add_argument('-o', '--outdir', required=True)
     ap.add_argument('--tree', default='tree')
     ap.add_argument('--max-entries', type=int, default=None, help='read at most this many rows')
