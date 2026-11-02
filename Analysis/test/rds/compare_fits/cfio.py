@@ -201,12 +201,55 @@ def _fingerprint(path, tree, branches, extra):
     return h[:16]
 
 
-def read(path, tree='tree', max_entries=None, step='200 MB', cache_dir=None, log=print):
-    '''(Layout, dict of numpy arrays) for the truth-matched signal candidates
-    (gen_cand 0..3) of `path`. Chunked, with a progress line per chunk; the
-    selected arrays are cached in cache_dir (keyed on file, size, mtime,
-    branches) so a re-run with other plotting options does not read the file
-    again.'''
+def _rss_gb():
+    '''Resident memory of this process [GB] (Linux; NaN elsewhere).'''
+    try:
+        with open('/proc/self/status') as f:
+            for line in f:
+                if line.startswith('VmRSS:'):
+                    return int(line.split()[1]) / 1024. ** 2
+    except OSError:
+        pass
+    return float('nan')
+
+
+def _keep_dtype(name, a):
+    '''float64 -> float32 (halves the memory), except covariances, which are
+    inverted and need the precision.'''
+    if a.dtype == np.float64 and '_cov_' not in name:
+        return a.astype(np.float32)
+    return a
+
+
+_FILES = {}
+
+
+def _read_block(job):
+    '''One block of entries: the truth-matched signal candidates (gen_cand
+    0..3) of entries [start, stop). Top-level so that worker processes can
+    run it; each process opens the file once.'''
+    path, tree, branches, start, stop = job
+    import uproot
+    if (path, tree) not in _FILES:
+        _FILES[(path, tree)] = uproot.open(path)[tree]
+    t = _FILES[(path, tree)]
+    arr = t.arrays(branches, entry_start=start, entry_stop=stop, library='np')
+    gc = arr['gen_cand']
+    m = (gc >= 0) & (gc <= 3)
+    return stop - start, dict((b, _keep_dtype(b, arr[b][m])) for b in branches)
+
+
+def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=100000, jobs=4, seed=1,
+         cache_dir=None, log=print):
+    '''(Layout, dict of numpy arrays, info) for the truth-matched signal
+    candidates (gen_cand 0..3) of `path`.
+
+    The file is read in blocks of `block` entries taken in random order, so
+    that any part of it is an unbiased sample of the whole, and the reading
+    stops once `max_candidates` candidates are kept (0: read everything).
+    `jobs` processes read blocks in parallel. Floats are kept as float32.
+    The result is cached in cache_dir (keyed on file, size, mtime, branches
+    and the options above), so a re-run does not read the file again.'''
     import uproot
     t0 = time.time()
     with uproot.open(path) as f:
@@ -217,34 +260,83 @@ def read(path, tree='tree', max_entries=None, step='200 MB', cache_dir=None, log
     log('file %s: %s entries; reading %d branches' % (path, n_tot, len(branches)))
     log(layout.summary())
 
-    key = _fingerprint(path, tree, branches, max_entries)
+    key = _fingerprint(path, tree, branches, [max_entries, max_candidates, block, seed])
     cache = os.path.join(cache_dir, 'cache_%s.npz' % key) if cache_dir else None
     if cache and os.path.isfile(cache):
         log('reading the cached selection %s' % cache)
         with np.load(cache) as z:
-            return layout, dict((k, z[k]) for k in z.files)
+            data = dict((k, z[k]) for k in z.files if k != '__info__')
+            info = json.loads(str(z['__info__'])) if '__info__' in z.files else {}
+        return layout, data, info
+
+    starts = np.arange(0, n_tot, block)
+    order = np.random.default_rng(seed).permutation(len(starts))
+    blocks = [(path, tree, branches, int(starts[i]), int(min(starts[i] + block, n_tot))) for i in order]
+    target = max_candidates if max_candidates and max_candidates > 0 else None
+    log('%d blocks of %d entries, random order; %s; %d parallel reader(s)'
+        % (len(blocks), block, 'stop at %d signal candidates' % target if target else 'whole file', jobs))
 
     parts = dict((b, []) for b in branches)
-    n_done = n_sel = 0
-    for arr in uproot.iterate('%s:%s' % (path, tree), expressions=branches, step_size=step,
-                              library='np', entry_stop=max_entries):
-        n = len(arr['gen_cand'])
-        m = (arr['gen_cand'] >= 0) & (arr['gen_cand'] <= 3)
+    st = dict(n_done=0, n_sel=0, n_blocks=0)
+
+    def add(res):
+        n, arr = res
         for b in branches:
-            parts[b].append(arr[b][m])
-        n_done += n
-        n_sel += int(m.sum())
+            parts[b].append(arr[b])
+        st['n_done'] += n
+        st['n_sel'] += len(arr['gen_cand'])
+        st['n_blocks'] += 1
         el = time.time() - t0
-        rate = n_done / el if el > 0 else 0.
-        eta = (n_tot - n_done) / rate if rate > 0 else 0.
-        log('  read %d / %d entries (%.0f%%), %d signal candidates kept, %.0f entries/s, ETA %.0f s'
-            % (n_done, n_tot, 100. * n_done / max(n_tot, 1), n_sel, rate, eta))
+        rate = st['n_done'] / el if el > 0 else 0.
+        # remaining time: to the target if there is one, else to the end
+        if target and st['n_sel'] > 0:
+            todo = min(n_tot, st['n_done'] * target / float(st['n_sel'])) - st['n_done']
+        else:
+            todo = n_tot - st['n_done']
+        log('  block %d/%d: %d entries read (%.1f%% of the file), %d signal candidates kept, '
+            '%.0f entries/s, ETA %.0f s, memory %.1f GB'
+            % (st['n_blocks'], len(blocks), st['n_done'], 100. * st['n_done'] / max(n_tot, 1), st['n_sel'],
+               rate, max(todo, 0) / rate if rate > 0 else 0., _rss_gb()))
+
+    done = lambda: target is not None and st['n_sel'] >= target
+    if jobs <= 1:
+        for job in blocks:
+            add(_read_block(job))
+            if done():
+                break
+    else:
+        import concurrent.futures as cf
+        it = iter(blocks)
+        with cf.ProcessPoolExecutor(max_workers=jobs) as ex:
+            pending = set()
+            for job in it:                         # keep 2 blocks per process in flight
+                pending.add(ex.submit(_read_block, job))
+                if len(pending) >= 2 * jobs:
+                    break
+            while pending:
+                fin, pending = cf.wait(pending, return_when=cf.FIRST_COMPLETED)
+                for fu in fin:
+                    add(fu.result())
+                if done():
+                    for fu in pending:
+                        fu.cancel()
+                    break
+                for job in it:
+                    pending.add(ex.submit(_read_block, job))
+                    if len(pending) >= 2 * jobs:
+                        break
     data = dict((b, np.concatenate(v) if v else np.zeros(0)) for b, v in parts.items())
+    del parts
+    info = dict(entries_total=int(n_tot), entries_read=st['n_done'],
+                fraction_read=st['n_done'] / float(max(n_tot, 1)), candidates_kept=st['n_sel'],
+                blocks_read=st['n_blocks'], block=block, seed=seed)
+    log('read %.1f%% of the file in %.0f s: %d signal candidates, %.1f GB in memory'
+        % (100 * info['fraction_read'], time.time() - t0, st['n_sel'], _rss_gb()))
     if cache:
         os.makedirs(cache_dir, exist_ok=True)
-        np.savez(cache, **data)
+        np.savez(cache, __info__=np.array(json.dumps(info)), **data)
         log('cached the selection in %s' % cache)
-    return layout, data
+    return layout, data, info
 
 
 ##########################################################################################
@@ -323,6 +415,7 @@ def class_weights(cls, r_target=(0.299, 0.244), r_mc=(1.0, 1.0)):
 ##########################################################################################
 
 def _p4(pt, eta, phi, m):
+    pt, eta, phi, m = (np.asarray(x, dtype=np.float64) for x in (pt, eta, phi, m))
     px, py, pz = pt * np.cos(phi), pt * np.sin(phi), pt * np.sinh(eta)
     return np.stack([np.sqrt(px * px + py * py + pz * pz + m * m), px, py, pz])
 

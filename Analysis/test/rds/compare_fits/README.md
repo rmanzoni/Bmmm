@@ -38,14 +38,23 @@ leaves the finished stages on disk. The selected arrays are cached in
 `cmp_v1/cache/`; a second run with other options on the same input skips the
 reading.
 
+Reading. The file is read in blocks of 100k entries taken in random order,
+by 4 processes in parallel, and the reading stops once 10⁶ truth-matched
+signal candidates are kept (about 250k per channel, far more than any metric
+here needs). Random blocks make the part read an unbiased sample of the whole
+file; the report states the fraction read. Floats are kept as float32
+(covariances as float64). Each progress line gives the memory in use.
+
 Useful options:
 
 | option | effect |
 |---|---|
-| `--max-entries N` | read only the first N rows (quick test) |
-| `--no-bdt` | skip the BDTs (the slowest stage: about 20 s per BDT per 20k candidates) |
+| `--max-candidates N` | stop reading at N signal candidates (default 10⁶; 0 = whole file) |
+| `-j N` | reader processes (default 4) |
+| `--max-entries N` | consider only the first N rows of the file |
+| `--no-bdt` | skip the BDTs, the slowest stage |
 | `--bdt-sets coll,all_hyps` | fewer BDTs |
-| `--bdt-max N` | BDT candidates per channel (default 100000) |
+| `--bdt-max N` | BDT candidates per channel (default 50000) |
 | `--r-target 0.299,0.244` | R(Ds), R(Ds*) the τ channels are weighted to (approximate SM values) |
 | `--r-mc 1,1` | R(Ds), R(Ds*) the MC was generated with |
 | `--no-trigger`, `--no-species`, `--all-candidates`, `--no-common` | loosen the selection (below) |

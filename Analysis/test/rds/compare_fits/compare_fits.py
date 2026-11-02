@@ -85,7 +85,11 @@ def parse():
     ap.add_argument('-o', '--outdir', required=True)
     ap.add_argument('--tree', default='tree')
     ap.add_argument('--max-entries', type=int, default=None, help='read at most this many rows')
-    ap.add_argument('--step', default='200 MB', help='uproot chunk size')
+    ap.add_argument('--max-candidates', type=int, default=1000000,
+                    help='stop reading once this many truth-matched signal candidates are kept; the file is read '
+                         'in blocks in random order, so they are an unbiased sample (0: whole file)')
+    ap.add_argument('-j', '--jobs', type=int, default=4, help='parallel reader processes')
+    ap.add_argument('--block', type=int, default=100000, help='entries per block')
     ap.add_argument('--no-cache', action='store_true', help='do not cache the selected arrays')
     ap.add_argument('--no-trigger', action='store_true', help='do not require the parking trigger and the muon match')
     ap.add_argument('--no-species', action='store_true', help='do not require K, K, pi, mu matched to K, K, pi, mu')
@@ -97,7 +101,7 @@ def parse():
     ap.add_argument('--n-ref', type=float, default=1e5, help='precision quoted for this many Ds mu nu candidates')
     ap.add_argument('--nbins', type=int, default=20, help='bins of the 1D precision estimate')
     ap.add_argument('--no-bdt', action='store_true')
-    ap.add_argument('--bdt-max', type=int, default=100000, help='BDT events per class')
+    ap.add_argument('--bdt-max', type=int, default=50000, help='BDT candidates per channel')
     ap.add_argument('--bdt-sets', default='coll,xyz,math,all_hyps')
     ap.add_argument('--pdf', action='store_true', help='PDF of every plot too')
     return ap.parse_args()
@@ -117,7 +121,8 @@ def main():
 
     # ---- 1. read ----------------------------------------------------------
     log.begin('read and select', 1, N)
-    layout, d = cfio.read(args.input, tree=args.tree, max_entries=args.max_entries, step=args.step,
+    layout, d, read_info = cfio.read(args.input, tree=args.tree, max_entries=args.max_entries,
+                          max_candidates=args.max_candidates, block=args.block, jobs=args.jobs,
                           cache_dir=None if args.no_cache else os.path.join(args.outdir, 'cache'), log=log)
     cfio.add_derived(layout, d)
     m, cutflow = cfio.select(layout, d, trigger=not args.no_trigger, species=not args.no_species,
@@ -134,9 +139,12 @@ def main():
               ('' if args.no_trigger else ', trigger and muon match') + \
               ('' if args.all_candidates else ', one candidate per event') + \
               ('' if args.no_common else ', Bs vertex in every scheme')
+    if read_info.get('fraction_read', 1.) < 0.999:
+        sel_txt += '; %.1f%% of the file read (random blocks of %d entries)' % (
+            100 * read_info['fraction_read'], read_info['block'])
     meta = dict(input=args.input, when=datetime.now().strftime('%Y-%m-%d %H:%M'), selection=sel_txt,
                 r_target=r_t, r_mc=r_m, n_ref=int(args.n_ref), schemes=layout.schemes,
-                hyps=layout.hyps, args=vars(args))
+                hyps=layout.hyps, read=read_info, args=vars(args))
     res['meta'] = meta
     res['cutflow'] = cutflow
     if np.sum(mc) < 100:
