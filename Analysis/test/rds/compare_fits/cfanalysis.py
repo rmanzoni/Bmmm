@@ -433,8 +433,9 @@ def bdt(layout, d, m, w, sets=('coll', 'xyz', 'math', 'all_hyps'), combined=True
     score, p_tau, p_dsst) for the plots.'''
     try:
         from sklearn.ensemble import HistGradientBoostingClassifier
-    except ImportError:
-        log('    sklearn not available: BDT comparison skipped')
+    except Exception as exc:       # not installed, or built against another numpy
+        log('    scikit-learn cannot be imported (%s: %s): BDT comparison skipped'
+            % (type(exc).__name__, str(exc).strip().splitlines()[-1] if str(exc).strip() else ''))
         return {}, {}
     cls = d['gen_cand'].astype(int)
     rng = np.random.default_rng(seed)

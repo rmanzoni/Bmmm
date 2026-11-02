@@ -107,11 +107,29 @@ def parse():
     return ap.parse_args()
 
 
+def sklearn_ok(log):
+    '''Check at the start, in a separate process, that scikit-learn imports
+    with this numpy: a mismatch (e.g. numpy 2 from pip --user and a
+    scikit-learn built against numpy 1) can crash the interpreter, and would
+    otherwise only show up after the reading.'''
+    import subprocess
+    r = subprocess.run([sys.executable, '-c', 'from sklearn.ensemble import HistGradientBoostingClassifier'],
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    if r.returncode == 0:
+        return True
+    last = [l for l in r.stderr.strip().splitlines() if l.strip()][-1:] or ['']
+    log('WARNING: scikit-learn cannot be imported, the BDT comparison is skipped (%s). '
+        'Run with --no-bdt to silence this; see README for the numpy / scikit-learn mismatch.' % last[0])
+    return False
+
+
 def main():
     args = parse()
     os.makedirs(args.outdir, exist_ok=True)
     log = Log(args.outdir)
     log('compare_fits %s' % ' '.join(sys.argv[1:]))
+    if not args.no_bdt and not sklearn_ok(log):
+        args.no_bdt = True
     N = 9
     res = {}
 

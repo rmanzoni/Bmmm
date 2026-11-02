@@ -65,6 +65,14 @@ toy with the same branch names (phase space, crude vertex smearing; the
 schemes differ only in a vertex-resolution scale factor, cons < dsc < phic <
 free). It only checks that the code runs; its physics numbers mean nothing.
 
+The BDT stage needs scikit-learn built against the same numpy as the one
+imported. In a CMSSW environment with numpy 2 installed by `pip install
+--user`, the CMSSW scikit-learn (built against numpy 1) does not import; the
+suite checks this at the start and skips the BDTs with a warning. To have
+them, run with the CMSSW numpy (`PYTHONNOUSERSITE=1 python3 compare_fits.py ...`,
+if uproot is available there) or in a separate environment
+(`python3 -m venv cf; . cf/bin/activate; pip install numpy scipy matplotlib uproot scikit-learn`).
+
 Tests: `python3 -m unittest test_compare_fits -v`.
 
 ## Selection
