@@ -15,7 +15,7 @@ Blocks, in schema order:
                  information, IPs, covariance, hit content, jet and gen match
   candidate      scheme-independent quantities (masses, charges, reflections,
                  PV, isolation, cand_idx), then everything that depends on the
-                 kinematic fits, once per scheme with the prefix cons_ / phic_ /
+                 kinematic fits, once per scheme with the prefix cons_ / phic_ / dsc_ /
                  free_
                  (see RDsCandidate)
   gen            MC event block: signal code, Bs kinematics and flight, gen

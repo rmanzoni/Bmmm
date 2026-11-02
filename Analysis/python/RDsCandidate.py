@@ -3,17 +3,20 @@ Bs -> Ds(-> phi(-> K K) pi) mu (nu) candidate for the R(Ds) ntuples.
 
 Replaces the 2023 prototype. What it does, per candidate:
 
-  1. Three sequential kinematic-fit schemes on the same four tracks
-     (RDsKinVtxFitter), stored side by side so they can be compared on MC:
+  1. Four sequential kinematic-fit schemes on the same four tracks
+     (RDsKinVtxFitter), stored side by side so they can be compared on MC,
+     i.e. every combination of the two mass constraints:
         cons   phi mass constraint on KK, then Ds mass constraint on phi + pi,
                then Ds + mu.
         phic   phi mass constraint on KK only: phi + pi, then KKpi + mu.
                phic_ds_mass is m(KKpi) with the phi constraint (the AN v4 /
                previous ntuples definition).
+        dsc    Ds mass constraint only: KK free, then KK + pi with the Ds
+               mass constraint, then Ds + mu.
         free   no mass constraint anywhere: KK, KK + pi, KKpi + mu.
-     cons and phic have the same phi fit (written once, see fit()). Every
-     quantity that depends on the fits is written once per scheme, with the
-     prefix cons_, phic_ or free_.
+     cons and phic have the same phi fit, dsc and free the same KK fit (each
+     written once, see fit()). Every quantity that depends on the fits is
+     written once per scheme, with the prefix cons_, phic_, dsc_ or free_.
   2. The primary vertex: the one with the smallest 3D distance from the line
      through the Bs vertex along the visible (KKpi mu) momentum (AN Eq. 3;
      Bs vertex of the first scheme in SCHEMES whose Bs fit succeeded, the PV
@@ -82,8 +85,10 @@ iptools = RJpsiKinVtxFitter()
 
 LorentzVector = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')
 
-# the order sets the scheme the PV is chosen from (choose_pv, pv_from_scheme)
-SCHEMES = ('cons', 'phic', 'free')
+# the order sets the scheme the PV is chosen from (choose_pv, pv_from_scheme:
+# 0 cons, 1 phic, 2 free, 3 dsc; dsc appended so the first three codes keep
+# their meaning)
+SCHEMES = ('cons', 'phic', 'free', 'dsc')
 SCHEME_VERTICES = ('phi', 'ds', 'bs')
 # the vertex cuts: phic carries the phi + pi fit without the Ds constraint
 # (the AN definition) and its phi fit is the one cons uses, so OR-ing phic and
@@ -420,21 +425,23 @@ class RDsCandidate(PrimaryVertexRefitMixin):
     def fit_vertex_cut(self):
         '''The fits passes_vertex_cuts needs: phi and Ds of phic and free.
         Fills self.fits[scheme][vertex] with FitInfo; the Bs vertices and the
-        cons Ds stay unfitted (status 1) until fit_rest.'''
+        cons and dsc Ds stay unfitted (status 1) until fit_rest.'''
         k1, k2, pi = (o.fit_track() for o in (self.k1, self.k2, self.pi))
         phi  = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, M_PHI))
         kk   = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, -1.))
         none = FitInfo(None)
-        # cons refits phi identically (fit_rest), so the phic one stands for both
+        # cons refits phi identically (fit_rest), so the phic one stands for
+        # both; likewise dsc refits KK identically to free
         self.fits = {
             'cons': dict(zip(SCHEME_VERTICES, (phi, none, none))),
             'phic': dict(zip(SCHEME_VERTICES, (phi, self._add(phi, pi, M_PI), none))),
             'free': dict(zip(SCHEME_VERTICES, (kk, self._add(kk, pi, M_PI), none))),
+            'dsc' : dict(zip(SCHEME_VERTICES, (kk, none, none))),
         }
 
     def fit_rest(self):
         '''The remaining fits, for the candidates that pass the vertex cuts:
-        the three Bs vertices and the cons Ds.'''
+        the Bs vertices and the cons and dsc Ds.'''
         k1, k2, pi, mu = (o.fit_track() for o in (self.k1, self.k2, self.pi, self.mu))
         f = self.fits
         for s in ('phic', 'free'):
@@ -444,6 +451,11 @@ class RDsCandidate(PrimaryVertexRefitMixin):
             phi_cons = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, M_PHI))
             f['cons']['ds'] = self._add(phi_cons, pi, M_PI, M_DS)
             f['cons']['bs'] = self._add(f['cons']['ds'], mu, M_MU)
+        # dsc: its own free KK fit, then the Ds mass constraint on KK + pi
+        if f['dsc']['phi'].valid:
+            kk_dsc = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, -1.))
+            f['dsc']['ds'] = self._add(kk_dsc, pi, M_PI, M_DS)
+            f['dsc']['bs'] = self._add(f['dsc']['ds'], mu, M_MU)
 
     def passes_vertex_cuts(self, cuts):
         for s in CUT_SCHEMES:

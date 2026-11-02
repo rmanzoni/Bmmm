@@ -48,8 +48,9 @@
 // valid with a negative chi2 or a covariance that was not positive definite.
 // With the Kalman fit there are none.
 //
-// RDsCandidate chains them into three schemes (phic: phi constraint only; cons:
-// phi and Ds constraints; free: none), each KK -> KK pi -> KK pi mu.
+// RDsCandidate chains them into four schemes, every combination of the two
+// mass constraints (cons: phi and Ds; phic: phi only; dsc: Ds only; free:
+// none), each KK -> KK pi -> KK pi mu.
 //
 // It reads every tree BEFORE the tree enters the next fit: that fit updates,
 // in place, the top particle of the tree it is built from (the Ds of the Ds

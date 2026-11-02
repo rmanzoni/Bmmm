@@ -21,7 +21,7 @@ the fake-event tests could not.
 | `python/RDsKinematics.py` | ROOT-free kinematics: masses, Bs hypotheses, q², helicity angles, reflections, combinatorics |
 | `python/RDsGenHistory.py` | generator truth: signal decay, Bs flight, candidate classification (AN Sec. 6.1) |
 | `python/RDsBranches.py`, `python/RDsCuts.py` | schema and preselection |
-| `interface/RDsKinVtxFitter.h` | the single kinematic-fit steps the three schemes are chained from |
+| `interface/RDsKinVtxFitter.h` | the single kinematic-fit steps the four schemes are chained from |
 | `python/TrackMomentumCalib.py` | momcal correction at production (MC) |
 | `python/L1Seeds2018.py` | L1 seed decisions and prescales |
 | `python/HammerDsFF.py`, `test/rds/hammer/` | Bs → Ds(*) form-factor weights, production time or afterwards |
@@ -40,17 +40,19 @@ the fake-event tests could not.
 | vertices | P(V_φ) > 0.01 and P(V_Ds) > 0.01 in **either** the `phic` or the `free` fit scheme |
 | arbitration | none: every candidate is a row; `cand_idx` numbers them by decreasing pT(KKπμ), `ncands` counts them |
 
-## The three fit schemes
+## The four fit schemes
 
-Every fit-dependent quantity is written three times, with the prefix `cons_`
-(φ and Ds mass constraints), `phic_` (φ mass constraint only) or `free_` (no
-mass constraint).
+Every fit-dependent quantity is written four times, one per combination of the
+two mass constraints, with the prefix `cons_` (φ and Ds mass constraints),
+`phic_` (φ mass constraint only), `dsc_` (Ds mass constraint only) or `free_`
+(no mass constraint). `dsc_` was added on 2 Nov 2026: ntuples produced before
+have the other three.
 
-| | `cons_` | `phic_` | `free_` |
-|---|---|---|---|
-| φ vertex (`*_phi_*`) | KK with the φ mass constraint | the same fit as `cons_` | KK, no constraint |
-| Ds vertex (`*_ds_*`) | φ + π with the Ds mass constraint | φ + π, no constraint: `phic_ds_mass` is m(KKπ) with the φ constraint (the AN v4 definition) | KK + π, no constraint |
-| Bs vertex (`*_bs_*`) | Ds + μ | Ds + μ | KKπ + μ |
+| | `cons_` | `phic_` | `dsc_` | `free_` |
+|---|---|---|---|---|
+| φ vertex (`*_phi_*`) | KK with the φ mass constraint | the same fit as `cons_` | KK, no constraint (the same fit as `free_`) | KK, no constraint |
+| Ds vertex (`*_ds_*`) | φ + π with the Ds mass constraint | φ + π, no constraint: `phic_ds_mass` is m(KKπ) with the φ constraint (the AN v4 definition) | KK + π with the Ds mass constraint | KK + π, no constraint |
+| Bs vertex (`*_bs_*`) | Ds + μ | Ds + μ | Ds + μ | KKπ + μ |
 
 The Ds momentum of each scheme enters its Bs kinematics.
 
@@ -60,7 +62,8 @@ the Ds refitted at the Bs vertex, carrying the muon information (it moved by a
 median of 4 MeV, by up to 12 GeV). Each tree is therefore read before it enters
 the next fit, so `*_ds_*`, the Ds-tree children and the Ds trajectory are the Ds
 of the Ds fit, and `*_phi_*` the φ of the φ fit. A composite enters one further
-fit only (`cons` runs its own φ fit, identical to the `phic` one).
+fit only (`cons` runs its own φ fit, identical to the `phic` one, and `dsc` its own
+KK fit, identical to the `free` one).
 
 **The fitters.** Every step is the sequential recipe of the CMSSW KinematicFit
 package (Prokofiev and Speer): a Kalman vertex fit of the inputs
@@ -96,8 +99,8 @@ Scheme-independent masses from the (calibrated) track momenta: `kk_mass`,
 `kkpi_mass`, `mass` (KKπμ), and the reflection masses `refl_k{1,2}_as_pi`
 (D⁺ → Kππ), `refl_k{1,2}_as_p` (Λc → pKπ), `refl_k{1,2}_pi` (D⁰ → Kπ).
 
-The primary vertex (`pv_*`) is shared by the three schemes: the PV closest to the
-line through the Bs vertex (cons, else phic, else free; `pv_from_scheme` = 0, 1, 2)
+The primary vertex (`pv_*`) is shared by the four schemes: the PV closest to the
+line through the Bs vertex (cons, else phic, else free, else dsc; `pv_from_scheme` = 0, 1, 2, 3)
 along the KKπμ momentum, refitted
 with the beamspot constraint and the four tracks removed (the same code as the
 RJpsi and dimuon ntuples). `pv_refit_valid` = 0 means the hybrid PV (beamspot
@@ -149,7 +152,7 @@ not be computed is NaN. Placeholders:
 
 | placeholder | values |
 |---|---|
-| `<s>` | fit scheme: `cons`, `phic`, `free` |
+| `<s>` | fit scheme: `cons`, `phic`, `dsc`, `free` |
 | `<v>` | vertex of a scheme: `phi`, `ds`, `bs` |
 | `<o>` | object: `mu`, `k1`, `k2`, `pi` (`k1` the leading kaon) |
 | `<t>` | track: `k1`, `k2`, `pi` |
@@ -222,7 +225,7 @@ not be computed is NaN. Placeholders:
 | `kk_mass`, `kkpi_mass` | m(KK), m(KKπ), calibrated track momenta |
 | `refl_k{1,2}_as_{pi,p}`, `refl_k{1,2}_pi` | m(KKπ) with that kaon as a pion (D⁺ → Kππ) or a proton (Λc → pKπ); m(Kπ) of that kaon and the pion (D⁰ → Kπ) |
 | `dr_{kk,phi_pi,ds_mu}`, `dr_mu_{k1,k2,pi}`, `max_dr_mu_tk` | ΔR between the pieces |
-| `pv_idx`, `pv_from_scheme` | the chosen PV in the vertex collection; scheme whose Bs vertex chose it (0 cons, 1 phic, 2 free, −1 none: closest in z to the muon) |
+| `pv_idx`, `pv_from_scheme` | the chosen PV in the vertex collection; scheme whose Bs vertex chose it (0 cons, 1 phic, 2 free, 3 dsc, −1 none: closest in z to the muon) |
 | `pv_refit_{valid,ntrk}` | PV refitted (beamspot-constrained, signal tracks removed); its tracks. 0: hybrid PV (beamspot x, y, PV z) |
 | `pv_{x,y,z}`, `pv_{ntrk,chi2,ndof}`, `pv_cov_{xx,xy,xz,yy,yz,zz}` | the PV used everywhere |
 | `bs_{x,y}` | beamspot at the z of the PV |
@@ -355,6 +358,6 @@ Done here, without CMSSW:
   after the shared-code changes.
 * `RDsKinVtxFitter.h` compiles against stub headers (syntax and types only).
 
-To do on the first real files: run with `--verbose`, compare `cons_`, `phic_`
-and `free_` on signal MC, check the speed (ev/s in the log) before choosing the
+To do on the first real files: run with `--verbose`, compare the fit schemes on
+signal MC (`test/rds/compare_fits/`), check the speed (ev/s in the log) before choosing the
 CRAB splitting, and sync a few events against the previous ntuples.
