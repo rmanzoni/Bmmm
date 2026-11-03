@@ -374,16 +374,22 @@ def test_track_momentum_calib():
     zz = cal.cal.gauss(320000, 10, 123456789, KEY_OFFSET['lost'] + 7)
     ff = cal.cal.factor(2.0 * np.cosh(0.5), 2.0, 0.5, -1, zz)
     assert z == zz and f == ff and 0.9 < f < 1.1
+    # sigma_rel (mass uncertainty) = the applier's resolution to first order
+    if hasattr(cal.cal, 'resolution'):
+        s, r = cal.sigma_rel(5.0, 1.0, 1), float(cal.cal.resolution(5.0, 1.0))
+        assert abs(s - r) < 1e-3 * r + 1e-9, (s, r)
     # a file with muon terms and an applier without `kind` must be refused
+    # (with a v4 applier, which has `kind`, it is accepted)
     cfg = json.load(open(jpath))
     cfg['per_bin_muon'] = cfg['per_bin']
     fake = os.path.join(tmp, 'fake_v4.json')
     json.dump(cfg, open(fake, 'w'))
     try:
         TrackMomentumCalib(fake, verbose=False)
-        raise AssertionError('a muon-term file with a kind-less applier was accepted')
+        if not cal.has_kind:
+            raise AssertionError('a muon-term file with a kind-less applier was accepted')
     except RuntimeError:
-        pass
+        assert not cal.has_kind
     # data must be refused
     try:
         make_trk_calib(jpath, mc=False)

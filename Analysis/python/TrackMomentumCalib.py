@@ -9,6 +9,7 @@ numbers are exactly the ones the fitter and the cross-checks validated.
     --trk-calib <file.json>[:<variation>]
 
 The applier module is looked for next to the JSON file first, then in
+<JSON dir>/applier/python/ (the momcal applier directory copied as it is), then in
 Bmmm/Analysis/data/trkcalib/ (or $BMMM_DATADIR/trkcalib/). Copy both from the
 momcal repository:
 
@@ -46,7 +47,12 @@ def _datadir():
 
 
 def _load_applier(json_path):
-    candidates = [os.path.join(os.path.dirname(os.path.abspath(json_path)), 'rds_trkcalib.py'),
+    jdir = os.path.dirname(os.path.abspath(json_path))
+    # next to the JSON, in the momcal bundle copied next to it
+    # (<dir>/applier/python/, how data/trkcalib/<version>/ is laid out), then
+    # in data/trkcalib/
+    candidates = [os.path.join(jdir, 'rds_trkcalib.py'),
+                  os.path.join(jdir, 'applier', 'python', 'rds_trkcalib.py'),
                   os.path.join(_datadir(), 'trkcalib', 'rds_trkcalib.py')]
     for path in candidates:
         if os.path.isfile(path):
@@ -100,6 +106,18 @@ class TrackMomentumCalib(object):
             f = self.cal.factor(p, pt, eta, charge, z, self.variation)
         self.n_tracks += 1
         return z, float(f)
+
+    def sigma_rel(self, pt, eta, charge, kind='hadron'):
+        '''The extra relative curvature resolution the calibration adds to
+        this track, WITHOUT its random number: sigma_cal = (f(z=-1) - f(z=+1))
+        / (2 f(z=0)) (the applier's resolution() to first order). The term
+        added in quadrature to the q/p variance for the mass uncertainty
+        (test/rds/mass_resolution, sigma_m_kkpi.pdf).'''
+        p = pt * np.cosh(eta)
+        kw = dict(kind=kind) if self.has_kind else {}
+        fp, f0, fm = (float(self.cal.factor(p, pt, eta, charge, z, self.variation, **kw))
+                      for z in (1., 0., -1.))
+        return abs(fm - fp) / (2. * f0) if f0 > 0 else float('nan')
 
     def summary(self):
         return '#### track momentum calibration %s: %d tracks corrected' % (self.name, self.n_tracks)

@@ -1,0 +1,11 @@
+# correction inputs: commit the payloads (JSON), the code that applies or
+# derived them and their provenance; not the plots, fit caches and ROOT files
+trkcalib/*/cache/
+trkcalib/*/plots/
+trkcalib/*/*.png
+**/__pycache__/
+impact_parameter_quantile_morph/**/*.root
+impact_parameter_quantile_morph/**/*.pdf
+impact_parameter_quantile_morph/**/*.png
+bparking_trigger_sf/plots/*.pdf
+bparking_trigger_sf/plots/*.png

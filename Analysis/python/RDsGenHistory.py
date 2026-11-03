@@ -436,7 +436,28 @@ def common_charm_ancestor(gens):
 
 CAND_GEN_NAMES = ('gen_cand', 'gen_ds_true', 'gen_charm_pdgid', 'gen_ds_mother_pdgid',
                   'gen_ds_b_pdgid', 'gen_mu_b_pdgid', 'gen_mu_mother_pdgid',
-                  'gen_mu_from_tau', 'gen_same_b', 'gen_n_matched')
+                  'gen_mu_from_tau', 'gen_same_b', 'gen_n_matched',
+                  'gen_ds_b_ct', 'gen_mu_b_ct')
+
+
+def b_ct(b):
+    '''Proper decay length c*t [cm] of a b hadron (any copy): L m / |p|, L
+    from the production vertex of its first copy to the vertex of the
+    daughters of its last copy (B mixing included, as bs_gen_info). For the
+    lifetime reweighting of whatever b hadron the candidate comes from (the
+    inclusive Hb samples): w = (tau_0/tau_1) exp(-ct/c tau_1 + ct/c tau_0).
+    NaN if the last copy has no daughter.'''
+    if b is None:
+        return NAN
+    fc, lc = first_copy(b), last_copy(b)
+    if lc.numberOfDaughters() == 0:
+        return NAN
+    d = lc.daughter(0)
+    dist = np.array([d.vx() - fc.vx(), d.vy() - fc.vy(), d.vz() - fc.vz()])
+    p = np4(lc)
+    m = np.sqrt(max(mass2(p), 0.))
+    pmag = np.sqrt(p[1] ** 2 + p[2] ** 2 + p[3] ** 2)
+    return float(np.sqrt(dist.dot(dist)) * m / pmag) if pmag > 0 else NAN
 
 
 def classify_candidate(gk1, gk2, gpi, gmu):
@@ -460,6 +481,7 @@ def classify_candidate(gk1, gk2, gpi, gmu):
     b_ds = b_ancestor(ds) if ds is not None else None
     if b_ds is not None:
         out['gen_ds_b_pdgid'] = first_copy(b_ds).pdgId()
+        out['gen_ds_b_ct']    = b_ct(b_ds)
 
     # muon side
     b_mu, mu_mother = None, None
@@ -470,6 +492,7 @@ def classify_candidate(gk1, gk2, gpi, gmu):
         b_mu = b_ancestor(gmu)
         if b_mu is not None:
             out['gen_mu_b_pdgid'] = first_copy(b_mu).pdgId()
+            out['gen_mu_b_ct']    = b_ct(b_mu)
     same_b = b_ds is not None and b_mu is not None and same(b_ds, b_mu)
     if b_ds is not None and gmu is not None:
         out['gen_same_b'] = float(same_b)

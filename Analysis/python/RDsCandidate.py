@@ -5,7 +5,8 @@ Replaces the 2023 prototype. What it does, per candidate:
 
   1. Four sequential kinematic-fit schemes on the same four tracks
      (RDsKinVtxFitter), stored side by side so they can be compared on MC,
-     i.e. every combination of the two mass constraints:
+     i.e. every combination of the two mass constraints. ONLY free IS ACTIVE
+     by default since Nov 2026 (SCHEMES, RDS_FIT_SCHEMES below):
         cons   phi mass constraint on KK, then Ds mass constraint on phi + pi,
                then Ds + mu.
         phic   phi mass constraint on KK only: phi + pi, then KKpi + mu.
@@ -19,7 +20,7 @@ Replaces the 2023 prototype. What it does, per candidate:
      written once per scheme, with the prefix cons_, phic_, dsc_ or free_.
   2. The primary vertex: the one with the smallest 3D distance from the line
      through the Bs vertex along the visible (KKpi mu) momentum (AN Eq. 3;
-     Bs vertex of the first scheme in SCHEMES whose Bs fit succeeded, the PV
+     Bs vertex of the first active scheme whose Bs fit succeeded, the PV
      closest in z to the muon if all failed), refitted with the beamspot
      constraint and the four signal tracks removed (PrimaryVertex, shared
      with the RJpsi and dimuon ntuples). The same PV serves all schemes.
@@ -85,15 +86,36 @@ iptools = RJpsiKinVtxFitter()
 
 LorentzVector = ROOT.Math.LorentzVector('ROOT::Math::PxPyPzE4D<double>')
 
-# the order sets the scheme the PV is chosen from (choose_pv, pv_from_scheme:
-# 0 cons, 1 phic, 2 free, 3 dsc; dsc appended so the first three codes keep
-# their meaning)
-SCHEMES = ('cons', 'phic', 'free', 'dsc')
+# Every scheme the code knows. The order sets the scheme the PV is chosen
+# from (choose_pv) and the pv_from_scheme code (0 cons, 1 phic, 2 free, 3 dsc;
+# dsc appended so the first three codes keep their meaning).
+ALL_SCHEMES = ('cons', 'phic', 'free', 'dsc')
+
+# The schemes that are FITTED AND WRITTEN. Since Nov 2026 only 'free': the
+# compare_fits studies (test/rds/compare_fits, summary note) found no gain from
+# the mass-constrained fits, so they are switched off to save CPU and disk.
+# The code of the others is kept; to switch them back on, without editing,
+#     export RDS_FIT_SCHEMES=cons,phic,free,dsc
+# (any subset, in any order: ALL_SCHEMES fixes the order). The branches of an
+# inactive scheme are not written at all.
+def _active_schemes():
+    import os
+    req = [x.strip() for x in os.environ.get('RDS_FIT_SCHEMES', 'free').split(',') if x.strip()]
+    bad = [x for x in req if x not in ALL_SCHEMES]
+    if bad or not req:
+        raise ValueError('RDS_FIT_SCHEMES=%r: unknown scheme(s) %s; known %s'
+                         % (os.environ.get('RDS_FIT_SCHEMES'), bad, ALL_SCHEMES))
+    return tuple(x for x in ALL_SCHEMES if x in req)
+
+SCHEMES = _active_schemes()
 SCHEME_VERTICES = ('phi', 'ds', 'bs')
-# the vertex cuts: phic carries the phi + pi fit without the Ds constraint
-# (the AN definition) and its phi fit is the one cons uses, so OR-ing phic and
-# free covers all three schemes
-CUT_SCHEMES = ('phic', 'free')
+# The vertex-probability preselection: OR over the active schemes among phic
+# (phi + pi fit without the Ds constraint, the AN definition; its phi fit is
+# the one cons uses) and free (covers dsc). With free alone it is the free
+# fits only: on the signal MC (dsc_02nov26, 8 chunks) 0.5% of the true-signal
+# and 0.6% of all candidates passed through phic alone.
+CUT_SCHEMES = tuple(x for x in ('phic', 'free') if x in SCHEMES) or \
+              (('phic',) if set(SCHEMES) <= {'cons'} else ('free',))
 HYPOTHESES = ('coll', 'xyz_bs', 'math1_bs', 'math2_bs')
 HYP_OBS    = ('pt', 'eta', 'phi', 'beta', 'q2', 'm_miss2', 'pt_miss', 'pt_miss_sca',
               'e_star_mu', 'e_hash_mu', 'cos_theta_phi_ds', 'cos_theta_mu_w', 'chi')
@@ -117,18 +139,30 @@ class TrackRecord(object):
                      enter a fit)
     '''
     cov_scaler = None   # utils.CovScaler, installed once per job (--cov-scale)
+    # which tracks --cov-scale acts on: 'all' (kaons, pion, muon) or 'muon'
+    # (--cov-scale-muon-only: the sigma_dxy morph is derived on muons)
+    cov_scale_scope = 'all'
 
-    def __init__(self, obj, collection, index, f=1., z=NAN):
+    def __init__(self, obj, collection, index, f=1., z=NAN, s_cal=NAN):
         self.obj        = obj
         self.collection = collection
         self.index      = index
         self.f          = f
         self.z          = z
+        # calibration's relative q/p resolution without z (NaN: none); a
+        # callable is evaluated on first use (most tracks never enter a candidate)
+        self._s_cal     = s_cal
         self._cov       = None
         self._is_cov_pos_def = None
         self.cov_fixed  = False
         self.cov_scale  = COV_NO_SCALE
         self._fit_track = None
+
+    @property
+    def s_cal(self):
+        if callable(self._s_cal):
+            self._s_cal = float(self._s_cal())
+        return self._s_cal
 
     @property
     def cov(self):
@@ -161,12 +195,55 @@ class TrackRecord(object):
             scaled = track_with_params(trk, params, cov)
             if scaled is not None:
                 trk = scaled
-        if self.cov_scaler is not None:
+        if self.cov_scaler is not None and \
+           (self.cov_scale_scope == 'all' or self.collection == 'muon'):
             self.cov_scale = tuple(self.cov_scaler(raw))
             cov = scale_cov(cov, self.cov_scale)
             trk = track_with_cov(trk, cov)
         self._fit_track = trk
         return trk
+
+
+def mass_error(tracks):
+    '''sigma(m) of the system of `tracks` (RDsTrack) by linear propagation of
+    the (q/p, lambda, phi) block of each track's covariance, tracks
+    independent (test/rds/mass_resolution/sigma_m_kkpi.pdf):
+
+        g_i = dm/dp_i = (E p_i / E_i - P) / m
+        J_i = (-q p (g_i . p_i),  p g_i . e_lambda,  pT g_i . e_phi)
+        sigma^2 = sum_i J_i C_i J_i^T
+
+    C_i is the covariance the fits use (TrackRecord.fit_track: repaired if
+    not positive definite, q/p row and column scaled by 1/f in calibrated MC,
+    --cov-scale applied), the momenta the calibrated ones. Returns
+    (sigma, sigma_cal): sigma_cal adds to each C_i[q/p, q/p] the
+    calibration's resolution term (s_cal q/p)^2 evaluated without the random
+    number (TrackRecord.s_cal); NaN when the tracks carry no s_cal (data,
+    MC without --trk-calib).'''
+    p4 = sum(t.np4() for t in tracks)
+    m = np.sqrt(max(mass2(p4), 0.))
+    if not m > 0:
+        return NAN, NAN
+    var, var_cal = 0., 0.
+    for t in tracks:
+        e, p3 = t.np4()[0], t.np4()[1:]
+        g = (p4[0] * p3 / e - p4[1:]) / m
+        trk = t.record.fit_track()
+        pmag = np.sqrt(p3.dot(p3))
+        ptr  = np.hypot(p3[0], p3[1])
+        # the calibration leaves the direction alone: lambda, phi from p3
+        lam, ph = np.arctan2(p3[2], ptr), np.arctan2(p3[1], p3[0])
+        q = t.charge()
+        e_lam = np.array([-np.sin(lam) * np.cos(ph), -np.sin(lam) * np.sin(ph), np.cos(lam)])
+        e_phi = np.array([-np.sin(ph), np.cos(ph), 0.])
+        J = np.array([-q * pmag * g.dot(p3), pmag * g.dot(e_lam), ptr * g.dot(e_phi)])
+        C = convert_cov(trk.covariance())[:3, :3]
+        v = J.dot(C).dot(J)
+        var += v
+        s = t.record.s_cal
+        var_cal += v + (J[0] * s * q / pmag) ** 2 if s == s else NAN
+    return float(np.sqrt(var)) if var >= 0 else NAN, \
+           float(np.sqrt(var_cal)) if var_cal == var_cal and var_cal >= 0 else NAN
 
 
 class RDsTrack(object):
@@ -427,17 +504,24 @@ class RDsCandidate(PrimaryVertexRefitMixin):
         Fills self.fits[scheme][vertex] with FitInfo; the Bs vertices and the
         cons and dsc Ds stay unfitted (status 1) until fit_rest.'''
         k1, k2, pi = (o.fit_track() for o in (self.k1, self.k2, self.pi))
-        phi  = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, M_PHI))
-        kk   = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, -1.))
         none = FitInfo(None)
+        need_phi = any(x in SCHEMES for x in ('cons', 'phic')) or 'phic' in CUT_SCHEMES
+        need_kk  = any(x in SCHEMES for x in ('free', 'dsc')) or 'free' in CUT_SCHEMES
+        phi = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, M_PHI)) if need_phi else none
+        kk  = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, -1.))   if need_kk  else none
         # cons refits phi identically (fit_rest), so the phic one stands for
-        # both; likewise dsc refits KK identically to free
-        self.fits = {
-            'cons': dict(zip(SCHEME_VERTICES, (phi, none, none))),
-            'phic': dict(zip(SCHEME_VERTICES, (phi, self._add(phi, pi, M_PI), none))),
-            'free': dict(zip(SCHEME_VERTICES, (kk, self._add(kk, pi, M_PI), none))),
-            'dsc' : dict(zip(SCHEME_VERTICES, (kk, none, none))),
-        }
+        # both; likewise dsc refits KK identically to free. Only the active
+        # schemes (and the ones the cut needs) are fitted.
+        fits = {}
+        if 'cons' in SCHEMES:
+            fits['cons'] = dict(zip(SCHEME_VERTICES, (phi, none, none)))
+        if 'phic' in SCHEMES or 'phic' in CUT_SCHEMES:
+            fits['phic'] = dict(zip(SCHEME_VERTICES, (phi, self._add(phi, pi, M_PI), none)))
+        if 'free' in SCHEMES or 'free' in CUT_SCHEMES:
+            fits['free'] = dict(zip(SCHEME_VERTICES, (kk, self._add(kk, pi, M_PI), none)))
+        if 'dsc' in SCHEMES:
+            fits['dsc'] = dict(zip(SCHEME_VERTICES, (kk, none, none)))
+        self.fits = fits
 
     def fit_rest(self):
         '''The remaining fits, for the candidates that pass the vertex cuts:
@@ -445,14 +529,15 @@ class RDsCandidate(PrimaryVertexRefitMixin):
         k1, k2, pi, mu = (o.fit_track() for o in (self.k1, self.k2, self.pi, self.mu))
         f = self.fits
         for s in ('phic', 'free'):
-            f[s]['bs'] = self._add(f[s]['ds'], mu, M_MU)
+            if s in SCHEMES:
+                f[s]['bs'] = self._add(f[s]['ds'], mu, M_MU)
         # cons: its own phi fit (a composite enters one further fit only)
-        if f['cons']['phi'].valid:
+        if 'cons' in SCHEMES and f['cons']['phi'].valid:
             phi_cons = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, M_PHI))
             f['cons']['ds'] = self._add(phi_cons, pi, M_PI, M_DS)
             f['cons']['bs'] = self._add(f['cons']['ds'], mu, M_MU)
         # dsc: its own free KK fit, then the Ds mass constraint on KK + pi
-        if f['dsc']['phi'].valid:
+        if 'dsc' in SCHEMES and f['dsc']['phi'].valid:
             kk_dsc = FitInfo(kinfit.FitTwoTracks(k1, k2, M_K, -1.))
             f['dsc']['ds'] = self._add(kk_dsc, pi, M_PI, M_DS)
             f['dsc']['bs'] = self._add(f['dsc']['ds'], mu, M_MU)
@@ -474,7 +559,7 @@ class RDsCandidate(PrimaryVertexRefitMixin):
             if self.fits[s]['bs'].valid:
                 bs_fit = self.fits[s]['bs']
                 break
-        self.pv_from_scheme = SCHEMES.index(s) if bs_fit is not None else -1
+        self.pv_from_scheme = ALL_SCHEMES.index(s) if bs_fit is not None else -1
         if bs_fit is not None:
             # 3D distance of each PV from the line through V_Bs along the
             # visible momentum (utils.compute_IP3D, vectorised)
@@ -737,6 +822,10 @@ class RDsCandidate(PrimaryVertexRefitMixin):
 
         o['kk_mass']   = mass(self.p4_kk)
         o['kkpi_mass'] = mass(self.p4_kkpi)
+        # per-candidate mass uncertainties from the (calibrated) track
+        # covariances, no vertex fit (test/rds/mass_resolution)
+        o['kk_mass_err'], _ = mass_error((self.k1, self.k2))
+        o['kkpi_mass_err'], o['kkpi_mass_err_cal'] = mass_error((self.k1, self.k2, self.pi))
         for k, v in reflection_masses(self.k1.np4()[1:], self.k2.np4()[1:], self.pi.np4()[1:]).items():
             o['refl_' + k] = v
         o['dr_kk']     = deltaR(self.k1, self.k2)

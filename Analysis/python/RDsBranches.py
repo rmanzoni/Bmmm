@@ -34,6 +34,7 @@ from Bmmm.Analysis.TrackHitContent import hit_content_branches, best_track_kinem
 from Bmmm.Analysis.BParking2018Trigger import paths
 from Bmmm.Analysis.utils import COV_PARAM_NAMES
 from Bmmm.Analysis.RDsCandidate import SCHEMES, SCHEME_VERTICES, HYPOTHESES, HYP_OBS
+from Bmmm.Analysis.TriggerScaleFactors import SF_BRANCHES
 from Bmmm.Analysis.RDsGenHistory import CAND_GEN_NAMES, HAM_BRANCHES, GEN_OBS_NAMES
 from Bmmm.Analysis.HammerDsFF import BRANCH_NAMES as HAMMER_BRANCH_NAMES
 
@@ -94,6 +95,7 @@ for _k in _IP_KEYS:
 common_track_extras = {
     'calib_f'      : lambda t : t.record.f,
     'calib_z'      : lambda t : t.record.z,
+    'calib_sigma'  : lambda t : t.record.s_cal,   # relative q/p resolution added, no z
     'cov_pos_def'  : lambda t : t.record.is_cov_pos_def,
     'cov_fixed'    : lambda t : t.record.cov_fixed,
 }
@@ -128,7 +130,8 @@ muon_branches['gen_mother_pdgid'] = gen_track_branches['gen_mother_pdgid']
 muon_branches['gen_dr']           = gen_track_branches['gen_dr']
 muon_branches['pt_raw']           = lambda t : t.raw_pt()
 # trigger matching, filled by the inspector
-muon_trigger_names = ['trig_dr', 'trig_match'] + ['%s_tag' % p for p in paths]
+muon_trigger_names = ['trig_dr', 'trig_match'] + ['%s_tag' % p for p in paths] + \
+                     list(SF_BRANCHES)   # trigger scale factors (MC, --trig-sf)
 
 ##########################################################################################
 #####      CANDIDATE
@@ -137,7 +140,7 @@ muon_trigger_names = ['trig_dr', 'trig_match'] + ['%s_tag' % p for p in paths]
 # so their names are listed here and read with cand.out.get(name, NaN).
 cand_names = ['cand_idx', 'mass', 'pt', 'eta', 'phi', 'charge',
               'kk_charge', 'mupi_charge', 'charge_class',
-              'kk_mass', 'kkpi_mass',
+              'kk_mass', 'kkpi_mass', 'kk_mass_err', 'kkpi_mass_err', 'kkpi_mass_err_cal',
               'refl_k1_as_pi', 'refl_k2_as_pi', 'refl_k1_as_p', 'refl_k2_as_p',
               'refl_k1_pi', 'refl_k2_pi',
               'dr_kk', 'dr_phi_pi', 'dr_ds_mu', 'dr_mu_k1', 'dr_mu_k2', 'dr_mu_pi', 'max_dr_mu_tk',

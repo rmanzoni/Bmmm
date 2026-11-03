@@ -21,7 +21,12 @@ Per event
   6. every kept candidate is a row (no arbitration); cand_idx numbers them by
      decreasing pT of KKpi mu
 
+Fit schemes: only 'free' is fitted and written by default (RDsCandidate.SCHEMES,
+RDS_FIT_SCHEMES to switch the others back on).
+
 MC only
+  * --trig-sf: muon trigger scale factors per candidate (TriggerScaleFactors)
+  * --cov-scale-muon-only: --cov-scale (e.g. the sigma_dxy morph) on the muon only
   * --trk-calib: momentum calibration (rds_momcalib v4) on every track and the
     muon, before the combinatorics and the fits (TrackMomentumCalib)
   * a second tree, tree_gen, with one row per processed event: the signal
@@ -33,7 +38,8 @@ MC only
     the hammer_* branches are NaN and can be added later with
     test/rds/hammer/add_hammer_weights_rds.py
 
---cov-scale applies to the kaons, the pion and the muon alike.
+--cov-scale applies to the kaons, the pion and the muon alike, unless
+--cov-scale-muon-only. Each job prints its code provenance (Provenance).
 '''
 
 import os
@@ -50,7 +56,10 @@ from Bmmm.Analysis.RDsBranches import (
     cand_names, gen_event_names, gen_tree_branches, L1_SEEDS, safe_get,
     EVENT_EXTRA_KEYS, EVENT_GEN_KEYS, BS_GEN_NAMES,
 )
-from Bmmm.Analysis.RDsCandidate import RDsCandidate, RDsTrack, TrackRecord, EventArrays
+from Bmmm.Analysis.RDsCandidate import (RDsCandidate, RDsTrack, TrackRecord, EventArrays,
+                                        SCHEMES, CUT_SCHEMES)
+from Bmmm.Analysis.TriggerScaleFactors import make_trig_sf, SF_BRANCHES
+from Bmmm.Analysis.Provenance import print_provenance
 from Bmmm.Analysis.RDsCuts import cuts
 from Bmmm.Analysis.RDsKinematics import M_K, M_PI, M_MU, kkpi_triplets
 from Bmmm.Analysis.RDsGenHistory import (
@@ -117,10 +126,23 @@ class RDsInspector(BParking2018TriggerMixin, BaseInspector):
                                  'to the JSON or in data/trkcalib/. See TrackMomentumCalib.')
         parser.add_argument('--no-l1', dest='no_l1', action='store_true',
                             help='do not read the L1 seed tables (L1 branches NaN)')
+        parser.add_argument('--cov-scale-muon-only', dest='cov_scale_muon_only', action='store_true',
+                            help='--cov-scale acts on the muon only (the sigma_dxy morph is '
+                                 'derived on muons); default: kaons, pion and muon')
+        parser.add_argument('--trig-sf', dest='trig_sf', default='', type=str,
+                            help="MC only: muon trigger scale factors, '<scale_factors.json>[:<map>]' "
+                                 '(default map pt_vs_dxy_sig). See TriggerScaleFactors.')
 
     def setup(self, options):
         self.options = options
         self.TRK_CALIB = make_trk_calib(getattr(options, 'trk_calib', ''), options.mc)
+        self.TRIG_SF   = make_trig_sf(getattr(options, 'trig_sf', ''), options.mc)
+        if getattr(options, 'cov_scale_muon_only', False):
+            TrackRecord.cov_scale_scope = 'muon'
+        print('#### fit schemes written: %s (preselection on %s); RDS_FIT_SCHEMES=%s'
+              % (','.join(SCHEMES), ','.join(CUT_SCHEMES), os.environ.get('RDS_FIT_SCHEMES', '<unset>')))
+        print('#### --cov-scale scope: %s' % TrackRecord.cov_scale_scope)
+        print_provenance()
 
         self.L1 = None
         if not getattr(options, 'no_l1', False):
@@ -146,6 +168,8 @@ class RDsInspector(BParking2018TriggerMixin, BaseInspector):
     def finish(self, options):
         if self.TRK_CALIB is not None:
             print(self.TRK_CALIB.summary())
+        if self.TRIG_SF is not None:
+            print(self.TRIG_SF.summary())
         scaler = TrackRecord.cov_scaler
         if scaler is not None and hasattr(scaler, 'n_clamped'):
             print('#### sigma_dxy morph %s: %d tracks where the morph asked for less than '
@@ -261,22 +285,24 @@ class RDsInspector(BParking2018TriggerMixin, BaseInspector):
                     continue
                 if abs(tk.pdgId()) in cuts['tk_veto_pdgid']:
                     continue
-                f, z = 1., NAN
+                f, z, s = 1., NAN, NAN
                 if self.TRK_CALIB is not None:
                     z, f = self.TRK_CALIB.z_and_f(run, lumi, evt,
                                                   TrackMomentumCalib.key(coll_name, idx),
                                                   tk.pt(), tk.eta(), tk.charge(), kind='hadron')
-                records.append(TrackRecord(tk, coll_name, idx, f, z))
+                    s = (lambda tk=tk: self.TRK_CALIB.sigma_rel(tk.pt(), tk.eta(), tk.charge(), kind='hadron'))
+                records.append(TrackRecord(tk, coll_name, idx, f, z, s))
         return records
 
     def _muon_wrapper(self, event, imu, idx):
-        f, z = 1., NAN
+        f, z, s = 1., NAN, NAN
         if self.TRK_CALIB is not None:
             aux = event.eventAuxiliary()
             z, f = self.TRK_CALIB.z_and_f(aux.run(), aux.luminosityBlock(), aux.event(),
                                           TrackMomentumCalib.key('muon', idx),
                                           imu.pt(), imu.eta(), imu.charge(), kind='muon')
-        return RDsTrack(TrackRecord(imu, 'muon', idx, f, z), M_MU)
+            s = (lambda: self.TRK_CALIB.sigma_rel(imu.pt(), imu.eta(), imu.charge(), kind='muon'))
+        return RDsTrack(TrackRecord(imu, 'muon', idx, f, z, s), M_MU)
 
     def build_candidates(self, muons, event, options, cuts, good_tobjs):
         # the sigma_dxy morph (--cov-scale <morph.json>) needs the beamspot
@@ -396,6 +422,10 @@ class RDsInspector(BParking2018TriggerMixin, BaseInspector):
         cand_tofill['mu_trig_match'] = float(trig_dr < cuts['hlt_dr']) if trig_dr == trig_dr else 0.
         for (idx, path), val in self.path_tags([mu], event, good_tobjs, cuts['hlt_dr']).items():
             cand_tofill['mu_%s_tag' % path] = val
+        # trigger scale factor (MC, --trig-sf) from the filled muon branches
+        sf = self.TRIG_SF(cand_tofill) if self.TRIG_SF is not None else dict.fromkeys(SF_BRANCHES, NAN)
+        for k, v in sf.items():
+            cand_tofill['mu_' + k] = v
 
         for name, obj in (('k1', icand.k1), ('k2', icand.k2), ('pi', icand.pi)):
             for branch, getter in track_branches.items():
