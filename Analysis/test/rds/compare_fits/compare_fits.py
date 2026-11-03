@@ -91,6 +91,8 @@ def parse():
     ap.add_argument('-j', '--jobs', type=int, default=4, help='parallel reader processes')
     ap.add_argument('--block', type=int, default=100000, help='entries per block')
     ap.add_argument('--no-cache', action='store_true', help='do not cache the selected arrays')
+    ap.add_argument('--cache-dir', default=None, help='where the selection cache is written (e.g. a local scratch '
+                    'disk; default OUTDIR/cache); OUTDIR/cache then gets a symlink to it')
     ap.add_argument('--no-trigger', action='store_true', help='do not require the parking trigger and the muon match')
     ap.add_argument('--no-species', action='store_true', help='do not require K, K, pi, mu matched to K, K, pi, mu')
     ap.add_argument('--all-candidates', action='store_true', help='keep every truth-matched candidate of an event')
@@ -155,7 +157,8 @@ def main():
     log.begin('read and select', 1, N)
     layout, d, read_info = cfio.read(args.input, tree=args.tree, max_entries=args.max_entries,
                           max_candidates=args.max_candidates, block=args.block, jobs=args.jobs,
-                          cache_dir=None if args.no_cache else os.path.join(args.outdir, 'cache'), log=log)
+                          cache_dir=None if args.no_cache else (args.cache_dir or os.path.join(args.outdir, 'cache')),
+                          link_dir=os.path.join(args.outdir, 'cache') if args.cache_dir else None, log=log)
     cfio.add_derived(layout, d)
     m, cutflow = cfio.select(layout, d, trigger=not args.no_trigger, species=not args.no_species,
                              one_per_event=not args.all_candidates, log=log)

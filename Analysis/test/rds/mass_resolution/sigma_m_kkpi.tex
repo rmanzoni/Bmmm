@@ -1,0 +1,413 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+\lstset{language=Python, basicstyle=\ttfamily\footnotesize, keywordstyle=\color{blue!60!black},
+        commentstyle=\color{green!40!black}, stringstyle=\color{red!50!black}, columns=fullflexible,
+        keepspaces=true, frame=single, rulecolor=\color{black!25}, xleftmargin=4pt, xrightmargin=4pt,
+        breaklines=true, showstringspaces=false}
+
+\newcommand{\qp}{(q/p)}
+\newcommand{\vb}[1]{\vec{#1}}
+\newcommand{\br}[1]{\texttt{#1}}
+\newcommand{\scal}{\sigma_{\mathrm{cal}}}
+\newcommand{\mKKpi}{m_{KK\pi}}
+
+\title{Per-candidate mass uncertainty $\sigma(\mKKpi)$\\ from momentum-calibrated tracks}
+\author{R(D$_s$) analysis --- working note}
+\date{3 November 2026}
+
+\emergencystretch=2em
+\begin{document}
+\maketitle
+
+\section{The idea}
+
+The per-candidate uncertainty $\sigma(\mKKpi)$ is computed from what each track's own fit says about its
+momentum, propagated linearly to the invariant mass, with the resolution added by the momentum calibration
+folded in. The vertex fit plays no part. The result is a function of reconstructed quantities only, so it is
+defined identically in data and simulation and can be used to build categories.
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Inputs.} For each of $K_1$, $K_2$, $\pi$ take the $3\times3$ block of the helix covariance in
+        $(\qp, \lambda, \phi)$. The three tracks are uncorrelated.
+  \item \textbf{Propagation.} $\sigma^2(m) = \sum_i J_i\, C_i\, J_i^{T}$, with
+        $J_i = \partial m/\partial(\qp,\lambda,\phi)_i$ evaluated at the calibrated momenta.
+  \item \textbf{Calibration term.} Add to each track's $\qp$ variance the extra relative resolution that the
+        calibration assigns to its $(p, p_T, \eta, q)$ bin, computed without the random number $z$.
+  \item \textbf{Same definition everywhere.} Apply steps 1--3 unchanged to data and MC. Never use anything
+        that exists only in MC ($z$, the realised smear, generator information).
+\end{enumerate}
+
+The muon is not part of $\mKKpi$ and never enters. Everything below generalises to $m_{KK}$ or $m_{KK\pi\mu}$
+by changing the set of tracks in the sum.
+
+\section{Step 1: the inputs}
+
+Only the $3\times3$ momentum block of each track's covariance enters the mass, and the three tracks are
+independent.
+
+\paragraph{What the $5\times5$ matrix describes.} A CMS track is a helix with five parameters at its
+reference point (the point of closest approach used by the packed candidate). They are stored, in this
+order, as \br{<trk>\_cov\_<a>\_<b>} (upper triangle):
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+parameter & meaning & unit \\
+\midrule
+$q/p$     & charge over total momentum & GeV$^{-1}$ \\
+$\lambda$ & dip angle, $\lambda = \pi/2-\theta$; \ $\sin\lambda=\tanh\eta$, $\cos\lambda = 1/\cosh\eta$ & rad \\
+$\phi$    & azimuth of the momentum at the reference point & rad \\
+$d_{xy}$  & transverse impact parameter & cm \\
+$d_{sz}$  & longitudinal impact parameter & cm \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The momentum depends on the first three only:
+\begin{equation}
+  \vb p = p\,(\cos\lambda\cos\phi,\; \cos\lambda\sin\phi,\; \sin\lambda), \qquad p = \frac{q}{\qp}.
+  \label{eq:p}
+\end{equation}
+
+\paragraph{Why only the $3\times3$ block.} The invariant mass depends on the momenta, not on where the
+tracks are: $\partial m/\partial d_{xy} = \partial m/\partial d_{sz} = 0$, so the last two columns of the
+Jacobian (Step~2) vanish. The $\phi$--$d_{xy}$ and $\lambda$--$d_{sz}$ correlations are large in the
+$5\times5$ matrix, but they multiply a zero and drop out. The correlations inside the block
+($\qp$--$\lambda$, $\qp$--$\phi$, $\lambda$--$\phi$) do enter and must be kept.
+
+This is a first-order statement. Tracks bend between the reference point and the D$_s$ vertex, so the
+opening angles at the vertex differ by a few mrad from those at the reference point. That is a shift of the
+mass value, identical in data and MC, not an uncertainty. It is the piece the vertex fit would have brought
+in, together with its mismodelling.
+
+\paragraph{Why the tracks are uncorrelated.} Each track is fitted from its own hits, whose measurement
+errors are independent. The three $5\times5$ matrices are therefore independent blocks of one
+$15\times15$ matrix, with zeros between them. Two effects break this, and neither belongs in a per-event
+$\sigma$:
+\begin{itemize}
+  \item shared hits between close tracks: rare, and the $K^+K^-$ from a $\phi$ open up enough for this not
+        to matter;
+  \item common systematics (magnetic-field scale, alignment, material), which move all tracks of an event
+        together: scale effects, corrected by the calibration, not random per-event spread.
+\end{itemize}
+After a vertex fit the refitted momenta become correlated, because they share one vertex; that is why the
+fitted covariance has cross terms. Since we do not use the vertex fit, the covariance is block-diagonal and
+the propagation is a sum over tracks.
+
+\section{Step 2: propagation}
+
+To first order each track contributes $J_i C_i J_i^T$, where $J_i$ is the gradient of the mass with
+respect to that track's three helix parameters; the contributions add because the tracks are independent:
+\begin{equation}
+  \sigma^2(m) = \sum_{i\in\{K_1,K_2,\pi\}} J_i\, C_i\, J_i^{T}, \qquad
+  J_i = \left( \frac{\partial m}{\partial \qp_i},\; \frac{\partial m}{\partial \lambda_i},\;
+               \frac{\partial m}{\partial \phi_i} \right),
+  \label{eq:prop}
+\end{equation}
+with $C_i$ the $3\times3$ block of Step~1. The chain rule splits $J_i$ into two factors: the mass with
+respect to the momentum vector, and the momentum vector with respect to the helix parameters.
+
+\paragraph{Mass with respect to one track's momentum.} With $E=\sum_i E_i$, $\vb P = \sum_i \vb p_i$ and
+$E_i = \sqrt{p_i^2+m_i^2}$, differentiating $m^2 = E^2 - |\vb P|^2$ gives
+\begin{equation}
+  \vb g_i \equiv \frac{\partial m}{\partial \vb p_i}
+  = \frac{1}{m}\left( E\,\frac{\vb p_i}{E_i} - \vb P \right)
+  = \gamma\,\big( \vb\beta_i - \vb\beta \big),
+  \label{eq:g}
+\end{equation}
+where $\vb\beta_i = \vb p_i/E_i$ is the velocity of track $i$, and $\vb\beta=\vb P/E$, $\gamma = E/m$ belong
+to the $KK\pi$ system. The sensitivity of the mass to a track is the D$_s$ boost times the track's velocity
+relative to the D$_s$. Two limits:
+\begin{itemize}
+  \item D$_s$ at rest: $\vb g_i = \vb\beta_i$. Only the momentum magnitude matters,
+        $\partial m/\partial |\vb p_i| = \beta_i$, and a small rotation of one track leaves $m$ unchanged at
+        first order.
+  \item Boosted D$_s$: $\vb g_i$ acquires a large component transverse to the track, and direction errors
+        start to matter (the opening-angle term).
+\end{itemize}
+
+\paragraph{Momentum vector with respect to the helix parameters.} For $|q|=1$, from $p = q/\qp$ and
+Eq.~\eqref{eq:p},
+\begin{equation}
+  \frac{\partial \vb p}{\partial \qp} = -q\,p\,\vb p, \qquad
+  \frac{\partial \vb p}{\partial \lambda} = p\,\hat e_\lambda, \qquad
+  \frac{\partial \vb p}{\partial \phi} = p_T\,\hat e_\phi,
+\end{equation}
+with the unit vectors
+\begin{equation}
+  \hat e_\lambda = (-\sin\lambda\cos\phi,\; -\sin\lambda\sin\phi,\; \cos\lambda), \qquad
+  \hat e_\phi = (-\sin\phi,\; \cos\phi,\; 0).
+\end{equation}
+(The first follows from $\mathrm{d}p/\mathrm{d}\qp = -q/\qp^2 = -q\,p^2$ and $\vb p = p\,\hat p$.)
+
+\paragraph{The Jacobian.} Projecting each column on $\vb g_i$:
+\begin{equation}
+  J_i = \Big( -q_i\,p_i\,(\vb g_i\cdot\vb p_i),\;\; p_i\,(\vb g_i\cdot\hat e_{\lambda,i}),\;\;
+              p_{T,i}\,(\vb g_i\cdot\hat e_{\phi,i}) \Big).
+  \label{eq:J}
+\end{equation}
+
+\paragraph{Reading each term.} Since $\sigma\qp/|\qp| = \sigma_p/p$, the $\qp$ term of track $i$ alone gives
+\begin{equation}
+  \delta m_i\big|_{p} = (\vb g_i\cdot\hat p_i)\;\sigma_{p,i},
+\end{equation}
+the component of the relative velocity along the track times the momentum error. The two angle terms give
+$p_i\,(\vb g_i\cdot\hat e_{\lambda,i})\,\sigma_{\lambda,i}$ and
+$p_{T,i}\,(\vb g_i\cdot\hat e_{\phi,i})\,\sigma_{\phi,i}$. All three are combined through the full $C_i$,
+correlations included, not simply added in quadrature.
+
+\paragraph{Where to evaluate $J$.} Use the calibrated momenta (\br{pt}, \br{eta}, \br{phi}) with the kaon and
+pion mass hypotheses, and the measured $\mKKpi$ in $1/m$: these are the momenta that define the mass being
+categorised. The calibration does not change directions and rescales $|\vb p|$ by a factor $f$ close to 1,
+so $J$ moves only at second order. Strictly, $C_i$ refers to the uncalibrated $\qp$, so its $\qp$ row and
+column scale by $1/f$; a per-mille effect, but free to apply.
+
+\section{Step 3: the calibration term}
+
+The reco covariance describes the tracker's resolution as simulated. The calibration exists because the
+resolution in data is worse, so the missing width is added to each track's $\qp$ variance. It is taken from
+the calibration itself, as an expected width rather than the smear actually applied.
+
+\paragraph{What the calibration does.} For every MC track, \br{TrackMomentumCalib} draws a standard
+normal number and rescales the momentum, leaving the direction unchanged:
+\begin{equation*}
+  z = \mathrm{gauss}(\mathrm{run}, \mathrm{lumi}, \mathrm{event}, \mathrm{track\ key}), \qquad
+  f = \frac{p'}{p} = \mathrm{factor}(p, p_T, \eta, q, z).
+\end{equation*}
+$f$ has two parts:
+\begin{itemize}
+  \item a scale part, its value at $z=0$, which shifts the momentum;
+  \item a resolution part, its spread over $z$, which widens it.
+\end{itemize}
+Only the second is a resolution. The hadron terms apply (\br{kind='hadron'}); the muon terms are not needed
+for $\mKKpi$.
+
+\paragraph{The extra width, without $z$.} For the track's own $(p, p_T, \eta, q)$ define
+\begin{equation}
+  \sigma_{\mathrm{cal},i} = \frac{f(z=+1) - f(z=-1)}{2\, f(z=0)},
+  \label{eq:scal}
+\end{equation}
+a relative width on $p$, and equally on $\qp$ since $\sigma\qp/|\qp| = \sigma_p/p$ at first order. If $f$
+is not linear in $z$, use the RMS of $f/f(0)$ over $z\sim\mathcal N(0,1)$ instead; $f(\pm2)$ tells whether
+that matters. Then
+\begin{equation}
+  C_i[\qp,\qp] \;\longrightarrow\; C_i[\qp,\qp] + \big(\sigma_{\mathrm{cal},i}\,\qp_i\big)^2 .
+\end{equation}
+In the mass this adds $\sigma_{\mathrm{cal},i}\; p_i\,(\vb g_i\cdot\hat p_i)$ in quadrature for each track: the momentum
+term of Step~2 with $\sigma_p/p$ replaced by $\scal$.
+
+\paragraph{Why in quadrature.} The calibration smear is drawn independently of the tracker measurement: it
+uses its own $z$ and does not touch the direction, so it is uncorrelated with the angles. The $z$ of
+different tracks are independent, so the term also adds track by track.
+
+\paragraph{Why without $z$.} $\sigma_m$ must be a width: the expected mass error given the measured
+kinematics, not the error that actually occurred. The realised $f(z)$ of a given MC track is MC truth, since
+it says which way that track was smeared. Putting it into $\sigma_m$ would correlate $\sigma_m$ with the
+actual mass residual in MC, which data could never reproduce. Data has no $z$ at all.
+
+\paragraph{One assumption.} This presumes that the reco covariance already describes the resolution of
+uncalibrated MC, so that adding $\scal$ gives the resolution of calibrated MC, hence of data. The MC pull
+test of Section~\ref{sec:val} (check~2) tests exactly this. If it fails, the reco covariance needs its own
+correction before anything is added.
+
+\paragraph{Systematic variations.} Build the categories with the nominal calibration. The calibration
+variations then move the resolution inside each category, a systematic on the per-category mass shapes; they
+should not move the category boundaries.
+
+\section{Step 4: one definition for data and MC}
+
+$\sigma_m$ is a valid category variable only if it is the same function of reconstructed quantities in data
+and MC. Then calibrated MC, which reproduces the kinematics and resolution of data, also reproduces how events
+spread over $\sigma_m$ and the mass resolution inside each category.
+
+\begin{center}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.24\textwidth}>{\raggedright\arraybackslash}p{0.3\textwidth}>{\raggedright\arraybackslash}p{0.36\textwidth}}
+\toprule
+ingredient & data & MC \\
+\midrule
+helix covariance $C_i$ & packed candidate & packed candidate, same algorithm and format \\
+momenta for $J_i$ & measured & calibrated (\br{pt}, \br{eta}, \br{phi}), not \br{pt\_raw} \\
+$\sigma_{\mathrm{cal},i}$ & from the track's $(p,p_T,\eta,q)$, nominal & same function, same inputs \\
+$z$, realised $f$, generator info & do not exist & exist, must not be used \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Why data gets $\scal$ too, although data is never smeared.} The tracker computes $C_i$ from its own
+error model, identically for data and simulation. In MC that model describes the simulated resolution. In data
+it describes the same simulated-quality resolution, which is smaller than the true one by exactly what the
+calibration adds to MC. Hence $C_i\oplus\scal$ is the best estimate of the true width in both samples. Without
+$\scal$ in data, its $\sigma_m$ would be biased low and the per-category widths would no longer match
+calibrated MC.
+
+\paragraph{What consistency buys, and what it does not.}
+\begin{itemize}
+  \item \textbf{Same meaning:} an event at a given $\sigma_m$ has the same expected resolution in data and MC.
+        This follows from the definition, provided the assumption of Step~3 holds.
+  \item \textbf{Same population:} the $\sigma_m$ distribution, hence the category fractions, agree between data
+        and MC. This does \emph{not} follow from the definition: it depends on how well MC models the track
+        kinematics and the $C_i$ themselves (hit patterns, $\eta$ and $p_T$ spectra), and must be measured
+        (Section~\ref{sec:val}).
+\end{itemize}
+
+\paragraph{Ways to break it without noticing.}
+\begin{itemize}
+  \item using the vertex-fit covariance;
+  \item using $z$ or \br{calib\_f} in the $\scal$ term;
+  \item using \br{pt\_raw} in MC but measured momenta in data (different $p$ in $J$ and in the calibration bin);
+  \item computing $\scal$ in MC only;
+  \item a covariance rescaling applied to one sample only: the branches \br{<trk>\_cov\_scale\_*} record any
+        \br{--cov-scale} factors; check that the stored covariance is the unscaled one, or divide the factors
+        out, before using it in either sample.
+\end{itemize}
+
+\paragraph{A cheaper variant.} Leaving $\scal$ out in both samples is still a consistent definition, only a
+worse estimator: its pulls are wider than 1. If the categories are quantile cuts and $\scal$ is a roughly
+constant fraction of the total, the ranking hardly changes. Where $\scal$ varies strongly between bins (barrel
+vs endcap, low vs high $p$) it reorders events, so including it is the better default.
+
+\section{Validation}
+\label{sec:val}
+
+Five checks, in order, each testing a different assumption above. The first two can run on the current,
+uncalibrated, signal MC.
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Jacobian, numerically.} For a few hundred candidates move each helix parameter by a small step,
+        recompute $\mKKpi$, and compare the finite difference with Eq.~\eqref{eq:J}. This catches sign and
+        convention errors in the $\qp$ column and in $\lambda$ vs $\theta$.
+  \item \textbf{MC pull, uncalibrated sample, without $\scal$.} On truth-matched D$_s\to\phi\pi$, form
+        $(\mKKpi - m_{\mathrm{gen}})/\sigma_m$.
+        \begin{itemize}
+          \item Compute $m_{\mathrm{gen}}$ from the generator momenta of the matched tracks
+                (branches \br{gen\_vis\_\{kp,km,pi\}\_*}): this removes FSR from the comparison; the D$_s$ natural width is
+                negligible.
+          \item Measure the core width (Gaussian fit to the core, or IQR$/1.349$): radiative tails are not part
+                of $\sigma_m$.
+          \item Expect width 1, flat in quantiles of $\sigma_m$, in $\eta$ and in $p$. This tests the assumption
+                of Step~3.
+          \item A width different from 1 but constant is a global scale factor; one that varies across
+                $\sigma_m$ quantiles points to an error in $C_i$ or $J_i$.
+        \end{itemize}
+  \item \textbf{MC pull, calibrated sample, with $\scal$.} Same test, width 1 expected. This checks the
+        quadrature sum of Step~3 against the smear actually applied.
+  \item \textbf{D$_s$ peak in data vs calibrated MC, per category} --- the test that matters for the analysis.
+        \begin{itemize}
+          \item Split the candidates in quantiles of $\sigma_m$ (the categories, or finer).
+          \item In each, fit the $\mKKpi$ peak with a free signal width and a linear or exponential background.
+          \item Plot the fitted width against $\langle\sigma_m\rangle$ in the bin: data and calibrated MC should
+                lie on the same line, ideally of slope 1 through the origin.
+          \item Quote the per-category data/MC width ratio. It should be 1 within its error; otherwise it
+                becomes a per-category resolution correction.
+        \end{itemize}
+  \item \textbf{Population.} Compare the $\sigma_m$ distribution of D$_s$ signal in data (sideband-subtracted or
+        sPlot) with calibrated MC. The category fractions must agree. A residual difference means the MC
+        kinematics or covariance modelling is off: reweight, or assign a systematic on the category yields.
+        It says nothing about the $\sigma_m$ definition.
+\end{enumerate}
+
+Checks 4 and 5 use the D$_s\to\phi\pi$ peak itself, abundant in data and the same particle as in the signal:
+no control channel is needed.
+
+\section{Implementation with the existing branches}
+
+Everything needed is in the current ntuples except the calibration applier. A numpy sketch, vectorised over
+candidates:
+
+\begin{lstlisting}
+import numpy as np
+
+MASS = {'k1': 0.493677, 'k2': 0.493677, 'pi': 0.13957039}
+PARS = ('qoverp', 'lambda', 'phi')          # first three helix parameters
+
+def cov3(d, t):
+    '''3x3 (q/p, lambda, phi) block; the branches are the upper triangle.'''
+    n = len(d[t + '_pt'])
+    C = np.empty((n, 3, 3))
+    for a in range(3):
+        for b in range(a, 3):
+            C[:, a, b] = C[:, b, a] = d['%s_cov_%s_%s' % (t, PARS[a], PARS[b])]
+    f = np.nan_to_num(d[t + '_calib_f'].astype(float), nan=1.0)   # data / uncalibrated MC: 1
+    C[:, 0, :] /= f[:, None]                # q/p' = (q/p)/f
+    C[:, :, 0] /= f[:, None]
+    return C
+
+def sigma_m_kkpi(d, sigma_cal=None):
+    '''m(KKpi) and its per-candidate uncertainty. sigma_cal: {track: relative
+    calibration width per candidate}, or None to leave the term out.'''
+    trk = {}
+    for t, mt in MASS.items():
+        pt, eta, phi = (d['%s_%s' % (t, q)].astype(float) for q in ('pt', 'eta', 'phi'))
+        p3 = np.stack([pt * np.cos(phi), pt * np.sin(phi), pt * np.sinh(eta)], 1)
+        p = pt * np.cosh(eta)
+        trk[t] = (p3, np.sqrt(p ** 2 + mt ** 2), p, pt, eta, phi)
+    P = sum(v[0] for v in trk.values())
+    E = sum(v[1] for v in trk.values())
+    m = np.sqrt(E ** 2 - np.sum(P ** 2, 1))
+    var = np.zeros(len(m))
+    for t, (p3, Ei, p, pt, eta, phi) in trk.items():
+        g = (E[:, None] * p3 / Ei[:, None] - P) / m[:, None]          # dm/dp_vec
+        q = d[t + '_charge'].astype(float)
+        sl, cl = np.tanh(eta), 1.0 / np.cosh(eta)                       # sin, cos lambda
+        e_lam = np.stack([-sl * np.cos(phi), -sl * np.sin(phi), cl], 1)
+        e_phi = np.stack([-np.sin(phi), np.cos(phi), np.zeros_like(phi)], 1)
+        J = np.stack([-q * p * np.sum(g * p3, 1),                      # d/d(q/p)
+                      p * np.sum(g * e_lam, 1),                         # d/d(lambda)
+                      pt * np.sum(g * e_phi, 1)], 1)                    # d/d(phi)
+        C = cov3(d, t)
+        if sigma_cal is not None:
+            C[:, 0, 0] += (sigma_cal[t] / p) ** 2                       # (sigma_cal * q/p)^2
+        var += np.einsum('ni,nij,nj->n', J, C, J)
+    return m, np.sqrt(var)
+\end{lstlisting}
+
+The calibration width, once \br{rds\_trkcalib.py} and its JSON are available (\br{TrackCalib.factor} as
+called in \br{TrackMomentumCalib.z\_and\_f}; wrap it in \br{np.vectorize} if it takes scalars):
+
+\begin{lstlisting}
+def sigma_cal_rel(cal, p, pt, eta, q, kind='hadron', variation='nominal'):
+    f = lambda z: cal.factor(p, pt, eta, q, z, variation, kind=kind)
+    return (f(1.0) - f(-1.0)) / (2.0 * f(0.0))
+\end{lstlisting}
+
+\paragraph{Notes.}
+\begin{itemize}
+  \item Feed the calibrated momenta to the bin lookup in MC and the measured ones in data. The calibration was
+        defined on uncalibrated momenta, but $f$ is within a per mille of 1, so this matters only at bin edges,
+        and it keeps the definition symmetric.
+  \item Skip or flag candidates with \br{<trk>\_cov\_pos\_def} false; check what \br{<trk>\_cov\_fixed} means
+        for them before trusting their covariance.
+  \item Packed-candidate covariances are stored with reduced precision: fine for a per-event $\sigma$, and
+        check~2 would show it otherwise.
+  \item For the next production the same function can fill a convenience branch (\br{kkpi\_mass\_err}), so the
+        analysis does not need the applier.
+\end{itemize}
+
+\section{Check yourself}
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item A D$_s$ is produced at rest and decays to $K^+K^-\pi^+$. Which of the three helix-parameter errors
+        drive $\sigma_m$, and why do the other two drop out at first order?
+  \item Boost the same D$_s$ to 15\,GeV. Using $\vb g_i = \gamma(\vb\beta_i-\vb\beta)$, predict which tracks
+        dominate $\sigma_m$: the slow or the fast ones, those at large or small angle to the D$_s$?
+  \item The $\phi$--$d_{xy}$ correlation in the $5\times5$ covariance is strong for low-$p_T$ tracks. Does it
+        change $\sigma_m$? What would change if $\mKKpi$ were computed with the momenta at the D$_s$ vertex
+        instead?
+  \item A colleague adds $\scal$ to MC only, ``because only MC was smeared''. How do the per-category D$_s$
+        peak widths in data and MC now disagree, and in which direction?
+  \item In check~2 the pull width is 1.15 in the lowest $\sigma_m$ quantile and 1.00 in the highest. Which
+        ingredient do you suspect first, and which plot tells you?
+\end{enumerate}
+
+\end{document}

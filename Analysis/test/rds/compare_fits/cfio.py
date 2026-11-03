@@ -272,8 +272,23 @@ def _read_block(job):
     return stop - start, dict((b, _keep_dtype(b, arr[b][m])) for b in branches)
 
 
+def _link(target, link_dir, log=print):
+    '''A symlink to `target` in link_dir (the cache kept elsewhere, e.g. on a
+    local scratch disk, visible from the run directory).'''
+    os.makedirs(link_dir, exist_ok=True)
+    ln = os.path.join(link_dir, os.path.basename(target))
+    if os.path.abspath(ln) == os.path.abspath(target):
+        return
+    if os.path.islink(ln) or os.path.exists(ln):
+        if os.path.realpath(ln) == os.path.realpath(target):
+            return
+        os.remove(ln)
+    os.symlink(os.path.abspath(target), ln)
+    log('linked %s -> %s' % (ln, target))
+
+
 def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=100000, jobs=4, seed=1,
-         cache_dir=None, log=print):
+         cache_dir=None, link_dir=None, schemes=None, log=print):
     '''(Layout, dict of numpy arrays, info) for the truth-matched signal
     candidates (gen_cand 0..3) of `path` (a file, directory, glob or
     comma-separated list, see input_files; blocks are drawn from all files).
@@ -283,7 +298,9 @@ def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=1000
     stops once `max_candidates` candidates are kept (0: read everything).
     `jobs` processes read blocks in parallel. Floats are kept as float32.
     The result is cached in cache_dir (keyed on file, size, mtime, branches
-    and the options above), so a re-run does not read the file again.'''
+    and the options above), so a re-run does not read the file again; with
+    link_dir, a symlink to the cache file is made there. `schemes`: read only
+    these fit schemes (less memory).'''
     import uproot
     t0 = time.time()
     paths = input_files(path, tree, log=log)
@@ -295,6 +312,10 @@ def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=1000
             t = f[tree]
             if i == 0:
                 layout = Layout(t.keys())
+                if schemes:
+                    layout.schemes = [s for s in layout.schemes if s in schemes]
+                    if not layout.schemes:
+                        raise ValueError('none of the schemes %s in %s' % (schemes, path))
                 branches = layout.branches()
             n_file.append(t.num_entries)
     n_tot = sum(n_file) if max_entries is None else min(sum(n_file), max_entries)
@@ -306,6 +327,8 @@ def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=1000
     cache = os.path.join(cache_dir, 'cache_%s.npz' % key) if cache_dir else None
     if cache and os.path.isfile(cache):
         log('reading the cached selection %s' % cache)
+        if link_dir:
+            _link(cache, link_dir, log)
         with np.load(cache) as z:
             data = dict((k, z[k]) for k in z.files if k != '__info__')
             info = json.loads(str(z['__info__'])) if '__info__' in z.files else {}
@@ -382,6 +405,8 @@ def read(path, tree='tree', max_entries=None, max_candidates=1000000, block=1000
         os.makedirs(cache_dir, exist_ok=True)
         np.savez(cache, __info__=np.array(json.dumps(info)), **data)
         log('cached the selection in %s' % cache)
+        if link_dir:
+            _link(cache, link_dir, log)
     return layout, data, info
 
 
