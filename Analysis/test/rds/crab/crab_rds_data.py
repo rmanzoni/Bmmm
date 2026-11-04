@@ -41,7 +41,7 @@ files_per_job = 12       # ~53k ev/file at ~33 ev/s -> ~27 min/file -> ~6 h
 storage_site  = 'T3_CH_PSI'
 max_files     = None     # None for the whole dataset
 fit_schemes   = 'free'
-allow_unpushed = False
+allow_unpushed = os.environ.get('RDS_ALLOW_UNPUSHED') == '1'   # recorded in provenance.json
 
 already_submitted = [
 ]

@@ -43,7 +43,7 @@ out_dir       = 'rds_mc_ul18_' + tag              # under /store/user/manzoni/
 files_per_job = 8        # signal ~41 min/file median (p90 79) on the PSI WNs -> ~6 h
 storage_site  = 'T3_CH_PSI'
 max_files     = None     # None for the whole dataset
-allow_unpushed = False
+allow_unpushed = os.environ.get('RDS_ALLOW_UNPUSHED') == '1'   # recorded in provenance.json
 
 trk_calib   = 'trkcalib/RDs_2018BParking_trkcalib_v4b_base_laptop/rds_trkcalib_RDs_2018BParking_trkcalib_v4b_base_laptop.json'
 cov_scale   = 'impact_parameter_quantile_morph/dxy_morphing/sigma_dxy_morph_splot_fixed_muonid_fixed_decay_length.json'
