@@ -370,8 +370,14 @@ def test_track_momentum_calib():
     shutil.copy(os.path.join(momcal, 'applier', 'python', 'rds_trkcalib.py'), tmp)
     cal = TrackMomentumCalib(os.path.join(tmp, os.path.basename(jpath)), verbose=False)
     z, f = cal.z_and_f(320000, 10, 123456789, TrackMomentumCalib.key('lost', 7), 2.0, 0.5, -1)
-    # same numbers as the applier called directly
-    zz = cal.cal.gauss(320000, 10, 123456789, KEY_OFFSET['lost'] + 7)
+    # same numbers as the applier called directly (with Python scalars only
+    # under NumPy 2: its scalar hash path fails with NumPy 1.x, so the wrapper
+    # passes 1-element arrays; the hash is the same)
+    if int(np.__version__.split('.')[0]) >= 2:
+        zz = cal.cal.gauss(320000, 10, 123456789, KEY_OFFSET['lost'] + 7)
+    else:
+        zz = float(cal.cal.gauss(*(np.array([x], dtype=np.int64) for x in
+                                   (320000, 10, 123456789, KEY_OFFSET['lost'] + 7)))[0])
     ff = cal.cal.factor(2.0 * np.cosh(0.5), 2.0, 0.5, -1, zz)
     assert z == zz and f == ff and 0.9 < f < 1.1
     # sigma_rel (mass uncertainty) = the applier's resolution to first order
