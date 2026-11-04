@@ -98,7 +98,12 @@ class TrackMomentumCalib(object):
 
     def z_and_f(self, run, lumi, event, key, pt, eta, charge, kind='hadron'):
         '''(z, f) for one track: f = p'/p.'''
-        z = float(self.cal.gauss(run, lumi, event, key))
+        # 1-element int64 arrays, not scalars: the applier's scalar hash path
+        # mixes Python ints with numpy uint64 and fails under NumPy 1.x (CMSSW
+        # ships 1.26; 'ufunc bitwise_xor not supported'). The array path is
+        # the same splitmix64 chain, bit-identical to the scalar one.
+        z = float(np.asarray(self.cal.gauss(*(np.array([int(x)], dtype=np.int64)
+                                              for x in (run, lumi, event, key))))[0])
         p = pt * np.cosh(eta)
         if self.has_kind:
             f = self.cal.factor(p, pt, eta, charge, z, self.variation, kind=kind)
