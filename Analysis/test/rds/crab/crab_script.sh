@@ -15,6 +15,7 @@
 #   HAMMER=<card>       MC: --hammer
 #   TRIGSF=<json>       MC: --trig-sf (trigger scale factors)
 #   COVMUONLY=1         --cov-scale-muon-only (morph the muon only)
+#   MAXEVENTS=<n>       test only: stop after n events (default all)
 #   FITSCHEMES=<list>   RDS_FIT_SCHEMES, vertex-fit schemes computed/written
 #                       (default free)
 #
@@ -86,6 +87,7 @@ ls -la l1menus l1_seed_prescales_bparking2018.pickle.gz || { echo ">>> FATAL: L1
 OUTNAME="rds_ntuple"
 LUMIMASK=""
 IS_MC=0
+MAXEVENTS=-1
 EXTRA_FLAGS=""
 for arg in "$@"; do
     case "${arg}" in
@@ -98,6 +100,7 @@ for arg in "$@"; do
         HAMMER=*)      EXTRA_FLAGS="${EXTRA_FLAGS} --hammer=${PWD}/${arg#*=}" ;;
         TRIGSF=*)      EXTRA_FLAGS="${EXTRA_FLAGS} --trig-sf=${PWD}/${arg#*=}" ;;
         COVMUONLY=1)   EXTRA_FLAGS="${EXTRA_FLAGS} --cov-scale-muon-only" ;;
+        MAXEVENTS=*)   MAXEVENTS="${arg#*=}" ;;
         FITSCHEMES=*)  export RDS_FIT_SCHEMES="${arg#*=}" ;;
     esac
 done
@@ -176,7 +179,7 @@ python3 -u inspector_rds.py \
     --filename="${OUTNAME}" \
     --destination=. \
     --logfreq=1000 \
-    --maxevents=-1 \
+    --maxevents=${MAXEVENTS} \
     ${EXTRA_FLAGS}
 RC=$?
 
