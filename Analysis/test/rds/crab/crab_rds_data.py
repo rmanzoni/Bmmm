@@ -29,22 +29,25 @@ from CRABClient.ClientExceptions import ClientException
 from http.client import HTTPException
 
 from Bmmm.Analysis.LumiMask import golden_jsons_by_year
-from crab_rds_common import cmssw_paths, common_inputs, base_config
+from crab_rds_common import cmssw_paths, common_inputs, base_config, write_provenance, sha256
 
 # ----------------------------------------------------------------------------
 # user knobs
 # ----------------------------------------------------------------------------
-work_area     = 'crab_rds_bparking2018_29oct2026'
-out_dir       = 'rds_ntuples_bparking2018_29oct2026'     # under /store/user/manzoni/
-files_per_job = 1
+tag           = 'free_04nov26'
+work_area     = 'crab_rds_data_' + tag
+out_dir       = 'rds_data_bparking2018_' + tag     # under /store/user/manzoni/
+files_per_job = 12       # ~53k ev/file at ~33 ev/s -> ~27 min/file -> ~6 h
 storage_site  = 'T3_CH_PSI'
-max_files     = 5        # COSTING RUN; None for the whole dataset
+max_files     = None     # None for the whole dataset
+fit_schemes   = 'free'
+allow_unpushed = False
 
 already_submitted = [
 ]
 
 productions = [
-    '/ParkingBPH1/Run2018D-UL2018_MiniAODv2-v1/MINIAOD',      # costing run
+    '/ParkingBPH1/Run2018D-UL2018_MiniAODv2-v1/MINIAOD',
 #     '/ParkingBPH1/Run2018A-UL2018_MiniAODv2-v1/MINIAOD',
 #     '/ParkingBPH1/Run2018B-UL2018_MiniAODv2-v1/MINIAOD',
 #     '/ParkingBPH1/Run2018C-UL2018_MiniAODv2-v1/MINIAOD',
@@ -73,7 +76,7 @@ _DATASET_RE = re.compile(r'^/ParkingBPH([1-6])/Run2018([A-D])-(UL2018_MiniAODv2-
 
 def request_name(dataset):
     part, era, proc = _DATASET_RE.match(dataset).groups()
-    return 'rds_BPH%s_Run2018%s_%s' % (part, era, proc.replace('-', '_'))
+    return 'rds_BPH%s_Run2018%s_%s_%s' % (part, era, proc.replace('-', '_'), tag)
 
 
 def create_config(dataset):
@@ -94,7 +97,7 @@ def create_config(dataset):
         output_tag    = out_dir + '_' + proc.replace('-', '_'),
         storage_site  = storage_site,
         inputs        = common_inputs() + [golden_dir],
-        script_args   = ['LUMIMASK=golden_jsons'],
+        script_args   = ['LUMIMASK=golden_jsons', 'FITSCHEMES=' + fit_schemes],
     )
     cfg.Data.lumiMask = golden['2018']
     return cfg
@@ -114,7 +117,14 @@ if __name__ == '__main__':
     if wrong:
         raise RuntimeError('only /ParkingBPH<1-6>/Run2018<A-D>-UL2018_MiniAODv2-vN/MINIAOD; '
                            'not: %s' % wrong)
+    _, ana = cmssw_paths()
     for dataset in productions:
+        golden = golden_jsons_by_year(os.path.join(ana, 'data', 'golden_jsons'))['2018']
+        write_provenance(allow_unpushed, {
+            'tool': 'crab_rds_data.py', 'dataset': dataset, 'out_dir': out_dir,
+            'files_per_job': files_per_job, 'max_files': max_files, 'fit_schemes': fit_schemes,
+            'lumi_mask': {'path': golden, 'sha256': sha256(golden)},
+        })
         cfg = create_config(dataset)
         if cfg.General.requestName in already_submitted:
             print('skipping (already submitted): %s' % cfg.General.requestName)

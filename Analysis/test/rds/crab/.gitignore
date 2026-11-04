@@ -1,0 +1,8 @@
+pylibs/
+pylibs_staging/
+crab_rds_mc_*/
+crab_rds_data_*/
+provenance.json
+uncommitted.diff
+l1_seed_prescales_bparking2018.pickle.gz
+*.log

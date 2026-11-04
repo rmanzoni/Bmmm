@@ -25,7 +25,11 @@ CRAB ships, so build (scram b) before submitting.
 '''
 
 import os
+import sys
 import glob
+import json
+import time
+import hashlib
 
 from CRABClient.UserUtilities import config
 
@@ -72,7 +76,44 @@ def common_inputs():
         print('writing the merged L1 prescale table %s' % merged)
         write_merged(list(BPARKING2018_PATH_NAMES), os.path.join(ana, 'data'), merged)
     return [entry, package_dir, pylibs_dir, l1menus_dir, merged,
-            os.path.join(HERE, 'FrameworkJobReport.xml')]
+            os.path.join(HERE, 'FrameworkJobReport.xml'),
+            os.path.join(HERE, 'provenance.json')]
+
+
+def sha256(path):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for block in iter(lambda: f.read(1 << 20), b''):
+            h.update(block)
+    return h.hexdigest()
+
+
+def write_provenance(allow_unpushed, extra):
+    '''Code provenance at submission (git commit, pushed, uncommitted changes,
+    diff sha1) + `extra` (dataset, options, sha256 of the correction files).
+    Refuses dirty or unpushed code unless allow_unpushed. Writes
+    ./provenance.json (shipped in the sandbox, printed by every job) and
+    returns the dict; the diff, if any, goes to ./uncommitted.diff.'''
+    _, ana = cmssw_paths()
+    sys.path.insert(0, os.path.join(ana, 'python'))
+    from Provenance import provenance
+    prov = provenance(with_diff=True)
+    if (prov['dirty'] or not prov['pushed']) and not allow_unpushed:
+        raise RuntimeError('uncommitted changes %s or commit %s not pushed: commit and push '
+                           'first (or set allow_unpushed)' % (prov['dirty'], prov['commit']))
+    diff = prov.pop('diff')
+    prov.update(extra)
+    prov['submitted'] = time.strftime('%Y-%m-%dT%H:%M:%S%z')
+    prov['cmssw_base'] = os.environ.get('CMSSW_BASE')
+    prov['scram_arch'] = os.environ.get('SCRAM_ARCH')
+    with open(os.path.join(HERE, 'provenance.json'), 'w') as fout:
+        json.dump(prov, fout, indent=1)
+    if diff:
+        with open(os.path.join(HERE, 'uncommitted.diff'), 'w') as fout:
+            fout.write(diff)
+    print('provenance: commit %s (%s), pushed %s, dirty %s'
+          % (prov['commit'][:10], prov['branch'], prov['pushed'], bool(prov['dirty'])))
+    return prov
 
 
 def base_config(request_name, work_area, dataset, files_per_job, max_files,
@@ -90,8 +131,9 @@ def base_config(request_name, work_area, dataset, files_per_job, max_files,
     cfg.JobType.scriptArgs  = script_args
     cfg.JobType.outputFiles = ['rds_ntuple.root']
     cfg.JobType.disableAutomaticOutputCollection = True
-    cfg.JobType.maxMemoryMB = 3000
-    # cfg.JobType.maxJobRuntimeMin = 2750   # raise if the costing run times out
+    # SLURM signal jobs (4 schemes): 3.1 GB median, 3.9 GB max RSS
+    cfg.JobType.maxMemoryMB = 4000
+    cfg.JobType.maxJobRuntimeMin = 1315     # CRAB default, ~22 h; jobs sized to ~6 h
 
     cfg.Data.inputDataset     = dataset
     cfg.Data.inputDBS         = 'global'

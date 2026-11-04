@@ -13,6 +13,13 @@
 #   TRKCALIB=<json>     MC: --trk-calib (momcal applier next to the JSON)
 #   COVSCALE=<table>    --cov-scale
 #   HAMMER=<card>       MC: --hammer
+#   TRIGSF=<json>       MC: --trig-sf (trigger scale factors)
+#   COVMUONLY=1         --cov-scale-muon-only (morph the muon only)
+#   FITSCHEMES=<list>   RDS_FIT_SCHEMES, vertex-fit schemes computed/written
+#                       (default free)
+#
+# provenance.json (written by the submitter: commit, options, sha256 of each
+# correction file) travels in the sandbox and is printed at the start.
 #
 # BMMM_DATADIR points at the job directory, where the merged L1 table,
 # l1menus/ and trkcalib/ were shipped.
@@ -89,9 +96,20 @@ for arg in "$@"; do
         TRKCALIB=*)    EXTRA_FLAGS="${EXTRA_FLAGS} --trk-calib=${PWD}/${arg#*=}" ;;
         COVSCALE=*)    EXTRA_FLAGS="${EXTRA_FLAGS} --cov-scale=${PWD}/${arg#*=}" ;;
         HAMMER=*)      EXTRA_FLAGS="${EXTRA_FLAGS} --hammer=${PWD}/${arg#*=}" ;;
+        TRIGSF=*)      EXTRA_FLAGS="${EXTRA_FLAGS} --trig-sf=${PWD}/${arg#*=}" ;;
+        COVMUONLY=1)   EXTRA_FLAGS="${EXTRA_FLAGS} --cov-scale-muon-only" ;;
+        FITSCHEMES=*)  export RDS_FIT_SCHEMES="${arg#*=}" ;;
     esac
 done
 echo ">>> output basename: ${OUTNAME}"
+export RDS_FIT_SCHEMES="${RDS_FIT_SCHEMES:-free}"
+echo ">>> RDS_FIT_SCHEMES : ${RDS_FIT_SCHEMES}"
+if [ -f provenance.json ]; then
+    echo ">>> provenance (from the submission):"
+    cat provenance.json
+else
+    echo ">>> WARNING: provenance.json not in the sandbox"
+fi
 
 if [ "${IS_MC}" -eq 1 ]; then
     # simulation: no certification. A mask here is a submitter bug.

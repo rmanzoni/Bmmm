@@ -55,6 +55,16 @@ def provenance(with_diff=False):
 
 def print_provenance():
     p = provenance()
+    shipped = os.path.join(os.environ.get('BMMM_DATADIR', ''), 'provenance.json')
+    if p['commit'] == '?' and os.environ.get('BMMM_DATADIR') and os.path.isfile(shipped):
+        # CRAB job: no git repository in the sandbox, the submitter shipped its record
+        import json
+        with open(shipped) as f:
+            s = json.load(f)
+        print('#### code: commit %s (%s), pushed: %s, uncommitted at submission: %s '
+              '[from the shipped provenance.json]'
+              % (s.get('commit'), s.get('branch'), s.get('pushed'), bool(s.get('dirty'))))
+        return s
     print('#### code: %s  commit %s (%s)%s, pushed: %s'
           % (p['repo'], p['commit'], p['branch'],
              '' if not p['dirty'] else ', UNCOMMITTED changes in %d file(s), diff sha1 %s'
