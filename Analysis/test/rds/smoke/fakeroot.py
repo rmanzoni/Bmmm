@@ -56,6 +56,7 @@ class Math(Any):
 root = types.ModuleType('ROOT')
 root.gSystem = Any()
 root.Math = Math()
+root.ROOT = root          # utils.py binds ROOT.Math = ROOT.ROOT.Math
 root.reco = Any()
 root.std = Any()
 root.TLorentzVector = Any
