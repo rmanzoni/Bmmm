@@ -175,7 +175,8 @@ PYEOF
 # --- one inspector process per input file, then merge ------------------------
 # A fresh process per file keeps the memory of each one bounded and
 # independent of files_per_job (RSS plateaus at ~2 GB, Nov 2026), and a crash
-# names its file. The parts are merged with hadd (ZSTD 5, as uproot writes).
+# names its file. The parts are merged with merge_ntuples.py (uproot, ZSTD 5,
+# 25k-entry baskets; it checks entries and run/lumi/event sums against the parts).
 echo ">>> launching inspector, one process per input file ..."
 PARTS=""
 K=0
@@ -202,26 +203,11 @@ for INF in ${INFILES//,/ }; do
     K=$((K + 1))
 done
 
-if [ ${K} -eq 1 ]; then
-    mv ${PARTS} "${OUTNAME}.root"
-else
-    hadd -f505 "${OUTNAME}.root" ${PARTS} || { echo ">>> FATAL: hadd failed for job $1"; exit 1; }
-    python3 - "${OUTNAME}.root" ${PARTS} <<'PYEOF' || { echo ">>> FATAL: merged entries do not match the parts"; exit 1; }
-import sys, uproot
-out, parts = sys.argv[1], sys.argv[2:]
-with uproot.open(out) as f:
-    trees = [k.split(';')[0] for k, c in f.classnames().items() if c == 'TTree']
-    n_out = {t: f[t].num_entries for t in trees}
-n_in = dict.fromkeys(trees, 0)
-for p in parts:
-    with uproot.open(p) as f:
-        for t in trees:
-            n_in[t] += f[t].num_entries
-print('>>> merged entries', n_out, 'parts', n_in)
-sys.exit(0 if n_out == n_in else 1)
-PYEOF
-    rm -f ${PARTS}
-fi
+# also for a single part: the rewrite turns the inspector's 5000-row baskets
+# into 25k-row ones (same size, ~2.5x faster to read back)
+python3 -u merge_ntuples.py --compression zstd:5 --step 25000 "${OUTNAME}.root" ${PARTS} \
+    || { echo ">>> FATAL: merge_ntuples.py failed for job $1"; exit 1; }
+rm -f ${PARTS}
 
 if [ ! -f "${OUTNAME}.root" ]; then
     echo ">>> FATAL: ${OUTNAME}.root was not produced. Aborting job $1."

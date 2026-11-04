@@ -7,6 +7,7 @@ rebuilt in the job, non-CMSSW python packages come from ./pylibs.
 
 What travels in the sandbox (JobType.inputFiles):
   inspector_rds.py                 the entry point
+  merge_ntuples.py                 merges the per-file parts (uproot)
   python/                          Bmmm/Analysis/python
   pylibs/                          ./make_pylibs.sh (particle)
   l1menus/                         run -> L1 menu map and the four 2018 menus
@@ -75,7 +76,10 @@ def common_inputs():
     if not os.path.isfile(merged):
         print('writing the merged L1 prescale table %s' % merged)
         write_merged(list(BPARKING2018_PATH_NAMES), os.path.join(ana, 'data'), merged)
-    return [entry, package_dir, pylibs_dir, l1menus_dir, merged,
+    merger = os.path.join(HERE, 'merge_ntuples.py')
+    if not os.path.isfile(merger):
+        raise RuntimeError('%s not found' % merger)
+    return [entry, merger, package_dir, pylibs_dir, l1menus_dir, merged,
             os.path.join(HERE, 'FrameworkJobReport.xml'),
             os.path.join(HERE, 'provenance.json')]
 
