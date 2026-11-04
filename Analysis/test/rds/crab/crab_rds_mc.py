@@ -1,6 +1,5 @@
 '''
-CRAB3 submitter: R(Ds) ntuples from the UL2018 MINIAODSIM (signal; Hb when
-its dataset is known).
+CRAB3 submitter: R(Ds) ntuples from the UL2018 MINIAODSIM (signal, Hb).
 
 Per job: --mc --savenontrig (every event kept; trigger decisions, L1 seeds and
 the muon matches stored), plus the production-time corrections set below,
@@ -54,13 +53,15 @@ hammer      = ''
 fit_schemes = 'free'
 
 already_submitted = [
+    'rds_mc_signal_free_04nov26',      # 04 Nov 2026, commit baa8947 (hadd merge)
 ]
 
 # (short name, DAS name). Main samples only, no _ext.
 productions = [
     ('signal', '/BsToDsL_DsToPhiKKPi_TauToMuNuNu_TuneCP5_13TeV_pythia8-evtgen/'
                'RunIISummer20UL18MiniAODv2-Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v3/MINIAODSIM'),
-#   ('hb',     'PLACEHOLDER_HB_DATASET'),
+    ('hb',     '/HbToDsMu_DsToPhiKKPi_TuneCP5_13TeV_pythia8-evtgen/'
+               'RunIISummer20UL18MiniAODv2-Custom_RDStarPU_BParking_106X_upgrade2018_realistic_v16_L1v1-v2/MINIAODSIM'),
 ]
 
 
