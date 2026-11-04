@@ -26,6 +26,7 @@ far above the sandbox limit.
 '''
 
 import os
+import shutil
 from multiprocessing import Process
 
 from CRABAPI.RawCommand import crabCommand
@@ -141,3 +142,7 @@ if __name__ == '__main__':
         p = Process(target=submit, args=(cfg,))
         p.start()
         p.join()
+        # keep this task's record next to it (the next task overwrites ./provenance.json)
+        proj = os.path.join(work_area, 'crab_' + cfg.General.requestName)
+        if os.path.isdir(proj):
+            shutil.copy('provenance.json', proj)

@@ -21,6 +21,7 @@ then set files_per_job and submit the rest.
 '''
 
 import os
+import shutil
 import re
 from multiprocessing import Process
 
@@ -135,3 +136,7 @@ if __name__ == '__main__':
         p = Process(target=submit, args=(cfg,))
         p.start()
         p.join()
+        # keep this task's record next to it (the next task overwrites ./provenance.json)
+        proj = os.path.join(work_area, 'crab_' + cfg.General.requestName)
+        if os.path.isdir(proj):
+            shutil.copy('provenance.json', proj)
