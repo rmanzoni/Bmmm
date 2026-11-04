@@ -131,8 +131,12 @@ def base_config(request_name, work_area, dataset, files_per_job, max_files,
     cfg.JobType.scriptArgs  = script_args
     cfg.JobType.outputFiles = ['rds_ntuple.root']
     cfg.JobType.disableAutomaticOutputCollection = True
-    # SLURM signal jobs (4 schemes): 3.1 GB median, 3.9 GB max RSS
-    cfg.JobType.maxMemoryMB = 4000
+    # Measured Nov 2026 (free scheme, signal MC, CMSSW numpy): process RSS
+    # plateaus at ~2.0 GB after the first 5000-row flush and stays flat
+    # (12k-event test). The 3.9 GB median / 6 GB max MaxRSS of the SLURM jobs
+    # was the page cache of the input copied to /scratch, counted by the
+    # cgroup accounting (MaxRSS - file size: median 1.7 GB), not a leak.
+    cfg.JobType.maxMemoryMB = 3000
     cfg.JobType.maxJobRuntimeMin = 1315     # CRAB default, ~22 h; jobs sized to ~6 h
 
     cfg.Data.inputDataset     = dataset

@@ -172,21 +172,55 @@ print(','.join(out))
 PYEOF
 )
 
-echo ">>> launching inspector ..."
-# -u: unbuffered, so a crash traceback is fully flushed to the job log
-python3 -u inspector_rds.py \
-    --inputFiles="${INFILES}" \
-    --filename="${OUTNAME}" \
-    --destination=. \
-    --logfreq=1000 \
-    --maxevents=${MAXEVENTS} \
-    ${EXTRA_FLAGS}
-RC=$?
+# --- one inspector process per input file, then merge ------------------------
+# A fresh process per file keeps the memory of each one bounded and
+# independent of files_per_job (RSS plateaus at ~2 GB, Nov 2026), and a crash
+# names its file. The parts are merged with hadd (ZSTD 5, as uproot writes).
+echo ">>> launching inspector, one process per input file ..."
+PARTS=""
+K=0
+for INF in ${INFILES//,/ }; do
+    PART="${OUTNAME}_part${K}"
+    echo ">>> [part ${K}] ${INF}   start $(date +%T)"
+    # -u: unbuffered, so a crash traceback is fully flushed to the job log
+    python3 -u inspector_rds.py \
+        --inputFiles="${INF}" \
+        --filename="${PART}" \
+        --destination=. \
+        --logfreq=1000 \
+        --maxevents=${MAXEVENTS} \
+        --logger="logger_${PART}" \
+        ${EXTRA_FLAGS}
+    RC=$?
+    if [ ${RC} -ne 0 ] || [ ! -f "${PART}.root" ]; then
+        echo ">>> inspector FAILED (exit ${RC}) on ${INF} for job $1"
+        ls -la
+        exit $(( RC == 0 ? 1 : RC ))
+    fi
+    echo ">>> [part ${K}] done $(date +%T)"
+    PARTS="${PARTS} ${PART}.root"
+    K=$((K + 1))
+done
 
-if [ ${RC} -ne 0 ]; then
-    echo ">>> inspector FAILED (exit ${RC}) for job $1"
-    ls -la
-    exit ${RC}
+if [ ${K} -eq 1 ]; then
+    mv ${PARTS} "${OUTNAME}.root"
+else
+    hadd -f505 "${OUTNAME}.root" ${PARTS} || { echo ">>> FATAL: hadd failed for job $1"; exit 1; }
+    python3 - "${OUTNAME}.root" ${PARTS} <<'PYEOF' || { echo ">>> FATAL: merged entries do not match the parts"; exit 1; }
+import sys, uproot
+out, parts = sys.argv[1], sys.argv[2:]
+with uproot.open(out) as f:
+    trees = [k.split(';')[0] for k, c in f.classnames().items() if c == 'TTree']
+    n_out = {t: f[t].num_entries for t in trees}
+n_in = dict.fromkeys(trees, 0)
+for p in parts:
+    with uproot.open(p) as f:
+        for t in trees:
+            n_in[t] += f[t].num_entries
+print('>>> merged entries', n_out, 'parts', n_in)
+sys.exit(0 if n_out == n_in else 1)
+PYEOF
+    rm -f ${PARTS}
 fi
 
 if [ ! -f "${OUTNAME}.root" ]; then

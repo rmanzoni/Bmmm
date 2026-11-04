@@ -17,6 +17,12 @@ except ImportError:
     from collections import Callable       # legacy python 2
 
 import ROOT
+# ROOT 6.36 facade: ROOT.X looks X up in the global namespace first; for Math
+# (it lives in ROOT::) that lookup fails, is not cached, and leaks ~75 bytes
+# every time (~28 ROOT.Math per RDs event, ~70 MB per 33k-event file). Binding
+# the namespace on the facade once makes every later ROOT.Math a plain
+# attribute read, in every module, with the same object.
+ROOT.Math = ROOT.ROOT.Math
 ROOT.gSystem.Load('libBmmmAnalysis')
 from ROOT import KVFitter # VertexDistance3D is contained here, dirt trick!!
 
