@@ -8,6 +8,8 @@ rebuilt in the job, non-CMSSW python packages come from ./pylibs.
 What travels in the sandbox (JobType.inputFiles):
   inspector_rds.py                 the entry point
   merge_ntuples.py                 merges the per-file parts (uproot)
+  resolve_inputs.py                LFN -> site-local xrootd URL, regional
+                                   federation, global redirector (in order)
   python/                          Bmmm/Analysis/python
   pylibs/                          ./make_pylibs.sh (particle)
   l1menus/                         run -> L1 menu map and the four 2018 menus
@@ -77,9 +79,11 @@ def common_inputs():
         print('writing the merged L1 prescale table %s' % merged)
         write_merged(list(BPARKING2018_PATH_NAMES), os.path.join(ana, 'data'), merged)
     merger = os.path.join(HERE, 'merge_ntuples.py')
-    if not os.path.isfile(merger):
-        raise RuntimeError('%s not found' % merger)
-    return [entry, merger, package_dir, pylibs_dir, l1menus_dir, merged,
+    resolver = os.path.join(HERE, 'resolve_inputs.py')
+    for f in (merger, resolver):
+        if not os.path.isfile(f):
+            raise RuntimeError('%s not found' % f)
+    return [entry, merger, resolver, package_dir, pylibs_dir, l1menus_dir, merged,
             os.path.join(HERE, 'FrameworkJobReport.xml'),
             os.path.join(HERE, 'provenance.json')]
 
@@ -152,6 +156,12 @@ def base_config(request_name, work_area, dataset, files_per_job, max_files,
     cfg.Data.outLFNDirBase    = out_lfn_dir
     cfg.Data.publication      = False
     cfg.Data.outputDatasetTag = output_tag
+    # run where the input is stored and read it from that site's storage
+    # (crab_script.sh + resolve_inputs.py): locality on (the default, stated
+    # here so it is not flipped by accident) and no overflow to nearby sites,
+    # which would read through AAA again
+    cfg.Data.ignoreLocality   = False
 
     cfg.Site.storageSite = storage_site
+    cfg.Debug.extraJDL   = ['+CMS_ALLOW_OVERFLOW=False']
     return cfg

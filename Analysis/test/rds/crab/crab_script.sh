@@ -152,56 +152,78 @@ if [ "${NFILES}" -eq 0 ]; then
     exit 1
 fi
 
-# --- comma-separated --inputFiles, bare LFNs -> xrootd URLs ------------------
-REDIRECTOR="root://cms-xrd-global.cern.ch/"
-INFILES=$(python3 - "${REDIRECTOR}" <<'PYEOF'
-import sys
-red = sys.argv[1]
-out = []
-for line in open('inputfiles.txt'):
-    f = line.strip()
-    if not f:
-        continue
-    if f.startswith('root://') or f.startswith('file:'):
-        out.append(f)
-    elif f.startswith('/store/'):
-        out.append(red + f)
-    else:
-        out.append(f)
-print(','.join(out))
-PYEOF
-)
+# --- where to read each input from (resolve_inputs.py) ------------------------
+# CRAB runs the job at a site hosting the data (Data.ignoreLocality False and
+# overflow off, see crab_rds_common.py), so the site's own storage comes
+# first, from its site-local-config + storage.json (XRootD protocol), then the
+# regional federation of the site-local-config, the global redirector last.
+# Nov 2026: reading through cms-xrd-global only ("Redirect limit has been
+# reached", then corrupted baskets) killed ~1100 jobs in one evening.
+python3 resolve_inputs.py inputfiles.txt > sources.txt \
+    || { echo ">>> FATAL: resolve_inputs.py failed for job $1"; exit 1; }
+echo ">>> site config: ${SITECONFIG_PATH}"
+echo ">>> sources per input (tried in order):"
+cat sources.txt
+
+# reachable: the file answers a stat within 2 min
+reachable() {
+    local url="$1"
+    case "${url}" in
+        root://*) ;;
+        *) return 0 ;;
+    esac
+    local host="${url#root://}"; host="${host%%/*}"
+    local path="${url#root://${host}/}"
+    timeout 120 xrdfs "${host}" stat "/${path#/}" < /dev/null > /dev/null 2>&1
+}
 
 # --- one inspector process per input file, then merge ------------------------
 # A fresh process per file keeps the memory of each one bounded and
 # independent of files_per_job (RSS plateaus at ~2 GB, Nov 2026), and a crash
-# names its file. The parts are merged with merge_ntuples.py (uproot, ZSTD 5,
-# 25k-entry baskets; it checks entries and run/lumi/event sums against the parts).
+# names its file. A file that cannot be read, or whose inspector fails, is
+# retried from the next source. The parts are merged with merge_ntuples.py
+# (uproot, ZSTD 5, 25k-entry baskets; it checks entries and run/lumi/event
+# sums against the parts).
 echo ">>> launching inspector, one process per input file ..."
 PARTS=""
 K=0
-for INF in ${INFILES//,/ }; do
+while read -r SOURCES; do
+    [ -z "${SOURCES}" ] && continue
     PART="${OUTNAME}_part${K}"
-    echo ">>> [part ${K}] ${INF}   start $(date +%T)"
-    # -u: unbuffered, so a crash traceback is fully flushed to the job log
-    python3 -u inspector_rds.py \
-        --inputFiles="${INF}" \
-        --filename="${PART}" \
-        --destination=. \
-        --logfreq=1000 \
-        --maxevents=${MAXEVENTS} \
-        --logger="logger_${PART}" \
-        ${EXTRA_FLAGS}
-    RC=$?
-    if [ ${RC} -ne 0 ] || [ ! -f "${PART}.root" ]; then
-        echo ">>> inspector FAILED (exit ${RC}) on ${INF} for job $1"
+    OK=0
+    RC=1
+    for INF in ${SOURCES}; do
+        if ! reachable "${INF}"; then
+            echo ">>> [part ${K}] not reachable: ${INF}"
+            continue
+        fi
+        echo ">>> [part ${K}] ${INF}   start $(date +%T)"
+        rm -f "${PART}.root"
+        # -u: unbuffered, so a crash traceback is fully flushed to the job log
+        python3 -u inspector_rds.py \
+            --inputFiles="${INF}" \
+            --filename="${PART}" \
+            --destination=. \
+            --logfreq=1000 \
+            --maxevents=${MAXEVENTS} \
+            --logger="logger_${PART}" \
+            ${EXTRA_FLAGS} < /dev/null
+        RC=$?
+        if [ ${RC} -eq 0 ] && [ -f "${PART}.root" ]; then
+            OK=1
+            break
+        fi
+        echo ">>> [part ${K}] inspector FAILED (exit ${RC}) on ${INF}, trying the next source"
+    done
+    if [ ${OK} -ne 1 ]; then
+        echo ">>> inspector FAILED on every source of part ${K} for job $1: ${SOURCES}"
         ls -la
         exit $(( RC == 0 ? 1 : RC ))
     fi
     echo ">>> [part ${K}] done $(date +%T)"
     PARTS="${PARTS} ${PART}.root"
     K=$((K + 1))
-done
+done < sources.txt
 
 # also for a single part: the rewrite turns the inspector's 5000-row baskets
 # into 25k-row ones (same size, ~2.5x faster to read back)
