@@ -169,7 +169,7 @@ for _s in SCHEMES:
     # refitted momenta of the four tracks
     for _o in ('k1', 'k2', 'pi', 'mu'):
         cand_names += ['%s_%s_rf_%s' % (_s, _o, q) for q in ('pt', 'eta', 'phi')]
-    cand_names += ['%s_math_real_bs' % _s]
+    cand_names += ['%s_math_real_bs' % _s, '%s_math_disc_neg_bs' % _s]
     for _h in HYPOTHESES:
         cand_names += ['%s_%s_%s' % (_s, _h, q) for q in HYP_OBS]
     cand_names += ['%s_cos_theta_k_pi' % _s, '%s_p_perp' % _s, '%s_ds_p_perp' % _s, '%s_mcorr' % _s]

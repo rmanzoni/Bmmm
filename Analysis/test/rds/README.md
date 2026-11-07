@@ -249,6 +249,7 @@ not be computed is NaN. Placeholders:
 | `<s>_{k1,k2,pi,mu}_rf_{pt,eta,phi}` | track momenta refitted in the φ (k1, k2), Ds (π) and Bs (μ) fits |
 | `<s>_<h>_<q>` | Bs momentum hypothesis and the observables with it: Bs pT, η, φ, β; q² = (B − Ds)², m²_miss = (B − Ds − μ)², pT_miss (vector, scalar), E\*_μ (Bs frame), E#_μ (W* frame), helicity angles cos θ_φ(Ds), cos θ_μ(W), χ |
 | `<s>_math_real_bs` | 1 if the neutrino solutions are real, 0 if the discriminant was negative (then `math1` = `math2` = the parabola vertex on the Bs mass shell; off-shell in ntuples before 7 Nov 2026) |
+| `<s>_math_disc_neg_bs` | how negative the discriminant was: √\|disc\| / \|B\| if negative, 0 otherwise (RDsNano `disc_negativity`; added 7 Nov 2026) |
 | `<s>_cos_theta_k_pi` | helicity angle of the φ decay (no Bs dependence) |
 | `<s>_p_perp`, `<s>_ds_p_perp`, `<s>_mcorr` | momentum of KKπμ / Ds transverse to PV → V_Bs; corrected mass √(m² + p⊥²) + p⊥ |
 | `<s>_mu_ip3d_bs_{pv,sv}`, `<s>_mu_ip3d_bs_{pv,sv}_{err,sig}` | muon IP3D wrt the PV / V_Bs, signed along PV → V_Bs |

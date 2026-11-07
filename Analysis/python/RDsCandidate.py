@@ -73,7 +73,7 @@ from Bmmm.Analysis.JpsiChargedCandidate import (
     _ISO_CONES, _ISO_CH_ALL_IDS, _ISO_CH_HAD_IDS, _ISO_NH_IDS, _ISO_PH_IDS,
     _ISO_DR_VETO_CH, _ISO_DR_VETO_NH, _ISO_PU_DR_VETO, _ISO_NEUTRAL_PT, _ISO_PU_PT,
 )
-from Bmmm.Analysis.RJPsiNuReco import reconstruct
+from Bmmm.Analysis.RJPsiNuReco import reconstruct, solve_nu_pz
 from Bmmm.Analysis.RDsKinematics import (
     M_BS, M_DS, M_DSST, M_PHI, M_K, M_PI, M_MU,
     np4, mass, mass2, pt, eta, phi, p3mag, unit3,
@@ -702,6 +702,7 @@ class RDsCandidate(PrimaryVertexRefitMixin):
             if sols is not None:
                 hyps['math1_bs'], hyps['math2_bs'] = sols[0], sols[1]
                 o[s + '_math_real_bs'] = sols[2]
+                o[s + '_math_disc_neg_bs'] = sols[3]
 
         for h, p_b in hyps.items():
             obs = semileptonic_observables(p_b, p_ds, p_mu)
@@ -908,23 +909,28 @@ def _cos(a, b):
 
 
 def _nu_solutions(visible, direction):
-    '''(math1, math2, real) Bs four-momenta from the two neutrino solutions
-    along `direction`, real = 1 when the discriminant was not negative.'''
+    '''(math1, math2, real, disc_neg) Bs four-momenta from the two neutrino solutions
+    along `direction`, real = 1 when the discriminant was not negative, disc_neg =
+    sqrt(|disc|)/|B| when it was negative (0 otherwise; RDsNano's disc_negativity).'''
     try:
         sols = reconstruct(visible, direction, m_parent=M_BS, clamp_negative_disc=True)
+        res = solve_nu_pz(visible, direction, m_parent=M_BS)
     except Exception:
         return None
     if len(sols) < 2:
         return None
     p1, p2 = np4(sols[0].p4_parent), np4(sols[1].p4_parent)
-    real = float(abs(sols[0].parent_mass - M_BS) < 1e-3)
-    if not real:
-        # Negative discriminant: the solver returns the parabola vertex twice,
-        # with p_Bs = p_vis + p_nu (massless nu) off-shell (median m ~ 20 GeV,
-        # q2 ~ 240 GeV2 on the signal MC). Keep that 3-momentum (along the flight
-        # direction) and put the Bs on shell, as RDsNano does; the missing system
-        # then absorbs the mismatch (m_miss2 != 0).
-        p1 = np.array(p1, dtype=float); p2 = np.array(p2, dtype=float)
-        for p in (p1, p2):
-            p[0] = np.sqrt(np.dot(p[1:], p[1:]) + M_BS * M_BS)
-    return p1, p2, real
+    real = float(res["has_real"])   # discriminant sign, as RDsNano's disc_is_negative
+    # Put the Bs on the mass shell, keeping its 3-momentum (along the flight
+    # direction), as RDsNano does. p_Bs = p_vis + p_nu (massless nu) is off-shell
+    # (a) for a negative discriminant, where the solver returns the parabola vertex
+    # twice (median m ~ 20 GeV, q2 ~ 240 GeV2 on the signal MC), and (b) for the
+    # ~2% of real roots that are spurious roots of the squared energy equation.
+    # For a genuine root this is a no-op; otherwise the missing system absorbs the
+    # mismatch (m_miss2 != 0).
+    p1 = np.array(p1, dtype=float); p2 = np.array(p2, dtype=float)
+    for p in (p1, p2):
+        p[0] = np.sqrt(np.dot(p[1:], p[1:]) + M_BS * M_BS)
+    disc, b = res['discriminant'], res['B']
+    disc_neg = float(np.sqrt(-disc) / abs(b)) if (disc < 0 and b != 0) else (0. if disc >= 0 else NAN)
+    return p1, p2, real, disc_neg
