@@ -108,7 +108,7 @@ x, y, PV z) was used.
 
 Per scheme, Bs momentum hypotheses `coll`, `xyz_bs` (equal velocity along the
 Bs flight direction PV → V_Bs), `math1/2_bs` (the two neutrino solutions along
-it; `*_math_real_bs` = 0 when the discriminant was negative and clamped). PV →
+it; `*_math_real_bs` = 0 when the discriminant was negative: then both are the vertex of the parabola, put on the Bs mass shell (fixed 7 Nov 2026; before, that Bs was off-shell, median m ~ 20 GeV)). PV →
 V_Ds is not the Bs direction, so no hypothesis is built along it. For each: `pt eta phi beta q2 m_miss2 pt_miss pt_miss_sca
 e_star_mu e_hash_mu cos_theta_phi_ds cos_theta_mu_w chi`, e.g.
 `cons_math1_bs_q2`. Also `*_cos_theta_k_pi`, `*_mcorr`, `*_p_perp`, the Ds vertex wrt the
@@ -248,7 +248,7 @@ not be computed is NaN. Placeholders:
 | `<s>_ds_{lxy,lxyz}_bs`, `<s>_ds_lxy_bs_{err,sig}`, `<s>_ds_lxyz_bs_sig`, `<s>_ds_cos{2d,3d}_bs` | Ds vertex relative to the Bs vertex |
 | `<s>_{k1,k2,pi,mu}_rf_{pt,eta,phi}` | track momenta refitted in the φ (k1, k2), Ds (π) and Bs (μ) fits |
 | `<s>_<h>_<q>` | Bs momentum hypothesis and the observables with it: Bs pT, η, φ, β; q² = (B − Ds)², m²_miss = (B − Ds − μ)², pT_miss (vector, scalar), E\*_μ (Bs frame), E#_μ (W* frame), helicity angles cos θ_φ(Ds), cos θ_μ(W), χ |
-| `<s>_math_real_bs` | 1 if the neutrino solutions are real, 0 if the discriminant was negative (then `math1` = `math2` are meaningless) |
+| `<s>_math_real_bs` | 1 if the neutrino solutions are real, 0 if the discriminant was negative (then `math1` = `math2` = the parabola vertex on the Bs mass shell; off-shell in ntuples before 7 Nov 2026) |
 | `<s>_cos_theta_k_pi` | helicity angle of the φ decay (no Bs dependence) |
 | `<s>_p_perp`, `<s>_ds_p_perp`, `<s>_mcorr` | momentum of KKπμ / Ds transverse to PV → V_Bs; corrected mass √(m² + p⊥²) + p⊥ |
 | `<s>_mu_ip3d_bs_{pv,sv}`, `<s>_mu_ip3d_bs_{pv,sv}_{err,sig}` | muon IP3D wrt the PV / V_Bs, signed along PV → V_Bs |

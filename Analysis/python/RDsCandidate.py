@@ -918,4 +918,13 @@ def _nu_solutions(visible, direction):
         return None
     p1, p2 = np4(sols[0].p4_parent), np4(sols[1].p4_parent)
     real = float(abs(sols[0].parent_mass - M_BS) < 1e-3)
+    if not real:
+        # Negative discriminant: the solver returns the parabola vertex twice,
+        # with p_Bs = p_vis + p_nu (massless nu) off-shell (median m ~ 20 GeV,
+        # q2 ~ 240 GeV2 on the signal MC). Keep that 3-momentum (along the flight
+        # direction) and put the Bs on shell, as RDsNano does; the missing system
+        # then absorbs the mismatch (m_miss2 != 0).
+        p1 = np.array(p1, dtype=float); p2 = np.array(p2, dtype=float)
+        for p in (p1, p2):
+            p[0] = np.sqrt(np.dot(p[1:], p[1:]) + M_BS * M_BS)
     return p1, p2, real
