@@ -86,7 +86,7 @@ muon_branches = {
     'id_medium'      :  lambda imu : imu.isMediumMuon()                  ,
     'id_tight'       :  lambda imu : imu.isTightMuon(imu.pv)             ,
     'id_soft_mva_raw':  lambda imu : imu.softMvaValue()                  ,
-    'id_soft_mva'    :  lambda imu : imu.passed(ROOT.reco.Muon.SoftMvaId),
+    'id_soft_mva'    :  lambda imu : imu.passed(1 << int(ROOT.reco.Muon.SoftMvaId)),
     'id_pf'          :  lambda imu : imu.isPFMuon()                      ,
     'id_global'      :  lambda imu : imu.isGlobalMuon()                  ,
     'id_tracker'     :  lambda imu : imu.isTrackerMuon()                 ,
