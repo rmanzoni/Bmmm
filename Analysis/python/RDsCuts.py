@@ -44,11 +44,11 @@ cuts['rds'] = {
     'max_dxy_tk'     : 0.6,     # [cm] |dxy(tk)|, wrt the same PV
 
     # ---- resonances (AN Sec. 5.3, Ds window widened) ----
-    'phi_window'     : 0.020,   # [GeV] |m(KK) - m(phi)|, raw momenta
+    'phi_window'     : 0.020,   # [GeV] |m(KK) - m(phi)|, calibrated (MC) momenta, before the vertex fits
     'phi_mass'       : M_PHI,
-    'kkpi_min'       : 1.75,    # [GeV] m(KKpi), raw momenta; includes D+ (1.870) and Ds (1.968)
+    'kkpi_min'       : 1.75,    # [GeV] m(KKpi), calibrated (MC) momenta, before the vertex fits; includes D+ (1.870) and Ds (1.968)
     'kkpi_max'       : 2.15,    # [GeV]
-    'max_mass'       : 8.0,     # [GeV] m(KKpi mu), raw momenta
+    'max_mass'       : 8.0,     # [GeV] m(KKpi mu), calibrated (MC) momenta, before the vertex fits
 
     # ---- vertex probabilities (AN Sec. 5.3), OR of phic and free ----------
     'phi_vtx_prob'   : 0.01,
