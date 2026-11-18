@@ -74,6 +74,7 @@ class BaseInspector(object):
     PU_BLOCK         = True    # the Run 3 pu_weight_* block is in the schema (False: absent, --pu refused)
     EXTRA_HANDLES    = None    # OrderedDict of extra products read every event (name -> (label, Handle))
     EXTRA_HANDLES_MC = None    # same, MC only
+    SKIP_HANDLES     = ()      # names in `handles` NOT read (e.g. 'jets'); event.<name> is then absent
     EVENT_EXTRA_KEYS = ()      # event-level branches filled by fill_event_extra
     HAMMER_FACTORY   = staticmethod(make_hammer_session)   # --hammer spec -> session (Bc by default)
 
@@ -207,6 +208,8 @@ class BaseInspector(object):
 
             # ---- load handles ---------------------------------------------------
             for k, v in handles.items():
+                if k in self.SKIP_HANDLES:
+                    continue
                 event.getByLabel(v[0], v[1])
                 setattr(event, k, v[1].product())
 

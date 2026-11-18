@@ -110,6 +110,7 @@ class RDsInspector(BParking2018TriggerMixin, BaseInspector):
     MIN_MUONS        = 1
     PU_BLOCK         = False    # the Run 3 card does not apply; nti is stored
     EXTRA_HANDLES    = extra_handles
+    SKIP_HANDLES     = ('jets',)   # no jet quantities in the R(Ds) ntuples: slimmedJets never read
     HAMMER_FACTORY   = staticmethod(make_hammer_ds_session)
     # ~1100 branches: a buffered row is ~150 kB, so the shared 50000 rows took
     # ~7 GB on a full MiniAOD file and the SLURM jobs were OOM-killed
@@ -389,11 +390,6 @@ class RDsInspector(BParking2018TriggerMixin, BaseInspector):
         for obj in (mu, icand.k1, icand.k2, icand.pi):
             obj.pv = icand.pv_bs
             obj.bs = icand.bs
-            if not hasattr(obj, '_jet_done'):
-                jet, dr2 = bestMatch(obj, event.jets)
-                if dr2 < self._JET_MATCH_DR2:
-                    obj.jet = jet
-                obj._jet_done = True
         mu.iso03 = mu.pfIsolationR03()
         mu.iso04 = mu.pfIsolationR04()
 

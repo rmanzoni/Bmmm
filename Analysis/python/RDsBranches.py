@@ -12,7 +12,7 @@ Blocks, in schema order:
                  trigger matching (mu_trig_dr, mu_trig_match, mu_<path>_tag) +
                  momentum calibration (mu_calib_f, mu_calib_z)
   k1_*, k2_*, pi_*   per track: calibrated and raw kinematics, packed-candidate
-                 information, IPs, covariance, hit content, jet and gen match
+                 information, IPs, covariance, hit content and gen match
   candidate      scheme-independent quantities (masses, charges, reflections,
                  PV, isolation, cand_idx), then everything that depends on the
                  kinematic fits, once per scheme with the prefix cons_ / phic_ / dsc_ /
@@ -106,12 +106,6 @@ track_branches.update(hit_content_branches)
 track_branches.update(best_track_kinematics_branches)
 track_branches.update(common_track_extras)
 track_branches.update(track_cov_branches)
-track_branches.update({
-    'jet_pt'          : lambda t : t.jet.pt()     if hasattr(t, 'jet') else np.nan,
-    'jet_eta'         : lambda t : t.jet.eta()    if hasattr(t, 'jet') else np.nan,
-    'jet_phi'         : lambda t : t.jet.phi()    if hasattr(t, 'jet') else np.nan,
-    'jet_e'           : lambda t : t.jet.energy() if hasattr(t, 'jet') else np.nan,
-})
 
 gen_track_branches = {
     'gen_pt'          : lambda t : t.gen_match.pt()    ,
@@ -123,7 +117,8 @@ gen_track_branches = {
 }
 track_branches.update(gen_track_branches)
 
-muon_branches = dict(_common_muon)
+# no jet quantities in the R(Ds) ntuples (the jet match is not done, slimmedJets not read)
+muon_branches = {k: v for k, v in _common_muon.items() if not k.startswith('jet_')}
 muon_branches.update(common_track_extras)
 muon_branches.update(track_cov_branches)
 muon_branches['gen_mother_pdgid'] = gen_track_branches['gen_mother_pdgid']
