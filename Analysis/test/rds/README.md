@@ -193,6 +193,7 @@ not be computed is NaN. Placeholders:
 | `<o>_calib_{f,z}` | calibration factor p'/p and its Gaussian number (1, NaN without `--trk-calib`) |
 | `mu_id_{loose,soft,medium,tight,soft_mva,pf,global,tracker,standalone}` | muon identification flags |
 | `mu_id_soft_mva_raw` | soft-MVA output |
+| `mu_high_purity` | highPurity bit of the muon inner track (same flag as `<t>_high_purity` of the hadrons); NaN without an inner track |
 | `mu_pfiso{03,04}`, `mu_pfreliso{03,04}` | standard PAT PF isolation of the muon (default PV), absolute and relative |
 | `mu_pfiso{03,04}_{ch,cp,nh,ph,pu}` | its components: charged hadrons, charged particles, neutral hadrons, photons, pile-up |
 | `<o>_{dxy,dz}`, `<o>_{dxy,dz}_{e,sig}` | transverse and longitudinal IP wrt the candidate PV (`pv_*`), error, significance, from the track the fits used |
@@ -233,7 +234,10 @@ not be computed is NaN. Placeholders:
 | `<i>_iso{,_clean}_<rr>`, `<i>_reliso{,_clean}_<rr>` | ch + max(0, nh + ph − ½ pu), absolute and relative. `ds` and `b` include their own tracks; use `clean` |
 | `gen_cand` | MC truth of the four tracks: 0–3 signal (Ds μ, Ds* μ, Ds τ, Ds* τ), 10 Bs feed-down, 11 Bs double charm, 12–15 Ds from B⁰, B⁺, Λb, other b, 20 Ds and μ from different b, 21 μ not from a b, 30 KKπ not from one Ds, −1 fewer than four tracks matched |
 | `gen_ds_true`, `gen_charm_pdgid`, `gen_ds_{mother,b}_pdgid` | MC: KKπ from one Ds; their common charm ancestor; the Ds mother and b ancestor |
-| `gen_mu_{mother,b}_pdgid`, `gen_mu_from_tau`, `gen_same_b`, `gen_n_matched` | MC: muon mother and b ancestor; muon from a τ; Ds and μ from the same b; tracks matched (0–4) |
+| `gen_charm_b_{pdgid,ct}` | MC: b ancestor of the common charm hadron of KKπ, any flavour (Ds, D⁺, D⁰, D*, Λc, ...), and its cτ; NaN if none (prompt charm). Equal to `gen_ds_b_*` for a true Ds |
+| `gen_mu_{mother,b}_pdgid`, `gen_mu_from_tau`, `gen_n_matched` | MC: muon mother and b ancestor; muon from a τ; tracks matched (0–4) |
+| `gen_same_b` | MC, any sample (signal, Hb, QCD): the common charm hadron of KKπ (any flavour, not only Ds) and the μ come from the same b hadron (last copy, B mixing included). 0 if they don't, also when either has no b ancestor; NaN if a track is unmatched or KKπ share no charm ancestor |
+| `gen_all_same_b` | MC: the four tracks have one common b ancestor, whatever their charm parents (e.g. B → D D̄ X combinatorics). 0 otherwise, NaN if a track is unmatched |
 
 ### Per fit scheme `<s>_*`
 
@@ -308,7 +312,9 @@ stored; the Run 3 `pu_weight_*` block is not in this schema.
   15 other b, 20 μ from another b, 21 μ not from a b, 30 not a Ds, −1 a track
   not matched), `gen_charm_pdgid` (the common charm ancestor of KKπ: Ds, D⁺,
   Λc, ...), `gen_ds_mother_pdgid`, `gen_ds_b_pdgid`, `gen_mu_b_pdgid`,
-  `gen_same_b`, and per track `*_gen_pdgid`, `*_gen_mother_pdgid`.
+  `gen_charm_b_pdgid`, `gen_same_b` (charm of KKπ, any flavour, and μ from one
+  b), `gen_all_same_b` (the four tracks from one b), and per track
+  `*_gen_pdgid`, `*_gen_mother_pdgid`.
 
 Hammer: `--hammer <card>` at production, or
 `test/rds/hammer/add_hammer_weights_rds.py` afterwards (same code, `--closure`
@@ -343,11 +349,11 @@ they are replaced.
 
 Done here, without CMSSW:
 
-* `test_rds_kinematics.py` (12 tests): combinatorics vs brute force; Bs
+* `test_rds_kinematics.py` (13 tests): combinatorics vs brute force; Bs
   hypotheses; q², m²_miss, E*_μ, E#_μ and the four helicity angles recovered on
   decays generated with known angles, in any frame; the neutrino solver with the
   Bs mass recovers the true Bs; gen classification of the four signals (with
-  and without B mixing), feed-down, B⁰ double charm, D⁺ → φπ, foreign muons;
+  and without B mixing), feed-down, B⁰ double charm, D⁺ → φπ, foreign muons, same-b flags for D⁺ / Λc from b, prompt charm and B → D D̄;
   the momcal applier loaded as in production; merged L1 tables equal to the
   per-path ones.
 * With fake ROOT/FWLite objects (`test/rds/smoke/`, runs without CMSSW):

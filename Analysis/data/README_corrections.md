@@ -14,7 +14,9 @@ git (`.gitignore`); they are on disk at PSI only.
 
 Also offline: B lifetime reweighting from `gen_bs_ct` (event, signal decay)
 and `gen_ds_b_ct`, `gen_mu_b_ct` (candidate, the b hadron the Ds / the muon
-comes from; with `gen_ds_b_pdgid`, `gen_mu_b_pdgid`).
+comes from; with `gen_ds_b_pdgid`, `gen_mu_b_pdgid`). For a KKπ from another
+charm hadron (D⁺, D⁰, Λc, ... in Hb and QCD) use `gen_charm_b_ct`,
+`gen_charm_b_pdgid`.
 
 Production recipe: the `rds-production` Claude skill and
 `test/rds/submitter_rds_slurm.py`.

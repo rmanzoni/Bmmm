@@ -436,8 +436,8 @@ def common_charm_ancestor(gens):
 
 CAND_GEN_NAMES = ('gen_cand', 'gen_ds_true', 'gen_charm_pdgid', 'gen_ds_mother_pdgid',
                   'gen_ds_b_pdgid', 'gen_mu_b_pdgid', 'gen_mu_mother_pdgid',
-                  'gen_mu_from_tau', 'gen_same_b', 'gen_n_matched',
-                  'gen_ds_b_ct', 'gen_mu_b_ct')
+                  'gen_mu_from_tau', 'gen_same_b', 'gen_all_same_b', 'gen_n_matched',
+                  'gen_ds_b_ct', 'gen_mu_b_ct', 'gen_charm_b_pdgid', 'gen_charm_b_ct')
 
 
 def b_ct(b):
@@ -462,7 +462,20 @@ def b_ct(b):
 
 def classify_candidate(gk1, gk2, gpi, gmu):
     '''Candidate-level truth from the four matched gen particles (None when
-    unmatched). Returns {name in CAND_GEN_NAMES: value}.'''
+    unmatched). Returns {name in CAND_GEN_NAMES: value}.
+
+    Same-b flags, meaningful for any sample (signal, inclusive Hb, QCD), b
+    hadrons compared at their last copy (B mixing included):
+      gen_same_b      the b ancestor of the common charm hadron of K K pi (any
+                      charm: Ds, D+, D0, Lambda_c, ...) is the b ancestor of
+                      the muon. 0 if either has no b ancestor (prompt charm,
+                      mu from a light hadron). NaN when a track is unmatched or
+                      the three hadrons share no charm ancestor.
+      gen_all_same_b  the four tracks have one common b ancestor, whatever
+                      their charm parents (e.g. B -> D Dbar X combinatorics).
+                      0 if any has no b ancestor, NaN when a track is unmatched.
+    gen_charm_b_pdgid / _ct: the b ancestor of that charm hadron (gen_ds_b_*
+    is the same for a true Ds only).'''
     out = dict.fromkeys(CAND_GEN_NAMES, NAN)
     matched = [g for g in (gk1, gk2, gpi, gmu) if g is not None]
     out['gen_n_matched'] = float(len(matched))
@@ -478,10 +491,14 @@ def classify_candidate(gk1, gk2, gpi, gmu):
     if ds is not None:
         m = mother_of(ds)
         out['gen_ds_mother_pdgid'] = m.pdgId() if m is not None else 0.
-    b_ds = b_ancestor(ds) if ds is not None else None
+    b_charm = b_ancestor(charm) if charm is not None else None
+    if b_charm is not None:
+        out['gen_charm_b_pdgid'] = first_copy(b_charm).pdgId()
+        out['gen_charm_b_ct']    = b_ct(b_charm)
+    b_ds = b_charm if ds is not None else None
     if b_ds is not None:
-        out['gen_ds_b_pdgid'] = first_copy(b_ds).pdgId()
-        out['gen_ds_b_ct']    = b_ct(b_ds)
+        out['gen_ds_b_pdgid'] = out['gen_charm_b_pdgid']
+        out['gen_ds_b_ct']    = out['gen_charm_b_ct']
 
     # muon side
     b_mu, mu_mother = None, None
@@ -493,9 +510,14 @@ def classify_candidate(gk1, gk2, gpi, gmu):
         if b_mu is not None:
             out['gen_mu_b_pdgid'] = first_copy(b_mu).pdgId()
             out['gen_mu_b_ct']    = b_ct(b_mu)
-    same_b = b_ds is not None and b_mu is not None and same(b_ds, b_mu)
-    if b_ds is not None and gmu is not None:
-        out['gen_same_b'] = float(same_b)
+    all_matched = len(matched) == 4
+    if all_matched and charm is not None:
+        out['gen_same_b'] = float(same(b_charm, b_mu))
+    if all_matched:
+        bs_ = [b_ancestor(g) for g in (gk1, gk2, gpi)] + [b_mu]
+        out['gen_all_same_b'] = float(all(same(b, bs_[0]) for b in bs_))
+    # the category needs a true Ds (same(b_charm, b_mu) and charm is the Ds)
+    same_b = ds is not None and same(b_ds, b_mu)
 
     # category
     if len(matched) < 4 or gmu is None or abs(gmu.pdgId()) != MU:

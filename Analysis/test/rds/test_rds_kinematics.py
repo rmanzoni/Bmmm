@@ -287,17 +287,19 @@ def test_signal_classification():
             # candidate truth: the right tracks give the signal code back
             c = G.classify_candidate(p['kp'], p['km'], p['pi'], p['mu'])
             assert c['gen_cand'] == code, (code, mixing, c)
-            assert c['gen_ds_true'] == 1. and c['gen_same_b'] == 1.
+            assert c['gen_ds_true'] == 1. and c['gen_same_b'] == 1. and c['gen_all_same_b'] == 1.
+            assert c['gen_charm_b_pdgid'] == c['gen_ds_b_pdgid']
             # a muon from elsewhere
             other_b = GP(521, [6, 0, 0, 3])
             mu2 = GP(13, [3, 0.5, 0.5, 2.9], status=1)
             other_b.add(mu2)
             c = G.classify_candidate(p['kp'], p['km'], p['pi'], mu2)
-            assert c['gen_cand'] == 20 and c['gen_same_b'] == 0.
+            assert c['gen_cand'] == 20 and c['gen_same_b'] == 0. and c['gen_all_same_b'] == 0.
             c = G.classify_candidate(p['kp'], p['km'], p['pi'], GP(13, [3, 0.5, 0.5, 2.9], status=1))
-            assert c['gen_cand'] == 21
+            assert c['gen_cand'] == 21 and c['gen_same_b'] == 0. and c['gen_all_same_b'] == 0.
             c = G.classify_candidate(p['kp'], p['km'], None, p['mu'])
             assert c['gen_cand'] == -1
+            assert np.isnan(c['gen_same_b']) and np.isnan(c['gen_all_same_b'])
 
 
 def test_hb_categories():
@@ -331,6 +333,57 @@ def test_hb_categories():
     phi.add(kp, km); dp.add(phi, pi)
     c = G.classify_candidate(kp, km, pi, mu)
     assert c['gen_cand'] == 30 and c['gen_charm_pdgid'] == 411 and c['gen_ds_true'] == 0.
+    # (the D+ above has no mother and the mu comes from the Bs: no shared b)
+    assert c['gen_same_b'] == 0. and c['gen_all_same_b'] == 0.
+    assert np.isnan(c['gen_charm_b_pdgid']) and np.isnan(c['gen_ds_b_pdgid'])
+
+
+def test_same_b_any_charm():
+    '''gen_same_b / gen_all_same_b for Hb and QCD: the charm need not be a Ds.'''
+    def kkpi(charm_id, sgn=1):
+        c = GP(charm_id, [2.4, 0, 0, 1])
+        phi = GP(333, [1.2, 0, 0, 0.5])
+        kp, km = GP(321, [0.6, 0.1, 0, 0.2], 1), GP(-321, [0.6, -0.1, 0, 0.3], 1)
+        pi = GP(211 * sgn, [0.6, 0, 0.1, 0.2], 1)
+        phi.add(kp, km); c.add(phi, pi)
+        return c, kp, km, pi
+    # B0 -> D+ mu nu, D+ -> phi pi: same b, not a Ds
+    b0 = GP(-511, [6., 0., 0., 2.])
+    dp, kp, km, pi = kkpi(411)
+    mu = GP(-13, [1., 0, 0.2, 0.5], 1); nu = GP(14, [1., 0, 0.2, -0.5], 1)
+    b0.add(dp, mu, nu)
+    c = G.classify_candidate(kp, km, pi, mu)
+    assert c['gen_cand'] == 30 and c['gen_ds_true'] == 0.
+    assert c['gen_same_b'] == 1. and c['gen_all_same_b'] == 1.
+    assert c['gen_charm_b_pdgid'] == -511 and np.isnan(c['gen_ds_b_pdgid'])
+    assert c['gen_charm_b_ct'] == c['gen_charm_b_ct']   # finite
+    # Lambda_b -> Lambda_c mu, the mu from the Lb
+    lb = GP(5122, [7., 0., 0., 2.])
+    lc, kp, km, pi = kkpi(4122)
+    lb.add(lc, GP(-13, [1., 0, 0.2, 0.5], 1))
+    c = G.classify_candidate(kp, km, pi, lb.daughter(1))
+    assert c['gen_same_b'] == 1. and c['gen_charm_b_pdgid'] == 5122
+    # mu from another b (two b hadrons in the event)
+    bp = GP(521, [6., 0., 0., -2.])
+    mu2 = GP(13, [3, 0.5, 0.5, 2.9], 1); bp.add(mu2)
+    c = G.classify_candidate(kp, km, pi, mu2)
+    assert c['gen_same_b'] == 0. and c['gen_all_same_b'] == 0.
+    # QCD prompt charm (c cbar): D0bar -> ... no b anywhere
+    d0, kp, km, pi = kkpi(421)
+    dbar = GP(-411, [2., 0., 0., -1.])
+    mu3 = GP(-13, [1., 0, 0.2, 0.5], 1); dbar.add(mu3)
+    c = G.classify_candidate(kp, km, pi, mu3)
+    assert c['gen_same_b'] == 0. and c['gen_all_same_b'] == 0.
+    assert np.isnan(c['gen_charm_b_pdgid']) and c['gen_cand'] == 30
+    # B0 -> D+ D- : K K from the D+, pi from the D- (no common charm), mu from the D-
+    b0 = GP(511, [6., 0., 0., 2.])
+    dp = GP(411, [2.5, 0, 0, 1]); dm = GP(-411, [2.5, 0, 0, -1])
+    kp, km = GP(321, [0.6, 0.1, 0, 0.2], 1), GP(-321, [0.6, -0.1, 0, 0.3], 1)
+    pi = GP(-211, [0.6, 0, 0.1, 0.2], 1); mu = GP(-13, [1., 0, 0.2, 0.5], 1)
+    dp.add(kp, km); dm.add(pi, mu); b0.add(dp, dm)
+    c = G.classify_candidate(kp, km, pi, mu)
+    assert np.isnan(c['gen_charm_pdgid']) and np.isnan(c['gen_same_b'])
+    assert c['gen_all_same_b'] == 1.
 
 
 def test_b_hadron_digits():

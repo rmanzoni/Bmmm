@@ -26,6 +26,9 @@ All getters run through safe_get: a failed fit or a missing gen match is a NaN.
 '''
 
 import numpy as np
+import ROOT
+
+NAN = float('nan')
 
 from Bmmm.Analysis.CommonBranches import muon_branches as _common_muon
 from Bmmm.Analysis.CommonBranches import track_cov_branches, safe_get, cov_track
@@ -117,6 +120,16 @@ gen_track_branches = {
 }
 track_branches.update(gen_track_branches)
 
+def _muon_high_purity(mu):
+    '''highPurity bit of the inner (tracker) track of the muon, embedded in
+    slimmedMuons; NaN for a muon without an inner track (standalone only).
+    Same flag as <t>_high_purity of the hadrons (trackHighPurity()).'''
+    trk = mu.innerTrack()
+    if trk.isNull():
+        return NAN
+    return float(trk.quality(ROOT.reco.TrackBase.highPurity))
+
+
 # no jet quantities in the R(Ds) ntuples (the jet match is not done, slimmedJets not read)
 muon_branches = {k: v for k, v in _common_muon.items() if not k.startswith('jet_')}
 muon_branches.update(common_track_extras)
@@ -124,6 +137,7 @@ muon_branches.update(track_cov_branches)
 muon_branches['gen_mother_pdgid'] = gen_track_branches['gen_mother_pdgid']
 muon_branches['gen_dr']           = gen_track_branches['gen_dr']
 muon_branches['pt_raw']           = lambda t : t.raw_pt()
+muon_branches['high_purity']      = lambda t : _muon_high_purity(t)
 # trigger matching, filled by the inspector
 muon_trigger_names = ['trig_dr', 'trig_match'] + ['%s_tag' % p for p in paths] + \
                      list(SF_BRANCHES)   # trigger scale factors (MC, --trig-sf)
